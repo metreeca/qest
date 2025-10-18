@@ -1,12 +1,10 @@
 /.idea/
 /.vscode/
-/.claude/
 
+/@/
 /dist/
 /docs/
 /node_modules/
-
-/work/
 
 *~
 ~*
