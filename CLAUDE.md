@@ -14,6 +14,13 @@ description: Development guidelines and conventions for the @metreeca/qest packa
 > - **ALL** relevant skills **MUST** be used when applicable without continuous prompting.
 > - **SKILL** guidance **ALWAYS** supersedes internal general-purpose knowledge.
 
+# References
+
+- JSON-LD 1.1 W3C Recommendations:
+  - [Core](https://www.w3.org/TR/json-ld11/) - Syntax and data model
+  - [Processing API](https://www.w3.org/TR/json-ld11-api/) - Algorithms and number mapping
+  - [Framing](https://www.w3.org/TR/json-ld11-framing/) - Document reshaping
+
 # NPM Scripts
 
 - **`npm run clean`** - Remove build artifacts and dependencies (dist, docs, node_modules)
