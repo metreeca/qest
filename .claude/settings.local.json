@@ -17,7 +17,9 @@
       "WebFetch(domain:en.wikipedia.org)",
       "WebFetch(domain:bundlephobia.com)",
       "WebFetch(domain:peggyjs.org)",
-      "Bash(npm run peggy:*)"
+      "Bash(npm run peggy:*)",
+      "Bash(ls:*)",
+      "Skill(typescript-tester)"
     ],
     "deny": [],
     "ask": []

@@ -37,7 +37,7 @@
     "node": ">=22.0.0"
   },
   "scripts": {
-    "clean": "rm -rf dist docs node_modules src/parsers/*.js",
+    "clean": "rm -rf dist docs node_modules src/parsers/*.js src/parsers/*.d.ts",
     "setup": "npm install && npm audit fix",
     "peggy": "npx peggy --dts --format es src/parsers/*.pegjs",
     "build": "rm -rf dist docs && npm run peggy && tsc && typedoc",

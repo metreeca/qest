@@ -1,14 +1,32 @@
 {
 
   function decodeEscapes(chars) {
-    return chars.map(char => {
-      if (char === "\\'") return "'";
-      if (char === "\\\\") return "\\";
-      return char;
-    }).join('');
+    return chars.map(char =>
+      char === "\\'" ? "'"
+        : char === "\\\\" ? "\\"
+        : char
+    ).join('');
   }
 
 }
+
+Expression
+  = name:NamePrefix? pipe:Transform* path:Path {
+      const result = {
+        pipe,
+        path
+      };
+      if (name !== null && name !== undefined) {
+        result.name = name;
+      }
+      return result;
+    }
+
+NamePrefix
+  = id:Identifier "=" { return id; }
+
+Transform
+  = id:Identifier ":" { return id; }
 
 Path
   = prefix:Prefix? first:FirstProperty? rest:PropertyAccessor* {
@@ -19,7 +37,7 @@ Path
     }
 
 Prefix
-  = "$" &("." / "[" / !.) / "."
+  = "$" &("." / "[" / !.) / "." &([a-zA-Z_$] / "[" / !.)
 
 FirstProperty
   = Identifier

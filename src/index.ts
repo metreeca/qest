@@ -97,14 +97,14 @@ export type Text =
  * - Empty arrays are ignored during processing
  * - Properties cannot use empty strings or JSON-LD keywords as names (enforced by {@link Properties})
  */
-export type Resource = Properties & {
+export type Resource = {
 
 	readonly [K in string]: Values
 
 }
 
 /**
- * Property name constraints for resource objects.
+ * Property name constraints for resource-like objects.
  *
  * Enforces that resource property names cannot be empty strings or JSON-LD keywords
  * (identifiers starting with `@`).
