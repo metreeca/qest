@@ -22,8 +22,10 @@
  * @module
  */
 
+import { error } from "@metreeca/core/report";
 import { immutable } from "../../Core/src/common/nested.js";
 import { Dictionary, Literal, Properties, Value, Values } from "./index.js";
+import * as parser from "./parsers/path.js";
 
 
 const pattern = immutable({
@@ -243,10 +245,16 @@ export type Expression = {
 
 	readonly name?: string,
 
-	readonly pipe: readonly (keyof typeof Transform)[]
-	readonly path: readonly string[]
+	readonly pipe: Pipe
+	readonly path: Path
 
 }
+
+
+export type Path = readonly string[];
+export type Pipe = readonly (Transform)[];
+
+export type Transform = keyof typeof Transform;
 
 
 /**
@@ -277,6 +285,36 @@ export type Options =
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export function Expression() {
+export function Path(path: Path): Path;
+export function Path(path: string): Path;
+export function Path(path: Path, opts: { format: "string" }): string;
+
+export function Path(path: Path | string, opts?: { format: "string" }): Path | string {
+
+	return typeof path === "string" ? decode(path)
+		: Array.isArray(path) && opts !== undefined ? encode(path, opts)
+			: Array.isArray(path) ? create(path)
+				: error(new TypeError("invalid Path() arguments"));
+
+
+	function create(path: Path): Path {
+		throw new Error("factory not implemented");
+	}
+
+	function decode(path: string): Path {
+		try {
+
+			return parser.parse(path);
+
+		} catch ( e ) {
+
+			return error(new SyntaxError(`invalid path: ${path}`));
+
+		}
+	}
+
+	function encode(path: Path, opts: { format: "string" }): string {
+		throw new Error("encoder not implemented");
+	}
 
 }

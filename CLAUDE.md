@@ -21,6 +21,12 @@ description: Development guidelines and conventions for the @metreeca/qest packa
   - [Processing API](https://www.w3.org/TR/json-ld11-api/) - Algorithms and number mapping
   - [Framing](https://www.w3.org/TR/json-ld11-framing/) - Document reshaping
 
+- Parsing:
+  - [Peggy](https://peggyjs.org/) - Parser generator for JavaScript
+  - [Peggy Documentation](https://peggyjs.org/documentation.html) - Grammar syntax and API
+  - [Parsing Expression Grammar (PEG)](https://en.wikipedia.org/wiki/Parsing_expression_grammar) - Formal grammar type
+  - [peggy npm](https://www.npmjs.com/package/peggy) - Package repository
+
 # NPM Scripts
 
 - **`npm run clean`** - Remove build artifacts and dependencies (dist, docs, node_modules)

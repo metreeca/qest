@@ -10,7 +10,14 @@
       "WebSearch",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:stackoverflow.com)",
-      "Skill(markdown-writer)"
+      "Skill(markdown-writer)",
+      "Skill(typescript-developer)",
+      "Skill(product-analyst)",
+      "WebFetch(domain:www.npmjs.com)",
+      "WebFetch(domain:en.wikipedia.org)",
+      "WebFetch(domain:bundlephobia.com)",
+      "WebFetch(domain:peggyjs.org)",
+      "Bash(npm run peggy:*)"
     ],
     "deny": [],
     "ask": []
