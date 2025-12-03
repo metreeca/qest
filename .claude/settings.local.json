@@ -19,7 +19,8 @@
       "WebFetch(domain:peggyjs.org)",
       "Bash(npm run peggy:*)",
       "Bash(ls:*)",
-      "Skill(typescript-tester)"
+      "Skill(typescript-tester)",
+      "WebFetch(domain:datatracker.ietf.org)"
     ],
     "deny": [],
     "ask": []

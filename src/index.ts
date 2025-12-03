@@ -23,7 +23,9 @@
  * @module index
  */
 
+import { immutable } from "@metreeca/core/nested";
 import { Tag } from "@metreeca/core/network";
+import { $resource } from "./validator.js";
 
 
 /**
@@ -57,28 +59,20 @@ export type Literal =
 	| number
 	| string
 
-
 /**
  * Language-tagged dictionary for internationalized text values.
  *
  * Maps language {@link Tag | tag} to localized text values for representing multilingual content.
  *
  * @typeParam T The text value type
+ *
+ * @see {@link https://www.rfc-editor.org/rfc/rfc5646.html | RFC 5646 - Tags for Identifying Languages}
  */
-export type Dictionary<T extends Text = Text> = {
+export type Dictionary<T extends string | readonly string[] = string | readonly string[]> = {
 
 	readonly [tag: Tag]: T
 
 }
-
-/**
- * Text value for language-tagged content.
- *
- * Can be a single string or an array of strings.
- */
-export type Text =
-	| string
-	| readonly string[]
 
 
 /**
@@ -92,10 +86,12 @@ export type Text =
  *
  * Resources are immutable and follow these rules:
  *
- * - Properties can contain any {@link Values} type
- * - Arrays represent collections and cannot be nested
+ * - Property names must be valid JSONPath dot notation identifiers (`[a-zA-Z_$][a-zA-Z0-9_$]*`)
+ * - Property values must be non-null literals, resources, or arrays (no nested arrays)
+ * - Arrays represent sets: duplicate values are ignored and ordering is immaterial
  * - Empty arrays are ignored during processing
- * - Properties cannot use empty strings or JSON-LD keywords as names (enforced by {@link Properties})
+ *
+ * @see {@link https://datatracker.ietf.org/doc/rfc9535/ | RFC 9535 - JSONPath Query Expressions}
  */
 export type Resource = {
 
@@ -103,16 +99,31 @@ export type Resource = {
 
 }
 
-/**
- * Property name constraints for resource-like objects.
- *
- * Enforces that resource property names cannot be empty strings or JSON-LD keywords
- * (identifiers starting with `@`).
- *
- * @see {@link Resource}
- */
-export type Properties = {
 
-	readonly [K in "" | `@${string}`]?: never
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * Creates a validated, immutable {@link Resource} object.
+ *
+ * Validates the resource structure against {@link Resource} type constraints, recursively checking
+ * all nested structures, and returns a deeply frozen copy that cannot be modified.
+ *
+ * @typeParam T The specific resource type
+ *
+ * @param resource The resource object to validate and freeze
+ *
+ * @returns The validated, immutable resource
+ *
+ * @throws {TypeError} If the resource structure violates {@link Resource} constraints
+ */
+export function Resource<T extends Resource>(resource: T): T {
+
+	const error = $resource(resource);
+
+	if ( error ) {
+		throw new TypeError(error);
+	}
+
+	return immutable(resource);
 
 }

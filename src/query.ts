@@ -24,7 +24,7 @@
 
 import { error } from "@metreeca/core/report";
 import { immutable } from "../../Core/src/common/nested.js";
-import { Dictionary, Literal, Properties, Value, Values } from "./index.js";
+import { Dictionary, Literal, Value, Values } from "./index.js";
 import * as parser from "./parsers/expression.js";
 
 
@@ -143,7 +143,7 @@ export const Transform: {
  * @see {@link Specs}
  * @see {@link Model}
  */
-export type Query = Properties & {
+export type Query = {
 
 	readonly [K in string]: Values | readonly (Model | Specs)[]  // !!! no plain arrays
 
@@ -176,7 +176,7 @@ export type Query = Properties & {
  * @see {@link Expression}
  * @see {@link Resource}
  */
-export type Model = Properties & {
+export type Model = {
 
 	readonly [K in string | `${string}=${string}`]: Values // nested arrays as per QUery
 
