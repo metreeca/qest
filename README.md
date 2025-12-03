@@ -6,11 +6,11 @@
 >
 > Work in proress…
 
+Provides a type-safe data model for linked data resources represented using a controlled subset of framed JSON-LD,
+ensuring compatibility with standard processors
 
-Provides a type-safe data model for linked data resources represented using a controlled
-subset of framed JSON-LD, ensuring compatibility with standard processors while providing:
+> while providing:
 
-- Validated IRI identifiers for resource references (RFC 3987)
 - Validated Language tags for internationalization (BCP47)
 - Embedded or referenced resource relationships
 

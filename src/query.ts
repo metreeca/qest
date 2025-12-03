@@ -14,9 +14,87 @@
  * limitations under the License.
  */
 
-import { Expression } from "./_expression.js";
+/**
+ * Query types for client-driven resource fetching.
+ *
+ * {@link Query} objects combine filtering, sorting and pagination criteria (using {@link Specs} constraints) and how
+ * to shape the results (using {@link Model} projections).
+ * @module
+ */
+
+import { immutable } from "../../Core/src/common/nested.js";
 import { Dictionary, Literal, Properties, Value, Values } from "./index.js";
 
+
+const pattern = immutable({
+
+	/** Matches a valid path: optional leading dot, steps separated by unescaped dots */
+	path: /^\.?(?:[^.\\]|\\.)+(?:\.(?:[^.\\]|\\.)+)*$/,
+
+	/** Matches path steps: sequences of non-dot/backslash or escaped characters */
+	step: /(?:[^.\\]|\\.)+/g,
+
+	/** Matches expression structure: transforms prefix + path */
+	expression: /^(\w+:)*(.*)$/,
+
+	/** Matches transforms prefix: zero or more word+colon sequences */
+	transforms: /^(\w+:)*/,
+
+	/** Extracts transform names from prefix using lookahead */
+	transform: /\w+(?=:)/g
+
+});
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * Value transformation operations for computed expressions.
+ *
+ * Each transform specifies whether it operates on collections (aggregate) and its result datatype.
+ *
+ * @see {@link Expression}
+ */
+export const Transform: {
+
+	[name: string]: {
+		aggregate: boolean,
+		datatype: "boolean" | "number" | "string" | "*"
+	}
+
+} = {
+
+	/** Count of values in collection */
+	count: { aggregate: true, datatype: "number" },
+
+	/** Minimum value in collection */
+	min: { aggregate: true, datatype: "*" },
+
+	/** Maximum value in collection */
+	max: { aggregate: true, datatype: "*" },
+
+	/** Sum of values in collection */
+	sum: { aggregate: true, datatype: "number" },
+
+	/** Average of values in collection */
+	avg: { aggregate: true, datatype: "number" },
+
+
+	/** Absolute value */
+	abs: { aggregate: false, datatype: "number" },
+
+	/** Round to nearest integer */
+	round: { aggregate: false, datatype: "number" },
+
+	/** Extract year component from date/time */
+	year: { aggregate: false, datatype: "number" }
+
+	// !!! {TBC}
+
+} as const;
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
  * Resource specification with nested queries and models.
@@ -39,6 +117,7 @@ export type Query = Properties & {
 	readonly [K in string]: Values | readonly (Model | Specs)[]
 
 }
+
 
 /**
  * Resource model defining the projection and shape of query results.
@@ -77,13 +156,14 @@ export type Query = Properties & {
  */
 export type Model = Properties & {
 
-	readonly [K in string | `${string}=${Expression}`]: Values
+	readonly [K in string | `${string}=${string}`]: Values
 
 } & {
 
 	readonly [K in `=${string}`]?: never
 
 }
+
 /**
  * Query constraints for filtering and sorting resource collections.
  *
@@ -139,24 +219,35 @@ export type Model = Properties & {
  */
 export type Specs = Partial<{
 
-	readonly [lt: `<${Expression}`]: Literal
-	readonly [gt: `>${Expression}`]: Literal
+	readonly [lt: `<${string}`]: Literal
+	readonly [gt: `>${string}`]: Literal
 
-	readonly [lte: `<=${Expression}`]: Literal
-	readonly [gte: `>=${Expression}`]: Literal
+	readonly [lte: `<=${string}`]: Literal
+	readonly [gte: `>=${string}`]: Literal
 
-	readonly [like: `~${Expression}`]: string
+	readonly [like: `~${string}`]: string
 
-	readonly [any: `?${Expression}`]: Options
-	readonly [all: `!${Expression}`]: Options
+	readonly [any: `?${string}`]: Options
+	readonly [all: `!${string}`]: Options
 
-	readonly [order: `^${Expression}`]: "asc" | "desc" | "ascending" | "descending" | number
-	readonly [focus: `$${Expression}`]: Options
+	readonly [focus: `$${string}`]: Options
+	readonly [order: `^${string}`]: "asc" | "desc" | "ascending" | "descending" | number
 
 	readonly "@": number
 	readonly "#": number
 
 }>
+
+
+export type Expression = {
+
+	readonly name?: string,
+
+	readonly pipe: readonly (keyof typeof Transform)[]
+	readonly path: readonly string[]
+
+}
+
 
 /**
  * Option values for query matching operators.
@@ -186,107 +277,6 @@ export type Options =
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/**
- * Creates a type-safe {@link Model} instance with compile-time validation.
- *
- * Provides compile-time type checking for model property keys and values, ensuring
- * that property names follow the correct format and values are assignable to {@link Values}.
- *
- * @typeParam T The model type to create
- *
- * @param specs The model definition to validate
- *
- * @returns The validated model instance
- *
- * @remarks
- *
- * This factory function enforces the following constraints at compile-time:
- *
- * - Regular properties must contain valid {@link Values}
- * - Assignment properties must use the `property=${Expression}` format
- * - Properties cannot start with `=` alone
- *
- * @example
- *
- * ```typescript
- * const productModel = model({
- *   "name": "Product Name",
- *   "price": 99.99,
- *   "totalPrice=sum:items.price": undefined
- * });
- * ```
- *
- * @see {@link Model}
- * @see {@link Expression}
- */
-export function model<T extends Model>(specs: {
-
-	[K in keyof T]:
-
-	K extends `=${string}` ? never
-		: K extends (string | `${string}=${Expression}`) ? (T[K] extends Values ? T[K] : never)
-			: never
-
-}): T {
-
-	return specs as T;
-
-}
-
-/**
- * Creates a type-safe {@link Specs} instance with compile-time validation.
- *
- * Provides compile-time type checking for query operators and their values, ensuring
- * that operators use correct expression syntax and values match expected types.
- *
- * @typeParam T The query type to create
- *
- * @param specs The query specification to validate
- *
- * @returns The validated query instance
- *
- * @remarks
- *
- * This factory function enforces the following constraints at compile-time:
- *
- * - Range operators (`<`, `>`, `<=`, `>=`) must have {@link Literal} values
- * - Like operator (`~`) must have string values
- * - Matching operators (`?`, `!`) must have {@link Options} values
- * - Order operator (`^`) must have string or number values
- * - Focus operator (`$`) must have {@link Options} values
- * - Pagination operators (`@`, `#`) must have number values
- *
- * @example
- *
- * ```typescript
- * const productQuery = query({
- *   ">=price": 10,
- *   "<=price": 100,
- *   "~title": "javascript",
- *   "^name": "ascending",
- *   "@": 0,
- *   "#": 20
- * });
- * ```
- *
- * @see {@link Specs}
- * @see {@link Expression}
- * @see {@link Options}
- */
-export function specs<T extends Specs>(specs: {
-
-	[K in keyof T]:
-
-	K extends (`<${string}` | `>${string}` | `<=${string}` | `>=${string}`) ? (T[K] extends Literal ? T[K] : never)
-		: K extends `~${string}` ? (T[K] extends string ? T[K] : never)
-			: K extends (`?${string}` | `!${string}`) ? (T[K] extends Options ? T[K] : never)
-				: K extends `^${string}` ? (T[K] extends string | number ? T[K] : never)
-					: K extends `$${string}` ? (T[K] extends Options ? T[K] : never)
-						: K extends ("@" | "#") ? (T[K] extends number ? T[K] : never)
-							: never
-
-}): T {
-
-	return specs as T;
+export function Expression() {
 
 }
