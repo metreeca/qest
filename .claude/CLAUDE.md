@@ -3,27 +3,34 @@ title: Project Guidelines
 description: Development guidelines and conventions for the @metreeca/qest package.
 ---
 
-# MANDATORY WORKFLOW
+# Code Modification
 
-1. **CHECK SKILLS FIRST**: Before ANY analysis, file reading, or planning: Review ALL available skills in the Skill tool
-   description. If task matches a skill's domain, invoke that skill immediately. Do not proceed to step 2.
+**NON-NEGOTIABLE**
 
-2. **PROCEED DIRECTLY**: Only if no skill matches: Proceed with direct implementation.
+- Modify ONLY what is explicitly requested or clearly required to solve the stated problem.
+
+**NEVER**
+
+- Refactor, rearchitect, or "improve" code beyond requested scope
+- Revert user edits unless explicitly asked
+- Make changes "while we're here" or "for consistency"
+- Add unrequested features, error handling, or enhancements
 
 ---
 
-# ABSOLUTE CONSTRAINTS
+# Skill Delegation
 
-**Code Modification**
+A `PreToolUse` hook automatically detects file types and prints skill suggestions based on file extensions.
 
-- ONLY modify code when explicitly requested or clearly required
-- NEVER refactor or rearchitect unrelated code beyond requested scope
-- NEVER revert unrelated user edits
+**When hook suggestion appears:**
 
-**Skill Usage**
+- Immediately invoke the suggested skill using the Skill tool
+- Do not proceed with file operations without using the skill
 
-- ALL relevant skills MUST be used without continuous prompting
-- SKILL guidance ALWAYS supersedes general-purpose knowledge
+**Skill authority:**
+
+- Skill guidance supersedes general knowledge
+- Skills enforce project-specific patterns and standards
 
 ---
 
