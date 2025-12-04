@@ -18,13 +18,14 @@
  * Query types for client-driven resource fetching.
  *
  * {@link Query} objects combine filtering, sorting and pagination criteria (using {@link Specs} constraints) and how
- * to shape the results (using {@link Model} projections).
+ * to shape the results (using {@link Query} projections).
  * @module
  */
 
+import { isArray } from "@metreeca/core";
 import { error } from "@metreeca/core/report";
 import { immutable } from "../../Core/src/common/nested.js";
-import { Dictionary, Literal, Value, Values } from "./index.js";
+import { Dictionary, Literal, Value } from "./index.js";
 import * as parser from "./parsers/expression.js";
 
 
@@ -71,6 +72,15 @@ const pattern = immutable({
  *
  * - **Scalar transforms** (`aggregate: false`): Operate on individual values
  *   (e.g., `abs`, `round`, `year`)
+ *
+ * **Result Datatypes**:
+ *
+ * The `datatype` field specifies the type of value returned by the transform. When projecting computed
+ * values in {@link Query} objects, the model's expected type should match the final value of the
+ * expression transform pipe:
+ *
+ * - `"boolean"`, `"number"`, `"string"` — Transform produces specific primitive type
+ * - `"*"` — Transform preserves input type; compatible with resources and nested properties
  *
  * @example
  *
@@ -128,68 +138,60 @@ export const Transform: {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
- * Resource specification with nested queries and models.
+ * Recursive template for retrieving consumer-specified data envelopes.
  *
- * Extends {@link Resource} to support property values that can be either regular {@link Values}
- * or arrays of {@link Specs} and {@link Model} objects for filtering and shaping nested data.
- * Empty arrays are ignored during processing.
+ * Defines the shape and content of {@link Resource} objects to be retrieved, specifying which properties
+ * to include (plain or computed) and, for nested collections, how to recursively select, sort, paginate,
+ * and shape linked resources.
  *
  * @remarks
  *
- * Used for defining resource templates that combine data values with declarative queries
- * and transformations for nested properties.
+ * **Key Syntax**
  *
- * @see {@link Values}
+ * - Plain properties: `property` — Includes retrieved value from source property in returned resource
+ * - Computed properties: `property=expression` — Includes computed value from {@link Expression} in returned resource;
+ *   the property value type should match the final value returned by the expression's pipe (see
+ *   {@link Expression.pipe} and {@link Transform}). Only empty pipes or pipes ending with a `"*"` datatype
+ *   transform can accept resource envelopes with nested properties
+ *
+ * **Property Values** // !!! define catch-all tag for dictionaries
+ *
+ * - {@link Value} — Placeholder for a single linked value to be retrieved; defines the expected result type
+ * - {@link Dictionary} — Placeholder for language-tagged values; tag keys specify which tags to include
+ *   in the response (`<catch-all-tag>` requests all available tags), values (`string` or `readonly string[]`)
+ *   indicate expected multiplicity
+ * - `readonly ({@link Query} | {@link Specs})[]` — Recursive specifications for nested collections:
+ *   - {@link Specs} objects define filtering, sorting, and pagination criteria for selecting
+ *     the relevant subset of linked collection items
+ *   - {@link Query} objects recursively define how to shape the selected resources
+ *
+ * **Validation**
+ *
+ * - Empty arrays are ignored during processing.
+ * - Queries are rejected with an error if:
+ *   - Property value types don't match the values returned by expressions (including simple retrieval expressions)
+ *   - Expressions reference data properties not included in the available data model
+ *
+ *
+ * @see {@link Resource}
  * @see {@link Specs}
- * @see {@link Model}
+ * @see {@link Expression}
  */
 export type Query = {
 
-	readonly [K in string]: Values | readonly (Model | Specs)[]  // !!! no plain arrays
+	readonly [K in string | `${string}=${string}`]:
+
+	| Value
+	| Dictionary
+	| readonly (Query | Specs)[]
 
 }
 
 
 /**
- * Resource model defining the projection and shape of query results.
+ * Query constraints for retrieving resource collections.
  *
- * Model keys specify which properties to retrieve using two syntax forms:
- *
- * 1. **Plain properties**: `property` - Retrieves source property with same name (type: `string`)
- * 2. **Computed properties**: `property=expression` - Computes value from {@link Expression}
- *    (type: `` `${string}=${string}` ``)
- *
- * Model values define the expected structure for retrieved values and can recursively
- * contain nested {@link Model} objects for hierarchical data.
- *
- * @remarks
- *
- * **Key Patterns**:
- *
- * - Plain property keys (e.g., `"name"`, `"email"`) are shorthand for identity mapping:
- *   `{ property: model }` is equivalent to `{ "property=property": model }`.
- *
- * - Computed property keys (e.g., `"totalPrice=sum:items.price"`) use the `property=expression` syntax
- *   for explicit transformations or computed fields based on {@link Expression} values.
- *
- * @see {@link Specs}
- * @see {@link Expression}
- * @see {@link Resource}
- */
-export type Model = {
-
-	readonly [K in string | `${string}=${string}`]: Values // nested arrays as per QUery
-
-} & {
-
-	readonly [K in `=${string}`]?: never
-
-}
-
-/**
- * Query constraints for filtering and sorting resource collections.
- *
- * Provides declarative operators for filtering, ordering, and paginating resources.
+ * Provides declarative operators for filtering, ordering, and paginating resource collections.
  * All operators use {@link Expression} keys that combine optional transforms with property paths.
  *
  * @remarks
@@ -236,7 +238,7 @@ export type Model = {
  * ```
  *
  * @see {@link Expression}
- * @see {@link Model}
+ * @see {@link Query}
  * @see {@link Options}
  */
 export type Specs = Partial<{
@@ -265,7 +267,7 @@ export type Specs = Partial<{
  * Computed expression for deriving values from resource properties.
  *
  * Expressions combine optional naming, value transformations (pipe), and property access (path)
- * to define computed fields in {@link Model} definitions and {@link Specs} constraints.
+ * to define computed fields in {@link Query} definitions and {@link Specs} constraints.
  *
  * @remarks
  *
@@ -327,7 +329,7 @@ export type Specs = Partial<{
  * // { name: "avgScore", pipe: ["avg", "round"], path: ["users", "tests", "score"] }
  * ```
  *
- * @see {@link Model} for usage in projections
+ * @see {@link Query} for usage in projections
  * @see {@link Specs} for usage in constraints
  * @see {@link Transform} for transform metadata
  *
@@ -455,11 +457,11 @@ export function Expression(expression: Expression | string, opts?: { format: "st
 			return error(new TypeError("expression must be an object"));
 		}
 
-		if ( !Array.isArray(expression.pipe) ) {
+		if ( !isArray(expression.pipe) ) {
 			return error(new TypeError("expression.pipe must be an array"));
 		}
 
-		if ( !Array.isArray(expression.path) ) {
+		if ( !isArray(expression.path) ) {
 			return error(new TypeError("expression.path must be an array"));
 		}
 
