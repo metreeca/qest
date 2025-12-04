@@ -3,16 +3,29 @@ title: Project Guidelines
 description: Development guidelines and conventions for the @metreeca/qest package.
 ---
 
-> [!CAUTION]
->
-> - **UNDER NO CIRCUMSTANCES** rearchitect or refactor unrelated code beyond the requested scope.
-> - **NEVER** make unsolicited changes or revert **unrelated** user edits.
-> - **ONLY** modify code when explicitly requested or clearly required.
+# MANDATORY WORKFLOW
 
-> [!IMPORTANT]
->
-> - **ALL** relevant skills **MUST** be used when applicable without continuous prompting.
-> - **SKILL** guidance **ALWAYS** supersedes internal general-purpose knowledge.
+1. **CHECK SKILLS FIRST**: Before ANY analysis, file reading, or planning: Review ALL available skills in the Skill tool
+   description. If task matches a skill's domain, invoke that skill immediately. Do not proceed to step 2.
+
+2. **PROCEED DIRECTLY**: Only if no skill matches: Proceed with direct implementation.
+
+---
+
+# ABSOLUTE CONSTRAINTS
+
+**Code Modification**
+
+- ONLY modify code when explicitly requested or clearly required
+- NEVER refactor or rearchitect unrelated code beyond requested scope
+- NEVER revert unrelated user edits
+
+**Skill Usage**
+
+- ALL relevant skills MUST be used without continuous prompting
+- SKILL guidance ALWAYS supersedes general-purpose knowledge
+
+---
 
 # References
 
