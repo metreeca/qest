@@ -15,6 +15,7 @@
  */
 
 import { isArray, isBoolean, isNumber, isObject, isString } from "@metreeca/core";
+import { isTag } from "@metreeca/core/network";
 
 
 export function $value(value: unknown): string {
@@ -26,24 +27,52 @@ export function $value(value: unknown): string {
 export function $values(value: unknown): string {
 	return isBoolean(value) || isNumber(value) || isString(value) ? ""
 		: isArray(value) ? $array(value)
-			: isObject(value) ? $resource(value)
+			: isObject(value) ? $union(value, {
+					"string": $string,
+					"strings": $strings,
+					"resource": $resource
+				})
 				: `invalid value type <${typeof value}>`;
 }
 
 
 export function $array(value: readonly unknown[]): string {
-	return value.reduce<string>(
-		(error, item) => error || $value(item),
-		""
-	);
+	return value
+		.map($value)
+		.filter(Boolean)
+		.join(", ");
+}
+
+export function $string(value: object): string {
+	return !isObject(value) ? `invalid object type <${typeof value}>` : Object.entries(value)
+		.map(([key, value]) =>
+			!isTag(key) ? `invalid tag <${key}>`
+				: !isString(value) ? `${key}: invalid string type <${typeof value}>`
+					: ""
+		)
+		.filter(Boolean)
+		.join("\n");
+}
+
+export function $strings(value: object): string {
+	return !isObject(value) ? `invalid object type <${typeof value}>` : Object.entries(value)
+		.map(([key, value]) =>
+			!isTag(key) ? `invalid tag <${key}>`
+				: !isArray(value, isString) ? `${key}: invalid string array type`
+					: ""
+		)
+		.filter(Boolean)
+		.join("\n");
 }
 
 
 export function $resource(value: object): string {
-	return !isObject(value) ? `invalid object type <${typeof value}>` : Object.entries(value).reduce<string>(
-		(error, [key, value]) => error || $property(key) || $values(value),
-		""
-	);
+	return !isObject(value) ? `invalid object type <${typeof value}>` : Object.entries(value)
+		.map(([key, value]) =>
+			$property(key) || (($v) => $v ? `${key}: ${$v}` : "")($values(value))
+		)
+		.filter(Boolean)
+		.join("\n");
 }
 
 export function $property(value: string): string {
@@ -53,10 +82,22 @@ export function $property(value: string): string {
 }
 
 
-export function $union(value: unknown, variants: readonly ((value: unknown) => string)[]) {
-	return variants.reduce<string | undefined>(
-		(error, validator) => error === "" ? "" : validator(value),
-		undefined
-	) ?? "";
+export function $union(value: unknown, variants: Record<string, (value: any) => string>) {
 
+	const results = Object.entries(variants).map(([name, validator]) => [
+		name,
+		validator(value)
+	]);
+
+	if ( results.every(([, error]) => error) ) { // all variants failed, return all errors
+
+		return results
+			.map(([name, error]) => `| ${name}: ${error}`)
+			.join("\n");
+
+	} else { // at least one variant succeeded, the union succeeds
+
+		return "";
+
+	}
 }

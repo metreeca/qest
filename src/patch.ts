@@ -23,7 +23,7 @@
  * @module
  */
 
-import { Properties, Values } from "./index.js";
+import { Values } from "./index.js";
 
 /**
  * Resource patch for partial updates.
@@ -43,7 +43,7 @@ import { Properties, Values } from "./index.js";
  * @see {@link Resource}
  * @see {@link https://datatracker.ietf.org/doc/html/rfc5789 | RFC 5789 - HTTP PATCH Method}
  */
-export type Patch = Properties & {
+export type Patch = {
 
 	readonly [K in string]: null | Values
 

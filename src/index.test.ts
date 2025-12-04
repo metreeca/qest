@@ -547,4 +547,23 @@ describe("Resource()", async () => {
 
 	});
 
+	describe("language dictionaries", async () => {
+
+		it("accepts dictionary with hyphenated language tags", async () => {
+
+			const testResource = {
+				label: {
+					"en": "Hello",
+					"en-US": "Hello",
+					"en-GB": "Hello",
+					"fr-CA": "Bonjour"
+				}
+			};
+
+			expect(() => Resource(testResource)).not.toThrow();
+
+		});
+
+	});
+
 });
