@@ -1,28 +1,24 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm outdated:*)",
-      "Bash(npm run build:*)",
-      "Bash(npx tsc:*)",
+      "Bash(cat:*)",
       "mcp__ide__getDiagnostics",
-      "Bash(npm run check:*)",
-      "Skill(typedoc-writer)",
-      "WebSearch",
-      "WebFetch(domain:github.com)",
-      "WebFetch(domain:stackoverflow.com)",
-      "Skill(markdown-writer)",
       "Skill(typescript-developer)",
-      "Skill(product-analyst)",
-      "WebFetch(domain:www.npmjs.com)",
-      "WebFetch(domain:en.wikipedia.org)",
-      "WebFetch(domain:bundlephobia.com)",
-      "WebFetch(domain:peggyjs.org)",
-      "Bash(npm run peggy:*)",
-      "Bash(ls:*)",
-      "Skill(typescript-tester)",
-      "WebFetch(domain:datatracker.ietf.org)"
+      "Skill(typescript-tester)"
     ],
     "deny": [],
     "ask": []
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cat .claude/hooks/skills.md"
+          }
+        ]
+      }
+    ]
   }
 }

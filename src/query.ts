@@ -27,29 +27,8 @@ import { error } from "@metreeca/core/report";
 import { immutable } from "../../Core/src/common/nested.js";
 import { Dictionary, Literal, Value } from "./index.js";
 import * as parser from "./parsers/expression.js";
+import { $query } from "./validators/query.js";
 
-
-const pattern = immutable({
-
-	/** Matches a valid path: optional leading dot, steps separated by unescaped dots */
-	path: /^\.?(?:[^.\\]|\\.)+(?:\.(?:[^.\\]|\\.)+)*$/,
-
-	/** Matches path steps: sequences of non-dot/backslash or escaped characters */
-	step: /(?:[^.\\]|\\.)+/g,
-
-	/** Matches expression structure: transforms prefix + path */
-	expression: /^(\w+:)*(.*)$/,
-
-	/** Matches transforms prefix: zero or more word+colon sequences */
-	transforms: /^(\w+:)*/,
-
-	/** Extracts transform names from prefix using lookahead */
-	transform: /\w+(?=:)/g
-
-});
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
  * Value transformation operations for computed expressions.
@@ -386,7 +365,15 @@ export function Query(query: Query | string, opts?: { format: "string" }): Query
 
 
 	function create(query: Query): Query {
+
+		const error = $query(query);
+
+		if ( error ) {
+			throw new TypeError(error);
+		}
+
 		return immutable(query);
+
 	}
 
 	function decode(query: string): Query {

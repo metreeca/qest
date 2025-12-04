@@ -25,7 +25,7 @@
 
 import { immutable } from "@metreeca/core/nested";
 import { Tag } from "@metreeca/core/network";
-import { $resource } from "./validator.js";
+import { $resource } from "./validators/resource.js";
 
 
 /**

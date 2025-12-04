@@ -14,34 +14,20 @@
  * limitations under the License.
  */
 
-import { isArray, isBoolean, isNumber, isObject, isString } from "@metreeca/core";
+import { isArray, isObject, isString } from "@metreeca/core";
 import { isTag } from "@metreeca/core/network";
 
 
-export function $value(value: unknown): string {
-	return isBoolean(value) || isNumber(value) || isString(value) ? ""
-		: isObject(value) ? $resource(value)
-			: `invalid value type <${typeof value}>`;
+export function $field(key: string, error: string): string {
+	return error ? `${key}: ${error}` : "";
 }
 
-export function $values(value: unknown): string {
-	return isBoolean(value) || isNumber(value) || isString(value) ? ""
-		: isArray(value) ? $array(value)
-			: isObject(value) ? $union(value, {
-					"string": $string,
-					"strings": $strings,
-					"resource": $resource
-				})
-				: `invalid value type <${typeof value}>`;
+export function $property(value: string): string {
+	return !isString(value) ? `invalid property name type <${typeof value}>`
+		: !/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(value) ? `invalid property name <${value}>`
+			: "";
 }
 
-
-export function $array(value: readonly unknown[]): string {
-	return value
-		.map($value)
-		.filter(Boolean)
-		.join(", ");
-}
 
 export function $string(value: object): string {
 	return !isObject(value) ? `invalid object type <${typeof value}>` : Object.entries(value)
@@ -63,22 +49,6 @@ export function $strings(value: object): string {
 		)
 		.filter(Boolean)
 		.join("\n");
-}
-
-
-export function $resource(value: object): string {
-	return !isObject(value) ? `invalid object type <${typeof value}>` : Object.entries(value)
-		.map(([key, value]) =>
-			$property(key) || (($v) => $v ? `${key}: ${$v}` : "")($values(value))
-		)
-		.filter(Boolean)
-		.join("\n");
-}
-
-export function $property(value: string): string {
-	return !isString(value) ? `invalid property name type <${typeof value}>`
-		: !/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(value) ? `invalid property name <${value}>`
-			: "";
 }
 
 
