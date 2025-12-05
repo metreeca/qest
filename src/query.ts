@@ -25,12 +25,12 @@
  * @see {@link ./query.md | Query String Format} for URL-encoded query string syntax
  */
 
-import { isArray } from "@metreeca/core";
 import { error } from "@metreeca/core/report";
 import { immutable } from "../../Core/src/common/nested.js";
 import { Dictionary, Literal, Value } from "./index.js";
 import * as expressionParser from "./parsers/3-expression.js";
 import * as queryParser from "./parsers/4-query.js";
+import { $expression } from "./validators/expression.js";
 import { validate } from "./validators/index.js";
 import { $query } from "./validators/query.js";
 
@@ -479,37 +479,8 @@ export function Expression(expression: Expression | string, opts?: { format: "st
 				: error(new TypeError("invalid Expression() arguments"));
 
 
-	function create(expression: Expression): Expression { // !!! as a validator
-
-		if ( typeof expression !== "object" || expression === null ) {
-			return error(new TypeError("expression must be an object"));
-		}
-
-		if ( !isArray(expression.pipe) ) {
-			return error(new TypeError("expression.pipe must be an array"));
-		}
-
-		if ( !isArray(expression.path) ) {
-			return error(new TypeError("expression.path must be an array"));
-		}
-
-		// noinspection SuspiciousTypeOfGuard
-		if ( expression.name !== undefined && typeof expression.name !== "string" ) {
-			return error(new TypeError("expression.name must be a string"));
-		}
-
-		// noinspection SuspiciousTypeOfGuard
-		if ( expression.pipe.some(item => typeof item !== "string") ) {
-			return error(new TypeError("expression.pipe must contain only strings"));
-		}
-
-		// noinspection SuspiciousTypeOfGuard
-		if ( expression.path.some(item => typeof item !== "string") ) {
-			return error(new TypeError("expression.path must contain only strings"));
-		}
-
-		return immutable(expression);
-
+	function create(expression: Expression): Expression {
+		return validate(expression, $expression);
 	}
 
 	function decode(expression: string): Expression {
