@@ -17,6 +17,7 @@
 import { isArray, isObject, isScalar, isString } from "@metreeca/core";
 import { isTag } from "@metreeca/core/network";
 import { immutable } from "../../../Core/src/common/nested.js";
+import { Identifier } from "../index.js";
 import { $resource } from "./resource.js";
 
 export function validate<T>(value: T, validator: (value: T) => string) {
@@ -32,6 +33,13 @@ export function validate<T>(value: T, validator: (value: T) => string) {
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export function $identifier(value: string): string {
+	return !isString(value) ? `invalid property name type <${typeof value}>`
+		: !Identifier.test(value) ? `invalid property name <${value}>`
+			: "";
+}
+
 
 export function $values(value: unknown): string {
 	return isScalar(value) ? ""
@@ -60,12 +68,6 @@ export function $value(value: unknown): string {
 
 export function $field(key: string, error: string): string {
 	return error ? `${key}: ${error}` : "";
-}
-
-export function $property(value: string): string {
-	return !isString(value) ? `invalid property name type <${typeof value}>`
-		: !/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(value) ? `invalid property name <${value}>`
-			: "";
 }
 
 

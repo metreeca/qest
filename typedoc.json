@@ -7,6 +7,11 @@
   "sort": [
     "source-order"
   ],
+  "groupOrder": [
+    "Variables",
+    "Type Aliases",
+    "*"
+  ],
   "useFirstParagraphOfCommentAsSummary": true,
   "favicon": "https://metreeca.com/assets/icon.ico",
   "sourceLinkExternal": true,

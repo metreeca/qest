@@ -21,18 +21,16 @@
  * to shape the results (using {@link Query} projections).
  *
  * @module
- *
- * @see {@link ./query.md | Query String Format} for URL-encoded query string syntax
  */
 
 import { error } from "@metreeca/core/report";
 import { immutable } from "../../Core/src/common/nested.js";
-import { Dictionary, Literal, Value } from "./index.js";
+import { Dictionary, Identifier, Literal, Value } from "./index.js";
 import * as expressionParser from "./parsers/3-expression.js";
 import * as queryParser from "./parsers/4-query.js";
 import { $expression } from "./validators/expression.js";
 import { validate } from "./validators/index.js";
-import { $query } from "./validators/query.js";
+import { $query, $specs } from "./validators/query.js";
 
 
 /**
@@ -114,8 +112,6 @@ export const Transform: {
 	/** Extract year component from date/time */
 	year: { aggregate: false, datatype: "number" }
 
-	// !!! {TBC}
-
 } as const;
 
 
@@ -138,11 +134,11 @@ export const Transform: {
  *   {@link Expression.pipe} and {@link Transform}). Only empty pipes or pipes ending with a `"*"` datatype
  *   transform can accept resource envelopes with nested properties
  *
- * **Property Values** // !!! define catch-all tag for dictionaries
+ * **Property Values**
  *
  * - {@link Value} — Placeholder for a single linked value to be retrieved; defines the expected result type
  * - {@link Dictionary} — Placeholder for language-tagged values; tag keys specify which tags to include
- *   in the response (`<catch-all-tag>` requests all available tags), values (`string` or `readonly string[]`)
+ *   in the response (use `"*"` to request all available tags), values (`string` or `readonly string[]`)
  *   indicate expected multiplicity
  * - `readonly ({@link Query} | {@link Specs})[]` — Recursive specifications for nested collections:
  *   - {@link Specs} objects define filtering, sorting, and pagination criteria for selecting
@@ -357,120 +353,224 @@ export type Options =
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+/**
+ * Validates a {@link Query} object.
+ *
+ * @param query The query object to validate
+ *
+ * @returns An immutable validated query object
+ *
+ * @throws TypeError if the query structure is invalid
+ */
 export function Query(query: Query): Query;
+
+/**
+ * Parses a query string into a {@link Query} object.
+ *
+ * @param query The query string to parse
+ *
+ * @returns An immutable parsed query object
+ *
+ * @throws SyntaxError if the query string is malformed
+ */
 export function Query(query: string): Query;
-export function Query(query: Query, opts: { format: "form" }): string;
 
-export function Query(query: Query | string, opts?: { format: "form" }): Query | string {
+/**
+ * Parses a form-encoded query string and wraps the specs in a collection property.
+ *
+ * Form-encoded strings can only express a subset of possible queries (flat specs with filtering, sorting, and
+ * pagination). Nested queries or projections cannot be represented in this format.
+ *
+ * @param query The form-encoded query string to parse
+ * @param collection The collection property name to wrap specs in
+ *
+ * @returns An immutable query object with specs wrapped in `{ collection: [specs] }`
+ *
+ * @throws SyntaxError If the query string is malformed or contains unsupported constructs
+ */
+export function Query(query: string, collection: string): Query;
 
-	return typeof query === "string" ? decode(query)
-		: typeof query === "object" && opts !== undefined ? encode(query, opts)
-			: typeof query === "object" ? create(query)
-				: error(new TypeError("invalid Query() arguments"));
+/**
+ * Encodes a {@link Query} object into a string representation.
+ *
+ * @param query The query object to encode
+ * @param opts Encoding options
+ * @param opts.format Output format:
+ *
+ *   - `json` — JSON string (`{"?status":"active","@":0}`)
+ *   - `base64` — Base64-encoded JSON (`eyI/c3RhdHVzIjoiYWN0aXZlIn0=`)
+ *   - `url` — URL-encoded JSON (`%7B%22%3Fstatus%22%3A%22active%22%7D`)
+ *   - `form` — Query string (`status=active&@=0`)
+ *
+ * @returns The encoded query string
+ */
+export function Query(query: Query, opts: { format: "json" | "base64" | "url" | "form" }): string;
+
+/**
+ * Validates, decodes, or encodes {@link Query} objects.
+ */
+export function Query(
+	query: Query | string,
+	opts?: string | { format: "json" | "base64" | "url" | "form" }
+): Query | string {
+
+	return typeof query === "string" && typeof opts === "string" ? decode(query, opts)
+		: typeof query === "string" ? decode(query)
+			: typeof query === "object" && typeof opts === "object" ? encode(query, opts)
+				: typeof query === "object" ? create(query)
+					: error(new TypeError("invalid Query() arguments"));
 
 
 	function create(query: Query): Query {
 		return validate(query, $query);
 	}
 
-	function decode(query: string): Query {
-		try {
+	function decode(query: string, collection?: string): Query {
 
-			return immutable(queryParser.parse(query));
+		return collection !== undefined ? form(query, collection)
+			: isUrl(query) ? decode(decodeURIComponent(query))
+				: isJson(query) ? json(query)
+					: isBase64(query) ? decode(atob(query))
+						: error(new SyntaxError("form format requires collection parameter"));
 
-		} catch ( e ) {
 
-			return error(new SyntaxError(`invalid query: ${e instanceof Error ? e.message : e}`));
+		function isUrl(value: string): boolean { return /%[0-9A-Fa-f]{2}/.test(value); }
 
+		function isBase64(value: string): boolean {
+			return value.length > 0
+				&& /^[A-Za-z0-9+/]+=*$/.test(value)
+				&& value.length%4 === 0;
 		}
+
+		function isJson(value: string): boolean { return value.trimStart().startsWith("{"); }
+
+
+		function json(value: string): Query {
+			return validate(JSON.parse(value) as Query, $specs);
+		}
+
+		function form(value: string, collection: string): Query {
+			try {
+
+				return immutable({ [collection]: [queryParser.parse(value)] });
+
+			} catch ( e ) {
+
+				return error(new SyntaxError(`invalid query: ${e instanceof Error ? e.message : e}`));
+
+			}
+		}
+
 	}
 
-	function encode(query: Query, opts: { format: "form" }): string {
+	function encode(query: Query, { format }: { format: "json" | "url" | "base64" | "form" }): string {
 
-		const isNumericString = (value: string): boolean =>
-			/^-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?$/.test(value);
+		return format === "json" ? json()
+			: format === "url" ? url()
+				: format === "base64" ? base64()
+					: form();
 
-		const encodeValue = (value: unknown): string => {
-			return value === null ? ""
-				: typeof value === "number" ? String(value)
-					: typeof value === "string" && isNumericString(value) ? `'${value}'`
-						: typeof value === "string" ? encodeURIComponent(value)
-							: String(value);
-		};
 
-		const encodeDirection = (value: number): string => {
-			return value === 1 ? "increasing"
-				: value === -1 ? "decreasing"
-					: String(value);
-		};
+		function json(): string { return JSON.stringify(query); }
 
-		const encodeEquality = (expr: string, value: unknown): string[] => {
-			return Array.isArray(value) && value.length === 0 ? [`${expr}=*`]
-				: Array.isArray(value) ? value.map(v => `${expr}=${encodeValue(v)}`)
-					: [`${expr}=${encodeValue(value)}`];
-		};
+		function url(): string { return encodeURIComponent(json()); }
 
-		const pairs: string[] = Object.entries(query).flatMap(([key, value]) =>
+		function base64(): string { return btoa(json()); }
 
-			key === "@" || key === "#" ? [`${key}=${value}`]
-				: key.startsWith("^") ? [`^${key.slice(1)}=${encodeDirection(value as number)}`]
-					: key.startsWith("~") ? [`~${key.slice(1)}=${encodeValue(value)}`]
-						: key.startsWith("<=") ? [`${key.slice(2)}<=${encodeValue(value)}`]
-							: key.startsWith(">=") ? [`${key.slice(2)}>=${encodeValue(value)}`]
-								: key.startsWith("?") ? encodeEquality(key.slice(1), value)
-									: []
-		);
+		function form(): string {
 
-		return pairs.join("&");
+			const isNumericString = (value: string): boolean =>
+				/^-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?$/.test(value);
+
+			const encodeValue = (value: unknown): string => {
+				return value === null ? ""
+					: typeof value === "number" ? String(value)
+						: typeof value === "string" && isNumericString(value) ? `'${value}'`
+							: typeof value === "string" ? encodeURIComponent(value)
+								: String(value);
+			};
+
+			const encodeDirection = (value: number): string => {
+				return value === 1 ? "increasing"
+					: value === -1 ? "decreasing"
+						: String(value);
+			};
+
+			const encodeEquality = (expr: string, value: unknown): string[] => {
+				return Array.isArray(value) && value.length === 0 ? [`${expr}=*`]
+					: Array.isArray(value) ? value.map(v => `${expr}=${encodeValue(v)}`)
+						: [`${expr}=${encodeValue(value)}`];
+			};
+
+			const pairs: string[] = Object.entries(query).flatMap(([key, value]) =>
+
+				key === "@" || key === "#" ? [`${key}=${value}`]
+					: key.startsWith("^") ? [`^${key.slice(1)}=${encodeDirection(value as number)}`]
+						: key.startsWith("~") ? [`~${key.slice(1)}=${encodeValue(value)}`]
+							: key.startsWith("<=") ? [`${key.slice(2)}<=${encodeValue(value)}`]
+								: key.startsWith(">=") ? [`${key.slice(2)}>=${encodeValue(value)}`]
+									: key.startsWith("?") ? encodeEquality(key.slice(1), value)
+										: []
+			);
+
+			return pairs.join("&");
+
+		}
 
 	}
 
 }
 
 /**
- * Creates, parses, or encodes {@link Expression} objects.
+ * Validates an {@link Expression} object.
  *
- * This overloaded function supports three modes of operation:
+ * @param expression The expression object to validate
  *
- * 1. **Factory mode**: Validates and freezes an Expression object
- * 2. **Decoder mode**: Parses an expression string into an Expression object
- * 3. **Encoder mode**: Formats an Expression object back to string representation
+ * @returns An immutable validated expression object
+ *
+ * @throws TypeError If the expression structure is invalid
+ */
+export function Expression(expression: Expression): Expression;
+
+/**
+ * Parses an expression string into an {@link Expression} object.
  *
  * @remarks
  *
- * **Factory Mode** - Validates expression integrity and creates immutable copy:
+ * Parses syntax: `[name=][transform:]*path`
  *
- * - Validates expression structure (object with pipe and path arrays)
- * - Validates optional name property is a string
- * - Validates all pipe and path elements are strings
- * - Returns deeply frozen immutable Expression
- *
- * **Decoder Mode** - Parses expression strings using Peggy grammar:
- *
- * - Parses syntax: `[name=][transform:]*path`
  * - Supports dot notation (`user.name`) and bracket notation (`['@id']`)
  * - Extracts optional name prefix, transform pipeline, and property path
- * - Throws on invalid syntax
  *
- * **Encoder Mode** - Formats Expression objects to strings:
+ * @param expression The expression string to parse
+ *
+ * @returns An immutable parsed expression object
+ *
+ * @throws SyntaxError If the expression string is malformed
+ */
+export function Expression(expression: string): Expression;
+
+/**
+ * Encodes an {@link Expression} object into a string representation.
+ *
+ * @remarks
  *
  * - Encodes name prefix if present
  * - Encodes transform pipeline with colons
  * - Encodes path using dot notation for identifiers, bracket notation otherwise
  * - Escapes special characters in bracket notation
  *
- * @param expression - Expression object to validate/freeze or string to parse
- * @returns Immutable Expression object or encoded string
- * @throws {TypeError} If expression structure is invalid (factory mode)
- * @throws {SyntaxError} If expression string cannot be parsed (decoder mode)
+ * @param expression The expression object to encode
+ * @param opts Encoding options
+ * @param opts.format Output format (currently only `"string"` is supported)
  *
- * @see {@link Expression} type definition
- * @see {@link Transform} for available transform metadata
+ * @returns The encoded expression string
  */
-export function Expression(expression: Expression): Expression;
-export function Expression(expression: string): Expression;
 export function Expression(expression: Expression, opts: { format: "string" }): string;
 
+/**
+ * Validates, decodes, or encodes {@link Expression} objects.
+ */
 export function Expression(expression: Expression | string, opts?: { format: "string" }): Expression | string {
 
 	return typeof expression === "string" ? decode(expression)
@@ -495,7 +595,7 @@ export function Expression(expression: Expression | string, opts?: { format: "st
 		}
 	}
 
-	function encode(expression: Expression, opts: { format: "string" }): string {
+	function encode(expression: Expression, _: { format: "string" }): string {
 
 		const name = expression.name !== undefined ? `${expression.name}=` : "";
 		const pipe = expression.pipe.map(t => `${t}:`).join("");
@@ -504,10 +604,6 @@ export function Expression(expression: Expression | string, opts?: { format: "st
 		return `${name}${pipe}${path}`;
 
 
-		function isIdentifier(str: string): boolean {
-			return /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(str);
-		}
-
 		function encodePath(path: readonly string[]): string {
 			return path
 				.map((step, index) => encodeStep(step, index))
@@ -515,7 +611,7 @@ export function Expression(expression: Expression | string, opts?: { format: "st
 		}
 
 		function encodeStep(step: string, index: number): string {
-			return !isIdentifier(step) ? `['${escape(step)}']`
+			return !Identifier.test(step) ? `['${escape(step)}']`
 				: index === 0 ? step
 					: `.${step}`;
 		}

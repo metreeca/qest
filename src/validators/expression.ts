@@ -16,15 +16,15 @@
 
 import { isArray, isObject, isString } from "@metreeca/core";
 import { Expression } from "../query.js";
-import { $property } from "./index.js";
+import { $identifier } from "./index.js";
 
 
 export function $expression(value: Expression): string {
 	return !isObject(value) ? `invalid object type <${typeof value}>`
 		: !isArray(value.pipe) ? `pipe: must be an array`
 			: !isArray(value.path) ? `path: must be an array`
-				: value.name !== undefined && $property(value.name) ? `name: ${$property(value.name)}`
-					: value.pipe.some(item => $property(item)) ? `pipe: ${value.pipe.map($property).find(Boolean)}`
+				: value.name !== undefined && $identifier(value.name) ? `name: ${$identifier(value.name)}`
+					: value.pipe.some(item => $identifier(item)) ? `pipe: ${value.pipe.map($identifier).find(Boolean)}`
 						: value.path.some(item => !isString(item)) ? `path: must contain only strings`
 							: "";
 }

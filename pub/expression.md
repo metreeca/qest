@@ -56,18 +56,18 @@ transform1:transform2:path
 ```
 count:items                  # count of items
 sum:items.price              # sum of item prices
-sum:round:items.price        # sum, then round
+sum:round:items.price        # round, then sum
 avg:abs:temperatures         # average of absolute values
 ```
 
 ## Property Path
 
 Identify a property or nested property within a resource. Expression paths extend the base
-[Path Format](./path.md) with bracket notation and optional prefixes.
+[Path Format](path.md) with bracket notation and optional prefixes.
 
 ### Dot Notation
 
-See [Path Format](./path.md) for dot notation syntax and identifier rules.
+See [Path Format](path.md) for dot notation syntax and identifier rules.
 
 ### Bracket Notation
 

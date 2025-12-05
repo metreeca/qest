@@ -17,7 +17,7 @@
 import { isArray, isObject, isScalar } from "@metreeca/core";
 import { message } from "@metreeca/core/report";
 import { Expression } from "../query.js";
-import { $field, $property, $string, $strings, $union } from "./index.js";
+import { $field, $identifier, $string, $strings, $union } from "./index.js";
 import { $resource } from "./resource.js";
 
 
@@ -27,7 +27,7 @@ export function $query(value: object): string {
 	return !isObject(value) ? `invalid object type <${typeof value}>` : Object.entries(value)
 		.map(([key, value]) => {
 				return $union(key, {
-					"property": $property,
+					"property": $identifier,
 					"expression": v => $expression(v, true)
 				}) || $field(key, $values(value));
 			}

@@ -29,6 +29,17 @@ import { $resource } from "./validators/resource.js";
 
 
 /**
+ * Pattern for valid identifier names.
+ *
+ * Matches JavaScript identifier syntax: starts with letter, underscore, or dollar sign,
+ * followed by any combination of letters, digits, underscores, or dollar signs.
+ */
+export const Identifier = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
  * Model value.
  */
 export type Value =
@@ -86,7 +97,7 @@ export type Dictionary<T extends string | readonly string[] = string | readonly 
  *
  * Resources are immutable and follow these rules:
  *
- * - Property names must be valid JSONPath dot notation identifiers (`[a-zA-Z_$][a-zA-Z0-9_$]*`)
+ * - Property names must match the {@link Identifier} pattern
  * - Property values must be non-null literals, resources, or arrays (no nested arrays)
  * - Arrays represent sets: duplicate values are ignored and ordering is immaterial
  * - Empty arrays are ignored during processing

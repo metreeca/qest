@@ -734,32 +734,32 @@ describe("Query()", () => {
 		describe("equality filters", () => {
 
 			it("should parse single equality filter", async () => {
-				expect(Query("status=active")).toEqual({ "?status": "active" });
-				expect(Query("name=test")).toEqual({ "?name": "test" });
+				expect(Query("status=active", "items")).toEqual({ items: [{ "?status": "active" }] });
+				expect(Query("name=test", "items")).toEqual({ items: [{ "?name": "test" }] });
 			});
 
 			it("should parse multiple values for same expression as any-of filter", async () => {
-				expect(Query("status=active&status=pending")).toEqual({
-					"?status": ["active", "pending"]
+				expect(Query("status=active&status=pending", "items")).toEqual({
+					items: [{ "?status": ["active", "pending"] }]
 				});
 			});
 
 			it("should parse empty value as null", async () => {
-				expect(Query("category=")).toEqual({ "?category": null });
+				expect(Query("category=", "items")).toEqual({ items: [{ "?category": null }] });
 			});
 
 			it("should parse wildcard value as undefined filter", async () => {
-				expect(Query("category=*")).toEqual({ "?category": [] });
+				expect(Query("category=*", "items")).toEqual({ items: [{ "?category": [] }] });
 			});
 
 			it("should parse URL-encoded values", async () => {
-				expect(Query("name=hello%20world")).toEqual({ "?name": "hello world" });
-				expect(Query("path=%2Fapi%2Ftest")).toEqual({ "?path": "/api/test" });
+				expect(Query("name=hello%20world", "items")).toEqual({ items: [{ "?name": "hello world" }] });
+				expect(Query("path=%2Fapi%2Ftest", "items")).toEqual({ items: [{ "?path": "/api/test" }] });
 			});
 
 			it("should parse nested path expressions", async () => {
-				expect(Query("user.name=test")).toEqual({ "?user.name": "test" });
-				expect(Query("address.city=rome")).toEqual({ "?address.city": "rome" });
+				expect(Query("user.name=test", "items")).toEqual({ items: [{ "?user.name": "test" }] });
+				expect(Query("address.city=rome", "items")).toEqual({ items: [{ "?address.city": "rome" }] });
 			});
 
 		});
@@ -767,25 +767,24 @@ describe("Query()", () => {
 		describe("range filters", () => {
 
 			it("should parse less-than-or-equal filter", async () => {
-				expect(Query("price<=100")).toEqual({ "<=price": 100 });
-				expect(Query("age<=65")).toEqual({ "<=age": 65 });
+				expect(Query("price<=100", "items")).toEqual({ items: [{ "<=price": 100 }] });
+				expect(Query("age<=65", "items")).toEqual({ items: [{ "<=age": 65 }] });
 			});
 
 			it("should parse greater-than-or-equal filter", async () => {
-				expect(Query("price>=10")).toEqual({ ">=price": 10 });
-				expect(Query("age>=18")).toEqual({ ">=age": 18 });
+				expect(Query("price>=10", "items")).toEqual({ items: [{ ">=price": 10 }] });
+				expect(Query("age>=18", "items")).toEqual({ items: [{ ">=age": 18 }] });
 			});
 
 			it("should parse combined range filter", async () => {
-				expect(Query("price>=10&price<=100")).toEqual({
-					">=price": 10,
-					"<=price": 100
+				expect(Query("price>=10&price<=100", "items")).toEqual({
+					items: [{ ">=price": 10, "<=price": 100 }]
 				});
 			});
 
 			it("should parse range filter with nested path", async () => {
-				expect(Query("items.price<=50")).toEqual({ "<=items.price": 50 });
-				expect(Query("user.age>=21")).toEqual({ ">=user.age": 21 });
+				expect(Query("items.price<=50", "items")).toEqual({ items: [{ "<=items.price": 50 }] });
+				expect(Query("user.age>=21", "items")).toEqual({ items: [{ ">=user.age": 21 }] });
 			});
 
 		});
@@ -793,16 +792,16 @@ describe("Query()", () => {
 		describe("pattern filters", () => {
 
 			it("should parse pattern filter", async () => {
-				expect(Query("~name=john")).toEqual({ "~name": "john" });
-				expect(Query("~title=report")).toEqual({ "~title": "report" });
+				expect(Query("~name=john", "items")).toEqual({ items: [{ "~name": "john" }] });
+				expect(Query("~title=report", "items")).toEqual({ items: [{ "~title": "report" }] });
 			});
 
 			it("should parse pattern filter with nested path", async () => {
-				expect(Query("~user.bio=developer")).toEqual({ "~user.bio": "developer" });
+				expect(Query("~user.bio=developer", "items")).toEqual({ items: [{ "~user.bio": "developer" }] });
 			});
 
 			it("should parse URL-encoded pattern value", async () => {
-				expect(Query("~name=hello%20world")).toEqual({ "~name": "hello world" });
+				expect(Query("~name=hello%20world", "items")).toEqual({ items: [{ "~name": "hello world" }] });
 			});
 
 		});
@@ -810,31 +809,30 @@ describe("Query()", () => {
 		describe("sort order", () => {
 
 			it("should parse ascending sort with 'increasing' value", async () => {
-				expect(Query("^name=increasing")).toEqual({ "^name": 1 });
+				expect(Query("^name=increasing", "items")).toEqual({ items: [{ "^name": 1 }] });
 			});
 
 			it("should parse ascending sort with empty value", async () => {
-				expect(Query("^name=")).toEqual({ "^name": 1 });
+				expect(Query("^name=", "items")).toEqual({ items: [{ "^name": 1 }] });
 			});
 
 			it("should parse descending sort with 'decreasing' value", async () => {
-				expect(Query("^date=decreasing")).toEqual({ "^date": -1 });
+				expect(Query("^date=decreasing", "items")).toEqual({ items: [{ "^date": -1 }] });
 			});
 
 			it("should parse numeric sort order value", async () => {
-				expect(Query("^priority=1")).toEqual({ "^priority": 1 });
-				expect(Query("^priority=-2")).toEqual({ "^priority": -2 });
-				expect(Query("^priority=0")).toEqual({ "^priority": 0 });
+				expect(Query("^priority=1", "items")).toEqual({ items: [{ "^priority": 1 }] });
+				expect(Query("^priority=-2", "items")).toEqual({ items: [{ "^priority": -2 }] });
+				expect(Query("^priority=0", "items")).toEqual({ items: [{ "^priority": 0 }] });
 			});
 
 			it("should parse sort with nested path", async () => {
-				expect(Query("^user.name=increasing")).toEqual({ "^user.name": 1 });
+				expect(Query("^user.name=increasing", "items")).toEqual({ items: [{ "^user.name": 1 }] });
 			});
 
 			it("should parse multiple sort criteria", async () => {
-				expect(Query("^name=increasing&^date=decreasing")).toEqual({
-					"^name": 1,
-					"^date": -1
+				expect(Query("^name=increasing&^date=decreasing", "items")).toEqual({
+					items: [{ "^name": 1, "^date": -1 }]
 				});
 			});
 
@@ -843,20 +841,20 @@ describe("Query()", () => {
 		describe("pagination", () => {
 
 			it("should parse offset", async () => {
-				expect(Query("@=0")).toEqual({ "@": 0 });
-				expect(Query("@=10")).toEqual({ "@": 10 });
-				expect(Query("@=100")).toEqual({ "@": 100 });
+				expect(Query("@=0", "items")).toEqual({ items: [{ "@": 0 }] });
+				expect(Query("@=10", "items")).toEqual({ items: [{ "@": 10 }] });
+				expect(Query("@=100", "items")).toEqual({ items: [{ "@": 100 }] });
 			});
 
 			it("should parse limit", async () => {
-				expect(Query("#=10")).toEqual({ "#": 10 });
-				expect(Query("#=25")).toEqual({ "#": 25 });
-				expect(Query("#=0")).toEqual({ "#": 0 });
+				expect(Query("#=10", "items")).toEqual({ items: [{ "#": 10 }] });
+				expect(Query("#=25", "items")).toEqual({ items: [{ "#": 25 }] });
+				expect(Query("#=0", "items")).toEqual({ items: [{ "#": 0 }] });
 			});
 
 			it("should parse combined offset and limit", async () => {
-				expect(Query("@=0&#=10")).toEqual({ "@": 0, "#": 10 });
-				expect(Query("@=20&#=10")).toEqual({ "@": 20, "#": 10 });
+				expect(Query("@=0&#=10", "items")).toEqual({ items: [{ "@": 0, "#": 10 }] });
+				expect(Query("@=20&#=10", "items")).toEqual({ items: [{ "@": 20, "#": 10 }] });
 			});
 
 		});
@@ -864,32 +862,38 @@ describe("Query()", () => {
 		describe("combined operators", () => {
 
 			it("should parse equality with pagination", async () => {
-				expect(Query("status=active&@=0&#=10")).toEqual({
-					"?status": "active",
-					"@": 0,
-					"#": 10
+				expect(Query("status=active&@=0&#=10", "items")).toEqual({
+					items: [{
+						"?status": "active",
+						"@": 0,
+						"#": 10
+					}]
 				});
 			});
 
 			it("should parse range with sort and pagination", async () => {
-				expect(Query("price>=100&price<=1000&^date=decreasing&@=0&#=25")).toEqual({
-					">=price": 100,
-					"<=price": 1000,
-					"^date": -1,
-					"@": 0,
-					"#": 25
+				expect(Query("price>=100&price<=1000&^date=decreasing&@=0&#=25", "items")).toEqual({
+					items: [{
+						">=price": 100,
+						"<=price": 1000,
+						"^date": -1,
+						"@": 0,
+						"#": 25
+					}]
 				});
 			});
 
 			it("should parse complex query with multiple operator types", async () => {
-				expect(Query("status=active&status=pending&~name=corp&price>=100&price<=1000&^date=decreasing&@=0&#=25")).toEqual({
-					"?status": ["active", "pending"],
-					"~name": "corp",
-					">=price": 100,
-					"<=price": 1000,
-					"^date": -1,
-					"@": 0,
-					"#": 25
+				expect(Query("status=active&status=pending&~name=corp&price>=100&price<=1000&^date=decreasing&@=0&#=25", "items")).toEqual({
+					items: [{
+						"?status": ["active", "pending"],
+						"~name": "corp",
+						">=price": 100,
+						"<=price": 1000,
+						"^date": -1,
+						"@": 0,
+						"#": 25
+					}]
 				});
 			});
 
@@ -898,24 +902,26 @@ describe("Query()", () => {
 		describe("edge cases", () => {
 
 			it("should parse empty query string", async () => {
-				expect(Query("")).toEqual({});
+				expect(Query("", "items")).toEqual({ items: [{}] });
 			});
 
 			it("should handle leading ampersand", async () => {
-				expect(Query("&name=test")).toEqual({ "?name": "test" });
+				expect(Query("&name=test", "items")).toEqual({ items: [{ "?name": "test" }] });
 			});
 
 			it("should handle multiple ampersands", async () => {
-				expect(Query("name=test&&age=25")).toEqual({
-					"?name": "test",
-					"?age": 25
+				expect(Query("name=test&&age=25", "items")).toEqual({
+					items: [{
+						"?name": "test",
+						"?age": 25
+					}]
 				});
 			});
 
 			it("should parse deeply nested paths", async () => {
-				expect(Query("a.b.c=value")).toEqual({ "?a.b.c": "value" });
-				expect(Query("x.y.z>=100")).toEqual({ ">=x.y.z": 100 });
-				expect(Query("~p.q.r=pattern")).toEqual({ "~p.q.r": "pattern" });
+				expect(Query("a.b.c=value", "items")).toEqual({ items: [{ "?a.b.c": "value" }] });
+				expect(Query("x.y.z>=100", "items")).toEqual({ items: [{ ">=x.y.z": 100 }] });
+				expect(Query("~p.q.r=pattern", "items")).toEqual({ items: [{ "~p.q.r": "pattern" }] });
 			});
 
 		});
@@ -923,57 +929,57 @@ describe("Query()", () => {
 		describe("value parsing", () => {
 
 			it("should parse integer values as numbers", async () => {
-				expect(Query("code=123")).toEqual({ "?code": 123 });
-				expect(Query("count=0")).toEqual({ "?count": 0 });
-				expect(Query("value=-42")).toEqual({ "?value": -42 });
+				expect(Query("code=123", "items")).toEqual({ items: [{ "?code": 123 }] });
+				expect(Query("count=0", "items")).toEqual({ items: [{ "?count": 0 }] });
+				expect(Query("value=-42", "items")).toEqual({ items: [{ "?value": -42 }] });
 			});
 
 			it("should parse decimal values as numbers", async () => {
-				expect(Query("price=45.67")).toEqual({ "?price": 45.67 });
-				expect(Query("rate=-0.5")).toEqual({ "?rate": -0.5 });
-				expect(Query("factor=3.14159")).toEqual({ "?factor": 3.14159 });
+				expect(Query("price=45.67", "items")).toEqual({ items: [{ "?price": 45.67 }] });
+				expect(Query("rate=-0.5", "items")).toEqual({ items: [{ "?rate": -0.5 }] });
+				expect(Query("factor=3.14159", "items")).toEqual({ items: [{ "?factor": 3.14159 }] });
 			});
 
 			it("should parse exponential notation as numbers", async () => {
-				expect(Query("large=1e10")).toEqual({ "?large": 1e10 });
-				expect(Query("small=1.5e-3")).toEqual({ "?small": 1.5e-3 });
-				expect(Query("scientific=2.5E+6")).toEqual({ "?scientific": 2.5e+6 });
+				expect(Query("large=1e10", "items")).toEqual({ items: [{ "?large": 1e10 }] });
+				expect(Query("small=1.5e-3", "items")).toEqual({ items: [{ "?small": 1.5e-3 }] });
+				expect(Query("scientific=2.5E+6", "items")).toEqual({ items: [{ "?scientific": 2.5e+6 }] });
 			});
 
 			it("should parse single-quoted values as strings", async () => {
-				expect(Query("code='123'")).toEqual({ "?code": "123" });
-				expect(Query("sku='00042'")).toEqual({ "?sku": "00042" });
-				expect(Query("price='45.67'")).toEqual({ "?price": "45.67" });
+				expect(Query("code='123'", "items")).toEqual({ items: [{ "?code": "123" }] });
+				expect(Query("sku='00042'", "items")).toEqual({ items: [{ "?sku": "00042" }] });
+				expect(Query("price='45.67'", "items")).toEqual({ items: [{ "?price": "45.67" }] });
 			});
 
 			it("should preserve leading zeros in quoted strings", async () => {
-				expect(Query("zip='00123'")).toEqual({ "?zip": "00123" });
-				expect(Query("id='007'")).toEqual({ "?id": "007" });
+				expect(Query("zip='00123'", "items")).toEqual({ items: [{ "?zip": "00123" }] });
+				expect(Query("id='007'", "items")).toEqual({ items: [{ "?id": "007" }] });
 			});
 
 			it("should parse non-numeric strings as strings", async () => {
-				expect(Query("name=hello")).toEqual({ "?name": "hello" });
-				expect(Query("mixed=123abc")).toEqual({ "?mixed": "123abc" });
-				expect(Query("partial=12.34.56")).toEqual({ "?partial": "12.34.56" });
+				expect(Query("name=hello", "items")).toEqual({ items: [{ "?name": "hello" }] });
+				expect(Query("mixed=123abc", "items")).toEqual({ items: [{ "?mixed": "123abc" }] });
+				expect(Query("partial=12.34.56", "items")).toEqual({ items: [{ "?partial": "12.34.56" }] });
 			});
 
 			it("should parse numeric values in range filters", async () => {
-				expect(Query("price<=100")).toEqual({ "<=price": 100 });
-				expect(Query("price>=10.5")).toEqual({ ">=price": 10.5 });
-				expect(Query("temp>=-40")).toEqual({ ">=temp": -40 });
+				expect(Query("price<=100", "items")).toEqual({ items: [{ "<=price": 100 }] });
+				expect(Query("price>=10.5", "items")).toEqual({ items: [{ ">=price": 10.5 }] });
+				expect(Query("temp>=-40", "items")).toEqual({ items: [{ ">=temp": -40 }] });
 			});
 
 			it("should parse quoted strings in range filters", async () => {
-				expect(Query("date<='2024-01-01'")).toEqual({ "<=date": "2024-01-01" });
-				expect(Query("code>='A100'")).toEqual({ ">=code": "A100" });
+				expect(Query("date<='2024-01-01'", "items")).toEqual({ items: [{ "<=date": "2024-01-01" }] });
+				expect(Query("code>='A100'", "items")).toEqual({ items: [{ ">=code": "A100" }] });
 			});
 
 			it("should parse numeric values in pattern filters", async () => {
-				expect(Query("~code=123")).toEqual({ "~code": 123 });
+				expect(Query("~code=123", "items")).toEqual({ items: [{ "~code": 123 }] });
 			});
 
 			it("should parse quoted strings in pattern filters", async () => {
-				expect(Query("~sku='00042'")).toEqual({ "~sku": "00042" });
+				expect(Query("~sku='00042'", "items")).toEqual({ items: [{ "~sku": "00042" }] });
 			});
 
 		});
@@ -981,36 +987,137 @@ describe("Query()", () => {
 		describe("error handling", () => {
 
 			it("should reject empty path expression", async () => {
-				expect(() => Query("=value")).toThrow();
+				expect(() => Query("=value", "items")).toThrow();
 			});
 
 			it("should reject bare label without value separator", async () => {
-				expect(() => Query("active")).toThrow();
-				expect(() => Query("name&status=ok")).toThrow();
+				expect(() => Query("active", "items")).toThrow();
+				expect(() => Query("name&status=ok", "items")).toThrow();
 			});
 
 			it("should reject invalid offset value", async () => {
-				expect(() => Query("@=invalid")).toThrow();
+				expect(() => Query("@=invalid", "items")).toThrow();
 			});
 
 			it("should reject empty offset value", async () => {
-				expect(() => Query("@=")).toThrow();
+				expect(() => Query("@=", "items")).toThrow();
 			});
 
 			it("should reject invalid limit value", async () => {
-				expect(() => Query("#=invalid")).toThrow();
+				expect(() => Query("#=invalid", "items")).toThrow();
 			});
 
 			it("should reject empty limit value", async () => {
-				expect(() => Query("#=")).toThrow();
+				expect(() => Query("#=", "items")).toThrow();
 			});
 
 			it("should reject invalid sort order value", async () => {
-				expect(() => Query("^name=invalid")).toThrow();
+				expect(() => Query("^name=invalid", "items")).toThrow();
 			});
 
 			it("should reject float sort order value", async () => {
-				expect(() => Query("^name=1.23")).toThrow();
+				expect(() => Query("^name=1.23", "items")).toThrow();
+			});
+
+		});
+
+		describe("input formats", () => {
+
+			const query = { "?status": "active", "@": 0, "#": 10 };
+
+			describe("json format", () => {
+
+				it("should decode JSON string", async () => {
+					const input = JSON.stringify(query);
+					expect(Query(input)).toEqual(query);
+				});
+
+				it("should decode JSON with whitespace", async () => {
+					const input = JSON.stringify(query, null, 2);
+					expect(Query(input)).toEqual(query);
+				});
+
+			});
+
+			describe("url format", () => {
+
+				it("should decode URL-encoded JSON", async () => {
+					const input = encodeURIComponent(JSON.stringify(query));
+					expect(Query(input)).toEqual(query);
+				});
+
+			});
+
+			describe("base64 format", () => {
+
+				it("should decode base64-encoded JSON", async () => {
+					const input = btoa(JSON.stringify(query));
+					expect(Query(input)).toEqual(query);
+				});
+
+			});
+
+			describe("form format", () => {
+
+				it("should throw without collection parameter", async () => {
+					const input = "status=active&@=0&#=10";
+					expect(() => Query(input)).toThrow(SyntaxError);
+				});
+
+			});
+
+		});
+
+		describe("collection wrapping", () => {
+
+			it("should wrap specs in collection property", async () => {
+				const input = "status=active&@=0&#=10";
+				expect(Query(input, "items")).toEqual({
+					items: [{
+						"?status": "active",
+						"@": 0,
+						"#": 10
+					}]
+				});
+			});
+
+			it("should wrap specs with multiple filters", async () => {
+				const input = "status=active&status=pending&~name=corp&price>=100&price<=1000";
+				expect(Query(input, "products")).toEqual({
+					products: [{
+						"?status": ["active", "pending"],
+						"~name": "corp",
+						">=price": 100,
+						"<=price": 1000
+					}]
+				});
+			});
+
+			it("should wrap specs with sort order", async () => {
+				const input = "^date=decreasing&@=0&#=25";
+				expect(Query(input, "orders")).toEqual({
+					orders: [{
+						"^date": -1,
+						"@": 0,
+						"#": 25
+					}]
+				});
+			});
+
+			it("should wrap empty specs", async () => {
+				expect(Query("", "items")).toEqual({
+					items: [{}]
+				});
+			});
+
+			it("should use form format regardless of input pattern", async () => {
+				// JSON-like string should be parsed as form, not JSON
+				const input = "name={value}";
+				expect(Query(input, "items")).toEqual({
+					items: [{
+						"?name": "{value}"
+					}]
+				});
 			});
 
 		});
@@ -1027,16 +1134,16 @@ describe("Query()", () => {
 			});
 
 			it("should encode multiple values as repeated parameters", async () => {
-				expect(Query(Query("status=active&status=pending"), { format: "form" }))
+				expect(Query({ "?status": ["active", "pending"] }, { format: "form" }))
 					.toBe("status=active&status=pending");
 			});
 
 			it("should encode null value as empty", async () => {
-				expect(Query(Query("category="), { format: "form" })).toBe("category=");
+				expect(Query({ "?category": null }, { format: "form" })).toBe("category=");
 			});
 
 			it("should encode empty array as wildcard", async () => {
-				expect(Query(Query("category=*"), { format: "form" })).toBe("category=*");
+				expect(Query({ "?category": [] }, { format: "form" })).toBe("category=*");
 			});
 
 			it("should URL-encode special characters in values", async () => {
@@ -1168,8 +1275,16 @@ describe("Query()", () => {
 			});
 
 			it("should encode complex query with multiple operator types", async () => {
-				const decoded = Query("status=active&status=pending&~name=corp&price>=100&price<=1000&^date=decreasing&@=0&#=25");
-				const result = Query(decoded, { format: "form" });
+				const specs = {
+					"?status": ["active", "pending"],
+					"~name": "corp",
+					">=price": 100,
+					"<=price": 1000,
+					"^date": -1,
+					"@": 0,
+					"#": 25
+				};
+				const result = Query(specs, { format: "form" });
 				expect(result).toContain("status=active");
 				expect(result).toContain("status=pending");
 				expect(result).toContain("~name=corp");
@@ -1247,27 +1362,92 @@ describe("Query()", () => {
 		describe("roundtrip", () => {
 
 			it("should roundtrip equality filters", async () => {
-				const original = "status=active";
-				expect(Query(Query(original), { format: "form" })).toBe(original);
+				const specs = { "?status": "active" };
+				const encoded = Query(specs, { format: "form" });
+				expect(Query(encoded, "items")).toEqual({ items: [specs] });
 			});
 
 			it("should roundtrip range filters", async () => {
-				const decoded = Query("price>=10&price<=100");
-				const encoded = Query(decoded, { format: "form" });
-				expect(Query(encoded)).toEqual(decoded);
+				const specs = { ">=price": 10, "<=price": 100 };
+				const encoded = Query(specs, { format: "form" });
+				expect(Query(encoded, "items")).toEqual({ items: [specs] });
 			});
 
 			it("should roundtrip pagination", async () => {
-				const original = "@=0&#=25";
-				const decoded = Query(original);
-				const encoded = Query(decoded, { format: "form" });
-				expect(Query(encoded)).toEqual(decoded);
+				const specs = { "@": 0, "#": 25 };
+				const encoded = Query(specs, { format: "form" });
+				expect(Query(encoded, "items")).toEqual({ items: [specs] });
 			});
 
 			it("should roundtrip complex queries", async () => {
-				const original = Query("status=active&~name=corp&price>=100&^date=decreasing&@=0&#=25");
-				const encoded = Query(original, { format: "form" });
-				expect(Query(encoded)).toEqual(original);
+				const specs = {
+					"?status": "active",
+					"~name": "corp",
+					">=price": 100,
+					"^date": -1,
+					"@": 0,
+					"#": 25
+				};
+				const encoded = Query(specs, { format: "form" });
+				expect(Query(encoded, "items")).toEqual({ items: [specs] });
+			});
+
+		});
+
+		describe("output formats", () => {
+
+			const query = Query(JSON.stringify({ "?status": "active", "@": 0, "#": 10 }));
+
+			describe("json format", () => {
+
+				it("should encode as JSON string", async () => {
+					const result = Query(query, { format: "json" });
+					expect(result).toBe(JSON.stringify(query));
+				});
+
+				it("should produce valid JSON", async () => {
+					const result = Query(query, { format: "json" });
+					expect(() => JSON.parse(result)).not.toThrow();
+					expect(JSON.parse(result)).toEqual(query);
+				});
+
+			});
+
+			describe("url format", () => {
+
+				it("should encode as URL-encoded JSON", async () => {
+					const result = Query(query, { format: "url" });
+					expect(result).toBe(encodeURIComponent(JSON.stringify(query)));
+				});
+
+				it("should decode back to original query", async () => {
+					const result = Query(query, { format: "url" });
+					expect(JSON.parse(decodeURIComponent(result))).toEqual(query);
+				});
+
+			});
+
+			describe("base64 format", () => {
+
+				it("should encode as base64-encoded JSON", async () => {
+					const result = Query(query, { format: "base64" });
+					expect(result).toBe(btoa(JSON.stringify(query)));
+				});
+
+				it("should decode back to original query", async () => {
+					const result = Query(query, { format: "base64" });
+					expect(JSON.parse(atob(result))).toEqual(query);
+				});
+
+			});
+
+			describe("form format", () => {
+
+				it("should encode as query string", async () => {
+					const result = Query(query, { format: "form" });
+					expect(Query(result, "items")).toEqual({ items: [query] });
+				});
+
 			});
 
 		});

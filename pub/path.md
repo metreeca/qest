@@ -62,5 +62,5 @@ Paths parse to an array of property name strings.
 
 This path format is shared by:
 
-- [Expression Format](./expression.md) - extends with bracket notation and prefixes
-- [Query String Format](./query.md) - uses directly for filter expressions
+- [Expression Format](expression.md) - extends with bracket notation and prefixes
+- [Query String Format](query.md) - uses directly for filter expressions

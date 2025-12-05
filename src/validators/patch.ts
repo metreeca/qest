@@ -15,13 +15,13 @@
  */
 
 import { isObject } from "@metreeca/core";
-import { $field, $property, $values } from "./index.js";
+import { $field, $identifier, $values } from "./index.js";
 
 
 export function $patch(value: object): string {
 	return !isObject(value) ? `invalid object type <${typeof value}>` : Object.entries(value)
 		.map(([key, value]) =>
-			$property(key) || $field(key, value === null ? "" : $values(value))
+			$identifier(key) || $field(key, value === null ? "" : $values(value))
 		)
 		.filter(Boolean)
 		.join("\n");
