@@ -39,7 +39,7 @@
   "scripts": {
     "clean": "rm -rf dist docs node_modules src/parsers/*.js src/parsers/*.d.ts",
     "setup": "npm install && npm audit fix",
-    "peggy": "npx peggy --dts --format es src/parsers/*.pegjs",
+    "peggy": "for parser in src/parsers/*.pegjs; do npx peggy --dts --format es $parser; done",
     "build": "rm -rf dist docs && npm run peggy && tsc && typedoc",
     "check": "npx vitest run",
     "watch": "npx tsc --watch",

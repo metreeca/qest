@@ -56,3 +56,8 @@ A `PreToolUse` hook automatically detects file types and prints skill suggestion
 - **`npm run check`** - Run Vitest test suite
 - **`npm run watch`** - Watch and recompile TypeScript on changes
 - **`npm run proof`** - Start TypeDoc watch mode and documentation server
+
+# Peggy Grammar Files
+
+Peggy grammar files in `src/parsers/` use numeric prefixes (e.g., `1-`, `2-`) to ensure correct build order. Grammars
+importing from other grammars must have a higher number than their dependencies.

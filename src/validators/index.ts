@@ -16,7 +16,22 @@
 
 import { isArray, isObject, isScalar, isString } from "@metreeca/core";
 import { isTag } from "@metreeca/core/network";
+import { immutable } from "../../../Core/src/common/nested.js";
 import { $resource } from "./resource.js";
+
+export function validate<T>(value: T, validator: (value: T) => string) {
+
+	const error = validator(value);
+
+	if ( error ) {
+		throw new TypeError(error);
+	}
+
+	return immutable(value);
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export function $values(value: unknown): string {
 	return isScalar(value) ? ""

@@ -23,8 +23,8 @@
  * @module
  */
 
-import { immutable } from "../../Core/src/common/nested.js";
 import { Values } from "./index.js";
+import { validate } from "./validators/index.js";
 import { $patch } from "./validators/patch.js";
 
 /**
@@ -69,13 +69,5 @@ export type Patch = {
  * @throws {TypeError} If the patch structure violates {@link Patch} constraints
  */
 export function Patch<T extends Patch>(patch: T): T {
-
-	const error = $patch(patch);
-
-	if ( error ) {
-		throw new TypeError(error);
-	}
-
-	return immutable(patch);
-
+	return validate(patch, $patch);
 }

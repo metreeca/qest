@@ -5,7 +5,13 @@
       "mcp__ide__getDiagnostics",
       "Skill(typescript-developer)",
       "Skill(typescript-tester)",
-      "Bash(npm run check:*)"
+      "Bash(npm run check:*)",
+      "Skill(markdown-writer)",
+      "Skill(typedoc-writer)",
+      "Bash(npm run peggy:*)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "ask": []

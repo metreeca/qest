@@ -18,6 +18,1264 @@ import { describe, expect, it } from "vitest";
 import { Expression, Query } from "./query.js";
 
 
+describe("Query()", () => {
+
+	describe("factory", () => {
+
+		it("should create immutable query object", () => {
+			const query = Query({ name: "string" });
+			expect(() => {
+				(query as any).name = "other";
+			}).toThrow();
+		});
+
+		it("should create query with immutable nested objects", () => {
+			const query = Query({
+				user: { name: "string" }
+			});
+			expect(() => {
+				(query.user as any).email = "string";
+			}).toThrow();
+		});
+
+		it("should create query with immutable arrays", () => {
+			const query = Query({
+				items: [{ price: "number" }]
+			});
+			expect(() => {
+				(query.items as any).push({ name: "string" });
+			}).toThrow();
+		});
+
+		it("should create query with immutable dictionary values", () => {
+			const query = Query({
+				title: { en: "string", it: "string" }
+			});
+			expect(() => {
+				(query.title as any).de = "string";
+			}).toThrow();
+		});
+
+		it("should isolate result from input mutations", () => {
+			const input = { name: "string", price: "number" };
+			const query = Query(input);
+
+			// Mutating input shouldn't affect the frozen result
+			(input as any).email = "string";
+			delete (input as { name: string; price?: string }).price;
+
+			expect(query).toEqual({ name: "string", price: "number" });
+		});
+
+		it("should preserve query structure with simple keys", () => {
+			const input = { name: "string", age: "number" };
+			const query = Query(input);
+			expect(query).toEqual({ name: "string", age: "number" });
+		});
+
+		it("should preserve query structure with computed keys", () => {
+			const input = { "total=sum:items.price": "number" };
+			const query = Query(input);
+			expect(query).toEqual({ "total=sum:items.price": "number" });
+		});
+
+		it("should preserve query structure with nested arrays", () => {
+			const input = {
+				items: [
+					{ name: "string" },
+					{ ">=price": 10 }
+				]
+			};
+			const query = Query(input);
+			expect(query).toEqual(input);
+		});
+
+		it("should preserve nested query structure", () => {
+			const input = {
+				order: {
+					customer: "string",
+					items: [{ name: "string", price: "number" }]
+				}
+			};
+			const query = Query(input);
+			expect(query).toEqual(input);
+		});
+
+		describe("expression validation in query keys", () => {
+
+			describe("valid simple property keys", () => {
+
+				it("should accept valid identifier keys", () => {
+					expect(() => Query({ name: "string" })).not.toThrow();
+					expect(() => Query({ _private: "string" })).not.toThrow();
+					expect(() => Query({ $ref: "string" })).not.toThrow();
+					expect(() => Query({ value123: "number" })).not.toThrow();
+				});
+
+				it("should accept reserved keyword keys", () => {
+					expect(() => Query({ class: "string" })).not.toThrow();
+					expect(() => Query({ function: "string" })).not.toThrow();
+					expect(() => Query({ return: "string" })).not.toThrow();
+				});
+
+				it("should accept multiple simple keys", () => {
+					expect(() => Query({
+						name: "string",
+						age: "number",
+						active: "boolean"
+					})).not.toThrow();
+				});
+
+			});
+
+			describe("valid computed property keys", () => {
+
+				it("should accept path-only computed keys", () => {
+					expect(() => Query({ "userName=user.name": "string" })).not.toThrow();
+					expect(() => Query({ "firstName=['first-name']": "string" })).not.toThrow();
+				});
+
+				it("should accept transform computed keys", () => {
+					expect(() => Query({ "total=sum:items.price": "number" })).not.toThrow();
+					expect(() => Query({ "count=count:items": "number" })).not.toThrow();
+					expect(() => Query({ "avg=avg:scores": "number" })).not.toThrow();
+				});
+
+				it("should accept multiple transform computed keys", () => {
+					expect(() => Query({
+						"totalRounded=sum:round:prices": "number"
+					})).not.toThrow();
+					expect(() => Query({
+						"avgYear=avg:year:dates": "number"
+					})).not.toThrow();
+				});
+
+				it("should accept computed keys with bracket notation", () => {
+					expect(() => Query({
+						"contentType=['content-type']": "string"
+					})).not.toThrow();
+					expect(() => Query({
+						"id=data['@id']": "string"
+					})).not.toThrow();
+				});
+
+				it("should accept computed keys with empty path", () => {
+					expect(() => Query({ "total=sum:": "number" })).not.toThrow();
+					expect(() => Query({ "value=": "string" })).not.toThrow();
+				});
+
+				it("should accept mixed simple and computed keys", () => {
+					expect(() => Query({
+						name: "string",
+						"total=sum:items.price": "number",
+						age: "number"
+					})).not.toThrow();
+				});
+
+			});
+
+			describe("invalid property keys", () => {
+
+				it("should reject keys starting with digits", () => {
+					expect(() => Query({ "123abc": "string" })).toThrow();
+					expect(() => Query({ "9lives": "string" })).toThrow();
+				});
+
+				it("should reject keys with invalid characters in dot notation", () => {
+					expect(() => Query({ "first-name": "string" })).toThrow();
+					expect(() => Query({ "my property": "string" })).toThrow();
+					expect(() => Query({ "@id": "string" })).toThrow();
+				});
+
+				it("should reject invalid computed key syntax", () => {
+					expect(() => Query({ "name=user..name": "string" })).toThrow();
+					expect(() => Query({ "total=:items": "string" })).toThrow();
+					expect(() => Query({ "=value": "string" })).toThrow();
+				});
+
+			});
+
+		});
+
+		describe("expression validation in specs operators", () => {
+
+			describe("comparison operators", () => {
+
+				it("should validate expressions in < operator", () => {
+					expect(() => Query({ items: [{ "<price": 100 }] })).not.toThrow();
+					expect(() => Query({ items: [{ "<user.age": 30 }] })).not.toThrow();
+					expect(() => Query({ items: [{ "<['max-value']": 50 }] })).not.toThrow();
+				});
+
+				it("should accept Literal for < operator", () => {
+					expect(() => Query({ items: [{ "<count": 10 }] })).not.toThrow();
+					expect(() => Query({ items: [{ "<enabled": true }] })).not.toThrow();
+					expect(() => Query({ items: [{ "<name": "value" }] })).not.toThrow();
+				});
+
+				it("should validate expressions in > operator", () => {
+					expect(() => Query({ items: [{ ">price": 10 }] })).not.toThrow();
+					expect(() => Query({ items: [{ ">items.count": 5 }] })).not.toThrow();
+				});
+
+				it("should accept Literal for > operator", () => {
+					expect(() => Query({ items: [{ ">score": 50 }] })).not.toThrow();
+					expect(() => Query({ items: [{ ">active": false }] })).not.toThrow();
+					expect(() => Query({ items: [{ ">code": "ABC" }] })).not.toThrow();
+				});
+
+				it("should validate expressions in <= operator", () => {
+					expect(() => Query({ items: [{ "<=price": 100 }] })).not.toThrow();
+					expect(() => Query({ items: [{ "<=round:price": 100 }] })).not.toThrow();
+				});
+
+				it("should accept Literal for <= operator", () => {
+					expect(() => Query({ items: [{ "<=limit": 100 }] })).not.toThrow();
+					expect(() => Query({ items: [{ "<=flag": true }] })).not.toThrow();
+					expect(() => Query({ items: [{ "<=id": "xyz" }] })).not.toThrow();
+				});
+
+				it("should validate expressions in >= operator", () => {
+					expect(() => Query({ items: [{ ">=price": 10 }] })).not.toThrow();
+					expect(() => Query({ items: [{ ">=year:created": 2020 }] })).not.toThrow();
+				});
+
+				it("should accept Literal for >= operator", () => {
+					expect(() => Query({ items: [{ ">=min": 5 }] })).not.toThrow();
+					expect(() => Query({ items: [{ ">=valid": false }] })).not.toThrow();
+					expect(() => Query({ items: [{ ">=key": "start" }] })).not.toThrow();
+				});
+
+				it("should reject invalid expressions in comparison operators", () => {
+					expect(() => Query({ items: [{ "<first-name": "test" }] })).toThrow();
+					expect(() => Query({ items: [{ ">123abc": 10 }] })).toThrow();
+					expect(() => Query({ items: [{ "<=user..name": "test" }] })).toThrow();
+				});
+
+				it("should reject non-literal values for < operator", () => {
+					expect(() => Query({ items: [{ "<price": ["100"] }] } as any)).toThrow();
+					expect(() => Query({ items: [{ "<price": { max: 100 } }] } as any)).toThrow();
+				});
+
+				it("should reject non-literal values for > operator", () => {
+					expect(() => Query({ items: [{ ">price": ["10"] }] } as any)).toThrow();
+					expect(() => Query({ items: [{ ">price": { min: 10 } }] } as any)).toThrow();
+				});
+
+				it("should reject non-literal values for <= operator", () => {
+					expect(() => Query({ items: [{ "<=price": ["100"] }] } as any)).toThrow();
+					expect(() => Query({ items: [{ "<=price": { max: 100 } }] } as any)).toThrow();
+				});
+
+				it("should reject non-literal values for >= operator", () => {
+					expect(() => Query({ items: [{ ">=price": ["10"] }] } as any)).toThrow();
+					expect(() => Query({ items: [{ ">=price": { min: 10 } }] } as any)).toThrow();
+				});
+
+			});
+
+			describe("text search operator", () => {
+
+				it("should validate expressions in ~ operator", () => {
+					expect(() => Query({ items: [{ "~title": "search" }] })).not.toThrow();
+					expect(() => Query({ items: [{ "~user.bio": "keyword" }] })).not.toThrow();
+					expect(() => Query({ items: [{ "~['description']": "text" }] })).not.toThrow();
+				});
+
+				it("should reject invalid expressions in ~ operator", () => {
+					expect(() => Query({ items: [{ "~first-name": "search" }] })).toThrow();
+					expect(() => Query({ items: [{ "~@title": "search" }] })).toThrow();
+				});
+
+				it("should reject non-string values for ~ operator", () => {
+					expect(() => Query({ items: [{ "~title": 123 }] } as any)).toThrow();
+					expect(() => Query({ items: [{ "~title": true }] } as any)).toThrow();
+					expect(() => Query({ items: [{ "~title": ["search"] }] } as any)).toThrow();
+				});
+
+			});
+
+			describe("matching operators", () => {
+
+				it("should validate expressions in ? operator", () => {
+					expect(() => Query({ items: [{ "?category": ["A", "B"] }] })).not.toThrow();
+					expect(() => Query({ items: [{ "?user.role": "admin" }] })).not.toThrow();
+					expect(() => Query({ items: [{ "?['tag']": null }] })).not.toThrow();
+				});
+
+				it("should accept Options for ? operator", () => {
+					expect(() => Query({ items: [{ "?status": null }] })).not.toThrow();
+					expect(() => Query({ items: [{ "?count": 5 }] })).not.toThrow();
+					expect(() => Query({ items: [{ "?active": true }] })).not.toThrow();
+					expect(() => Query({ items: [{ "?name": "test" }] })).not.toThrow();
+					expect(() => Query({ items: [{ "?tags": ["a", "b"] }] })).not.toThrow();
+					expect(() => Query({ items: [{ "?tags": [null, "a"] }] })).not.toThrow();
+					expect(() => Query({ items: [{ "?label": { string: "text" } }] })).not.toThrow();
+					expect(() => Query({ items: [{ "?label": { strings: ["a", "b"] } }] })).not.toThrow();
+					expect(() => Query({ items: [{ "?items": [{ name: "A" }] }] })).not.toThrow();
+					expect(() => Query({ items: [{ "?items": [{ id: 1, name: "A" }] }] })).not.toThrow();
+				});
+
+				it("should validate expressions in ! operator", () => {
+					expect(() => Query({ items: [{ "!tags": ["red", "blue"] }] })).not.toThrow();
+					expect(() => Query({ items: [{ "!user.permissions": ["read"] }] })).not.toThrow();
+				});
+
+				it("should accept Options for ! operator", () => {
+					expect(() => Query({ items: [{ "!status": null }] })).not.toThrow();
+					expect(() => Query({ items: [{ "!count": 10 }] })).not.toThrow();
+					expect(() => Query({ items: [{ "!enabled": false }] })).not.toThrow();
+					expect(() => Query({ items: [{ "!type": "user" }] })).not.toThrow();
+					expect(() => Query({ items: [{ "!ids": [1, 2, 3] }] })).not.toThrow();
+					expect(() => Query({ items: [{ "!ids": [null, 5] }] })).not.toThrow();
+					expect(() => Query({ items: [{ "!title": { string: "name" } }] })).not.toThrow();
+					expect(() => Query({ items: [{ "!title": { strings: ["x", "y"] } }] })).not.toThrow();
+					expect(() => Query({ items: [{ "!products": [{ sku: "ABC" }] }] })).not.toThrow();
+					expect(() => Query({ items: [{ "!products": [{ id: 1, sku: "ABC" }] }] })).not.toThrow();
+				});
+
+				it("should reject invalid expressions in matching operators", () => {
+					expect(() => Query({ items: [{ "?first-name": ["test"] }] })).toThrow();
+					expect(() => Query({ items: [{ "!@type": ["test"] }] })).toThrow();
+				});
+
+			});
+
+			describe("ordering operators", () => {
+
+				it("should validate expressions in $ operator", () => {
+					expect(() => Query({ items: [{ "$category": ["A", "B"] }] })).not.toThrow();
+					expect(() => Query({ items: [{ "$user.role": "admin" }] })).not.toThrow();
+				});
+
+				it("should accept Options for $ operator", () => {
+					expect(() => Query({ items: [{ "$priority": null }] })).not.toThrow();
+					expect(() => Query({ items: [{ "$index": 0 }] })).not.toThrow();
+					expect(() => Query({ items: [{ "$visible": true }] })).not.toThrow();
+					expect(() => Query({ items: [{ "$type": "primary" }] })).not.toThrow();
+					expect(() => Query({ items: [{ "$status": ["new", "active"] }] })).not.toThrow();
+					expect(() => Query({ items: [{ "$status": [null, "pending"] }] })).not.toThrow();
+					expect(() => Query({ items: [{ "$name": { string: "title" } }] })).not.toThrow();
+					expect(() => Query({ items: [{ "$name": { strings: ["a", "b"] } }] })).not.toThrow();
+					expect(() => Query({ items: [{ "$categories": [{ code: "A" }] }] })).not.toThrow();
+					expect(() => Query({ items: [{ "$categories": [{ id: 1, code: "A" }] }] })).not.toThrow();
+				});
+
+				it("should validate expressions in ^ operator", () => {
+					expect(() => Query({ items: [{ "^name": "asc" }] })).not.toThrow();
+					expect(() => Query({ items: [{ "^price": 1 }] })).not.toThrow();
+					expect(() => Query({ items: [{ "^created": -1 }] })).not.toThrow();
+					expect(() => Query({ items: [{ "^user.age": "desc" }] })).not.toThrow();
+					expect(() => Query({ items: [{ "^rating": "ascending" }] })).not.toThrow();
+					expect(() => Query({ items: [{ "^score": "descending" }] })).not.toThrow();
+				});
+
+				it("should reject invalid expressions in ordering operators", () => {
+					expect(() => Query({ items: [{ "$first-name": ["test"] }] })).toThrow();
+					expect(() => Query({ items: [{ "^@order": 1 }] })).toThrow();
+				});
+
+				it("should reject invalid values for ^ operator", () => {
+					expect(() => Query({ items: [{ "^name": "invalid" }] } as any)).toThrow();
+					expect(() => Query({ items: [{ "^price": true }] } as any)).toThrow();
+					expect(() => Query({ items: [{ "^created": ["asc"] }] } as any)).toThrow();
+				});
+
+			});
+
+			describe("pagination operators", () => {
+
+				it("should accept pagination operators without expressions", () => {
+					expect(() => Query({ items: [{ "@": 10 }] })).not.toThrow();
+					expect(() => Query({ items: [{ "#": 20 }] })).not.toThrow();
+					expect(() => Query({ items: [{ "@": 0, "#": 50 }] })).not.toThrow();
+				});
+
+				it("should reject non-number values for @ operator", () => {
+					expect(() => Query({ items: [{ "@": "10" }] })).toThrow();
+					expect(() => Query({ items: [{ "@": true }] })).toThrow();
+				});
+
+				it("should reject non-number values for # operator", () => {
+					expect(() => Query({ items: [{ "#": "20" }] })).toThrow();
+					expect(() => Query({ items: [{ "#": false }] })).toThrow();
+				});
+
+			});
+
+			describe("complex specs with multiple operators", () => {
+
+				it("should validate expressions in combined operators", () => {
+					expect(() => Query({
+						items: [{
+							">=price": 10,
+							"<=price": 100,
+							"~title": "search",
+							"?category": ["A", "B"],
+							"^name": "asc",
+							"@": 0,
+							"#": 20
+						}]
+					})).not.toThrow();
+				});
+
+				it("should validate expressions with transforms in specs", () => {
+					expect(() => Query({
+						items: [{
+							">=sum:items.price": 100,
+							"<=avg:scores": 90,
+							"^round:rating": 1
+						}]
+					})).not.toThrow();
+				});
+
+			});
+
+		});
+
+		describe("recursive validation", () => {
+
+			describe("nested query objects", () => {
+
+				it("should validate simple nested queries", () => {
+					expect(() => Query({
+						user: [{ name: "string", email: "string" }]
+					})).not.toThrow();
+				});
+
+				it("should validate deeply nested queries", () => {
+					expect(() => Query({
+						order: [{
+							customer: [{
+								address: [{ city: "string", country: "string" }]
+							}]
+						}]
+					})).not.toThrow();
+				});
+
+				it("should validate nested queries with computed keys", () => {
+					expect(() => Query({
+						items: [{
+							"total=sum:price": "number",
+							"count=count:": "number"
+						}]
+					})).not.toThrow();
+				});
+
+				it("should reject invalid expressions in nested queries", () => {
+					expect(() => Query({
+						user: [{ "first-name": "string" }]
+					})).toThrow();
+				});
+
+			});
+
+			describe("nested specs objects", () => {
+
+				it("should validate simple nested specs", () => {
+					expect(() => Query({
+						items: [{ ">=price": 10, "<=price": 100 }]
+					})).not.toThrow();
+				});
+
+				it("should validate deeply nested specs", () => {
+					expect(() => Query({
+						orders: [{
+							items: [{
+								">=price": 10,
+								"^name": "asc"
+							}]
+						}]
+					})).not.toThrow();
+				});
+
+				it("should reject invalid expressions in nested specs", () => {
+					expect(() => Query({
+						items: [{ ">=first-name": "test" }]
+					})).toThrow();
+				});
+
+			});
+
+			describe("mixed query and specs in arrays", () => {
+
+				it("should validate mixed query and specs", () => {
+					expect(() => Query({
+						items: [
+							{ name: "string", price: "number" },
+							{ ">=price": 10, "^name": "asc" }
+						]
+					})).not.toThrow();
+				});
+
+				it("should validate multiple levels of mixing", () => {
+					expect(() => Query({
+						orders: [
+							{ customer: "string" },
+							{ ">=total": 100 },
+							{
+								items: [
+									{ name: "string" },
+									{ ">=price": 10 }
+								]
+							}
+						]
+					})).not.toThrow();
+				});
+
+			});
+
+			describe("deep recursive structures", () => {
+
+				it("should validate 5 levels of nesting", () => {
+					expect(() => Query({
+						level1: [{
+							level2: [{
+								level3: [{
+									level4: [{
+										level5: [{ name: "string" }]
+									}]
+								}]
+							}]
+						}]
+					})).not.toThrow();
+				});
+
+				it("should validate expressions at all nesting levels", () => {
+					expect(() => Query({
+						"total=sum:level1.value": "number",
+						level1: [{
+							"avg=avg:level2.value": "number",
+							level2: [{
+								"count=count:level3": "number",
+								level3: [{ name: "string" }]
+							}]
+						}]
+					})).not.toThrow();
+				});
+
+				it("should validate specs at all nesting levels", () => {
+					expect(() => Query({
+						level1: [
+							{ ">=value": 10 },
+							{
+								level2: [
+									{ "^name": "asc" },
+									{
+										level3: [{ "~title": "search" }]
+									}
+								]
+							}
+						]
+					})).not.toThrow();
+				});
+
+				it("should reject invalid expressions at any nesting level", () => {
+					expect(() => Query({
+						level1: [{
+							level2: [{
+								level3: [{ "first-name": "string" }]
+							}]
+						}]
+					})).toThrow();
+
+					expect(() => Query({
+						level1: [{
+							level2: [{ ">=first-name": "test" }]
+						}]
+					})).toThrow();
+				});
+
+			});
+
+		});
+
+		describe("value type validation", () => {
+
+			describe("literal values", () => {
+
+				it("should accept boolean values", () => {
+					expect(() => Query({ active: true })).not.toThrow();
+					expect(() => Query({ enabled: false })).not.toThrow();
+				});
+
+				it("should accept number values", () => {
+					expect(() => Query({ age: 25 })).not.toThrow();
+					expect(() => Query({ price: 99.99 })).not.toThrow();
+					expect(() => Query({ count: 0 })).not.toThrow();
+				});
+
+				it("should accept string values", () => {
+					expect(() => Query({ name: "test" })).not.toThrow();
+					expect(() => Query({ description: "" })).not.toThrow();
+				});
+
+			});
+
+			describe("dictionary values", () => {
+
+				it("should accept dictionary with string values", () => {
+					expect(() => Query({
+						title: { en: "English", it: "Italiano" }
+					})).not.toThrow();
+				});
+
+				it("should accept dictionary with array values", () => {
+					expect(() => Query({
+						tags: { en: ["red", "blue"], it: ["rosso", "blu"] }
+					})).not.toThrow();
+				});
+
+				it("should accept nested dictionary structures", () => {
+					expect(() => Query({
+						content: [{
+							title: { en: "Title", it: "Titolo" }
+						}]
+					})).not.toThrow();
+				});
+
+			});
+
+			describe("resource values", () => {
+
+				it("should accept nested resource objects", () => {
+					expect(() => Query({
+						user: { name: "string", age: "number" }
+					})).not.toThrow();
+				});
+
+				it("should accept deeply nested resources", () => {
+					expect(() => Query({
+						order: {
+							customer: {
+								address: {
+									city: "string",
+									country: "string"
+								}
+							}
+						}
+					})).not.toThrow();
+				});
+
+			});
+
+			describe("array values", () => {
+
+				it("should accept arrays with query objects", () => {
+					expect(() => Query({
+						items: [{ name: "string", price: "number" }]
+					})).not.toThrow();
+				});
+
+				it("should accept arrays with specs objects", () => {
+					expect(() => Query({
+						items: [{ ">=price": 10, "^name": "asc" }]
+					})).not.toThrow();
+				});
+
+				it("should accept arrays with mixed query and specs", () => {
+					expect(() => Query({
+						items: [
+							{ name: "string" },
+							{ ">=price": 10 }
+						]
+					})).not.toThrow();
+				});
+
+				it("should accept empty arrays", () => {
+					expect(() => Query({ items: [] })).not.toThrow();
+				});
+
+			});
+
+		});
+
+		describe("edge cases", () => {
+
+			it("should accept empty query object", () => {
+				expect(() => Query({})).not.toThrow();
+			});
+
+			it("should accept query with single property", () => {
+				expect(() => Query({ name: "string" })).not.toThrow();
+			});
+
+			it("should accept query with many properties", () => {
+				expect(() => Query({
+					prop1: "string",
+					prop2: "number",
+					prop3: "boolean",
+					prop4: { en: "test" },
+					prop5: [{ name: "string" }]
+				})).not.toThrow();
+			});
+
+			it("should accept complex real-world query", () => {
+				expect(() => Query({
+					name: "string",
+					"total=sum:items.price": "number",
+					items: [
+						{ name: "string", price: "number" },
+						{ ">=price": 10, "<=price": 100, "^name": "asc", "@": 0, "#": 20 }
+					],
+					customer: [{
+						name: "string",
+						address: [{ city: "string", country: "string" }]
+					}]
+				})).not.toThrow();
+			});
+
+		});
+
+	});
+
+	describe("decoder", () => {
+
+		describe("equality filters", () => {
+
+			it("should parse single equality filter", async () => {
+				expect(Query("status=active")).toEqual({ "?status": "active" });
+				expect(Query("name=test")).toEqual({ "?name": "test" });
+			});
+
+			it("should parse multiple values for same expression as any-of filter", async () => {
+				expect(Query("status=active&status=pending")).toEqual({
+					"?status": ["active", "pending"]
+				});
+			});
+
+			it("should parse empty value as null", async () => {
+				expect(Query("category=")).toEqual({ "?category": null });
+			});
+
+			it("should parse wildcard value as undefined filter", async () => {
+				expect(Query("category=*")).toEqual({ "?category": [] });
+			});
+
+			it("should parse URL-encoded values", async () => {
+				expect(Query("name=hello%20world")).toEqual({ "?name": "hello world" });
+				expect(Query("path=%2Fapi%2Ftest")).toEqual({ "?path": "/api/test" });
+			});
+
+			it("should parse nested path expressions", async () => {
+				expect(Query("user.name=test")).toEqual({ "?user.name": "test" });
+				expect(Query("address.city=rome")).toEqual({ "?address.city": "rome" });
+			});
+
+		});
+
+		describe("range filters", () => {
+
+			it("should parse less-than-or-equal filter", async () => {
+				expect(Query("price<=100")).toEqual({ "<=price": 100 });
+				expect(Query("age<=65")).toEqual({ "<=age": 65 });
+			});
+
+			it("should parse greater-than-or-equal filter", async () => {
+				expect(Query("price>=10")).toEqual({ ">=price": 10 });
+				expect(Query("age>=18")).toEqual({ ">=age": 18 });
+			});
+
+			it("should parse combined range filter", async () => {
+				expect(Query("price>=10&price<=100")).toEqual({
+					">=price": 10,
+					"<=price": 100
+				});
+			});
+
+			it("should parse range filter with nested path", async () => {
+				expect(Query("items.price<=50")).toEqual({ "<=items.price": 50 });
+				expect(Query("user.age>=21")).toEqual({ ">=user.age": 21 });
+			});
+
+		});
+
+		describe("pattern filters", () => {
+
+			it("should parse pattern filter", async () => {
+				expect(Query("~name=john")).toEqual({ "~name": "john" });
+				expect(Query("~title=report")).toEqual({ "~title": "report" });
+			});
+
+			it("should parse pattern filter with nested path", async () => {
+				expect(Query("~user.bio=developer")).toEqual({ "~user.bio": "developer" });
+			});
+
+			it("should parse URL-encoded pattern value", async () => {
+				expect(Query("~name=hello%20world")).toEqual({ "~name": "hello world" });
+			});
+
+		});
+
+		describe("sort order", () => {
+
+			it("should parse ascending sort with 'increasing' value", async () => {
+				expect(Query("^name=increasing")).toEqual({ "^name": 1 });
+			});
+
+			it("should parse ascending sort with empty value", async () => {
+				expect(Query("^name=")).toEqual({ "^name": 1 });
+			});
+
+			it("should parse descending sort with 'decreasing' value", async () => {
+				expect(Query("^date=decreasing")).toEqual({ "^date": -1 });
+			});
+
+			it("should parse numeric sort order value", async () => {
+				expect(Query("^priority=1")).toEqual({ "^priority": 1 });
+				expect(Query("^priority=-2")).toEqual({ "^priority": -2 });
+				expect(Query("^priority=0")).toEqual({ "^priority": 0 });
+			});
+
+			it("should parse sort with nested path", async () => {
+				expect(Query("^user.name=increasing")).toEqual({ "^user.name": 1 });
+			});
+
+			it("should parse multiple sort criteria", async () => {
+				expect(Query("^name=increasing&^date=decreasing")).toEqual({
+					"^name": 1,
+					"^date": -1
+				});
+			});
+
+		});
+
+		describe("pagination", () => {
+
+			it("should parse offset", async () => {
+				expect(Query("@=0")).toEqual({ "@": 0 });
+				expect(Query("@=10")).toEqual({ "@": 10 });
+				expect(Query("@=100")).toEqual({ "@": 100 });
+			});
+
+			it("should parse limit", async () => {
+				expect(Query("#=10")).toEqual({ "#": 10 });
+				expect(Query("#=25")).toEqual({ "#": 25 });
+				expect(Query("#=0")).toEqual({ "#": 0 });
+			});
+
+			it("should parse combined offset and limit", async () => {
+				expect(Query("@=0&#=10")).toEqual({ "@": 0, "#": 10 });
+				expect(Query("@=20&#=10")).toEqual({ "@": 20, "#": 10 });
+			});
+
+		});
+
+		describe("combined operators", () => {
+
+			it("should parse equality with pagination", async () => {
+				expect(Query("status=active&@=0&#=10")).toEqual({
+					"?status": "active",
+					"@": 0,
+					"#": 10
+				});
+			});
+
+			it("should parse range with sort and pagination", async () => {
+				expect(Query("price>=100&price<=1000&^date=decreasing&@=0&#=25")).toEqual({
+					">=price": 100,
+					"<=price": 1000,
+					"^date": -1,
+					"@": 0,
+					"#": 25
+				});
+			});
+
+			it("should parse complex query with multiple operator types", async () => {
+				expect(Query("status=active&status=pending&~name=corp&price>=100&price<=1000&^date=decreasing&@=0&#=25")).toEqual({
+					"?status": ["active", "pending"],
+					"~name": "corp",
+					">=price": 100,
+					"<=price": 1000,
+					"^date": -1,
+					"@": 0,
+					"#": 25
+				});
+			});
+
+		});
+
+		describe("edge cases", () => {
+
+			it("should parse empty query string", async () => {
+				expect(Query("")).toEqual({});
+			});
+
+			it("should handle leading ampersand", async () => {
+				expect(Query("&name=test")).toEqual({ "?name": "test" });
+			});
+
+			it("should handle multiple ampersands", async () => {
+				expect(Query("name=test&&age=25")).toEqual({
+					"?name": "test",
+					"?age": 25
+				});
+			});
+
+			it("should parse deeply nested paths", async () => {
+				expect(Query("a.b.c=value")).toEqual({ "?a.b.c": "value" });
+				expect(Query("x.y.z>=100")).toEqual({ ">=x.y.z": 100 });
+				expect(Query("~p.q.r=pattern")).toEqual({ "~p.q.r": "pattern" });
+			});
+
+		});
+
+		describe("value parsing", () => {
+
+			it("should parse integer values as numbers", async () => {
+				expect(Query("code=123")).toEqual({ "?code": 123 });
+				expect(Query("count=0")).toEqual({ "?count": 0 });
+				expect(Query("value=-42")).toEqual({ "?value": -42 });
+			});
+
+			it("should parse decimal values as numbers", async () => {
+				expect(Query("price=45.67")).toEqual({ "?price": 45.67 });
+				expect(Query("rate=-0.5")).toEqual({ "?rate": -0.5 });
+				expect(Query("factor=3.14159")).toEqual({ "?factor": 3.14159 });
+			});
+
+			it("should parse exponential notation as numbers", async () => {
+				expect(Query("large=1e10")).toEqual({ "?large": 1e10 });
+				expect(Query("small=1.5e-3")).toEqual({ "?small": 1.5e-3 });
+				expect(Query("scientific=2.5E+6")).toEqual({ "?scientific": 2.5e+6 });
+			});
+
+			it("should parse single-quoted values as strings", async () => {
+				expect(Query("code='123'")).toEqual({ "?code": "123" });
+				expect(Query("sku='00042'")).toEqual({ "?sku": "00042" });
+				expect(Query("price='45.67'")).toEqual({ "?price": "45.67" });
+			});
+
+			it("should preserve leading zeros in quoted strings", async () => {
+				expect(Query("zip='00123'")).toEqual({ "?zip": "00123" });
+				expect(Query("id='007'")).toEqual({ "?id": "007" });
+			});
+
+			it("should parse non-numeric strings as strings", async () => {
+				expect(Query("name=hello")).toEqual({ "?name": "hello" });
+				expect(Query("mixed=123abc")).toEqual({ "?mixed": "123abc" });
+				expect(Query("partial=12.34.56")).toEqual({ "?partial": "12.34.56" });
+			});
+
+			it("should parse numeric values in range filters", async () => {
+				expect(Query("price<=100")).toEqual({ "<=price": 100 });
+				expect(Query("price>=10.5")).toEqual({ ">=price": 10.5 });
+				expect(Query("temp>=-40")).toEqual({ ">=temp": -40 });
+			});
+
+			it("should parse quoted strings in range filters", async () => {
+				expect(Query("date<='2024-01-01'")).toEqual({ "<=date": "2024-01-01" });
+				expect(Query("code>='A100'")).toEqual({ ">=code": "A100" });
+			});
+
+			it("should parse numeric values in pattern filters", async () => {
+				expect(Query("~code=123")).toEqual({ "~code": 123 });
+			});
+
+			it("should parse quoted strings in pattern filters", async () => {
+				expect(Query("~sku='00042'")).toEqual({ "~sku": "00042" });
+			});
+
+		});
+
+		describe("error handling", () => {
+
+			it("should reject empty path expression", async () => {
+				expect(() => Query("=value")).toThrow();
+			});
+
+			it("should reject bare label without value separator", async () => {
+				expect(() => Query("active")).toThrow();
+				expect(() => Query("name&status=ok")).toThrow();
+			});
+
+			it("should reject invalid offset value", async () => {
+				expect(() => Query("@=invalid")).toThrow();
+			});
+
+			it("should reject empty offset value", async () => {
+				expect(() => Query("@=")).toThrow();
+			});
+
+			it("should reject invalid limit value", async () => {
+				expect(() => Query("#=invalid")).toThrow();
+			});
+
+			it("should reject empty limit value", async () => {
+				expect(() => Query("#=")).toThrow();
+			});
+
+			it("should reject invalid sort order value", async () => {
+				expect(() => Query("^name=invalid")).toThrow();
+			});
+
+			it("should reject float sort order value", async () => {
+				expect(() => Query("^name=1.23")).toThrow();
+			});
+
+		});
+
+	});
+
+	describe("encoder", () => {
+
+		describe("equality filters", () => {
+
+			it("should encode single equality filter", async () => {
+				expect(Query({ "?status": "active" }, { format: "form" })).toBe("status=active");
+				expect(Query({ "?name": "test" }, { format: "form" })).toBe("name=test");
+			});
+
+			it("should encode multiple values as repeated parameters", async () => {
+				expect(Query(Query("status=active&status=pending"), { format: "form" }))
+					.toBe("status=active&status=pending");
+			});
+
+			it("should encode null value as empty", async () => {
+				expect(Query(Query("category="), { format: "form" })).toBe("category=");
+			});
+
+			it("should encode empty array as wildcard", async () => {
+				expect(Query(Query("category=*"), { format: "form" })).toBe("category=*");
+			});
+
+			it("should URL-encode special characters in values", async () => {
+				expect(Query({ "?name": "hello world" }, { format: "form" })).toBe("name=hello%20world");
+				expect(Query({ "?path": "/api/test" }, { format: "form" })).toBe("path=%2Fapi%2Ftest");
+			});
+
+			it("should encode nested path expressions", async () => {
+				expect(Query({ "?user.name": "test" }, { format: "form" })).toBe("user.name=test");
+				expect(Query({ "?address.city": "rome" }, { format: "form" })).toBe("address.city=rome");
+			});
+
+		});
+
+		describe("range filters", () => {
+
+			it("should encode less-than-or-equal filter", async () => {
+				expect(Query({ "<=price": 100 }, { format: "form" })).toBe("price<=100");
+				expect(Query({ "<=age": 65 }, { format: "form" })).toBe("age<=65");
+			});
+
+			it("should encode greater-than-or-equal filter", async () => {
+				expect(Query({ ">=price": 10 }, { format: "form" })).toBe("price>=10");
+				expect(Query({ ">=age": 18 }, { format: "form" })).toBe("age>=18");
+			});
+
+			it("should encode combined range filter", async () => {
+				const result = Query({ ">=price": 10, "<=price": 100 }, { format: "form" });
+				expect(result).toContain("price>=10");
+				expect(result).toContain("price<=100");
+			});
+
+			it("should encode range filter with nested path", async () => {
+				expect(Query({ "<=items.price": 50 }, { format: "form" })).toBe("items.price<=50");
+				expect(Query({ ">=user.age": 21 }, { format: "form" })).toBe("user.age>=21");
+			});
+
+		});
+
+		describe("pattern filters", () => {
+
+			it("should encode pattern filter", async () => {
+				expect(Query({ "~name": "john" }, { format: "form" })).toBe("~name=john");
+				expect(Query({ "~title": "report" }, { format: "form" })).toBe("~title=report");
+			});
+
+			it("should encode pattern filter with nested path", async () => {
+				expect(Query({ "~user.bio": "developer" }, { format: "form" })).toBe("~user.bio=developer");
+			});
+
+			it("should URL-encode pattern value", async () => {
+				expect(Query({ "~name": "hello world" }, { format: "form" })).toBe("~name=hello%20world");
+			});
+
+		});
+
+		describe("sort order", () => {
+
+			it("should encode ascending sort", async () => {
+				expect(Query({ "^name": 1 }, { format: "form" })).toBe("^name=increasing");
+			});
+
+			it("should encode descending sort", async () => {
+				expect(Query({ "^date": -1 }, { format: "form" })).toBe("^date=decreasing");
+			});
+
+			it("should encode numeric sort order value", async () => {
+				expect(Query({ "^priority": 2 }, { format: "form" })).toBe("^priority=2");
+				expect(Query({ "^priority": -2 }, { format: "form" })).toBe("^priority=-2");
+				expect(Query({ "^priority": 0 }, { format: "form" })).toBe("^priority=0");
+			});
+
+			it("should encode sort with nested path", async () => {
+				expect(Query({ "^user.name": 1 }, { format: "form" })).toBe("^user.name=increasing");
+			});
+
+			it("should encode multiple sort criteria", async () => {
+				const result = Query({ "^name": 1, "^date": -1 }, { format: "form" });
+				expect(result).toContain("^name=increasing");
+				expect(result).toContain("^date=decreasing");
+			});
+
+		});
+
+		describe("pagination", () => {
+
+			it("should encode offset", async () => {
+				expect(Query({ "@": 0 }, { format: "form" })).toBe("@=0");
+				expect(Query({ "@": 10 }, { format: "form" })).toBe("@=10");
+				expect(Query({ "@": 100 }, { format: "form" })).toBe("@=100");
+			});
+
+			it("should encode limit", async () => {
+				expect(Query({ "#": 10 }, { format: "form" })).toBe("#=10");
+				expect(Query({ "#": 25 }, { format: "form" })).toBe("#=25");
+				expect(Query({ "#": 0 }, { format: "form" })).toBe("#=0");
+			});
+
+			it("should encode combined offset and limit", async () => {
+				const result = Query({ "@": 0, "#": 10 }, { format: "form" });
+				expect(result).toContain("@=0");
+				expect(result).toContain("#=10");
+			});
+
+		});
+
+		describe("combined operators", () => {
+
+			it("should encode equality with pagination", async () => {
+				const result = Query({ "?status": "active", "@": 0, "#": 10 }, { format: "form" });
+				expect(result).toContain("status=active");
+				expect(result).toContain("@=0");
+				expect(result).toContain("#=10");
+			});
+
+			it("should encode range with sort and pagination", async () => {
+				const result = Query({
+					">=price": 100,
+					"<=price": 1000,
+					"^date": -1,
+					"@": 0,
+					"#": 25
+				}, { format: "form" });
+				expect(result).toContain("price>=100");
+				expect(result).toContain("price<=1000");
+				expect(result).toContain("^date=decreasing");
+				expect(result).toContain("@=0");
+				expect(result).toContain("#=25");
+			});
+
+			it("should encode complex query with multiple operator types", async () => {
+				const decoded = Query("status=active&status=pending&~name=corp&price>=100&price<=1000&^date=decreasing&@=0&#=25");
+				const result = Query(decoded, { format: "form" });
+				expect(result).toContain("status=active");
+				expect(result).toContain("status=pending");
+				expect(result).toContain("~name=corp");
+				expect(result).toContain("price>=100");
+				expect(result).toContain("price<=1000");
+				expect(result).toContain("^date=decreasing");
+				expect(result).toContain("@=0");
+				expect(result).toContain("#=25");
+			});
+
+		});
+
+		describe("edge cases", () => {
+
+			it("should encode empty query", async () => {
+				expect(Query({}, { format: "form" })).toBe("");
+			});
+
+			it("should encode deeply nested paths", async () => {
+				expect(Query({ "?a.b.c": "value" }, { format: "form" })).toBe("a.b.c=value");
+				expect(Query({ ">=x.y.z": 100 }, { format: "form" })).toBe("x.y.z>=100");
+				expect(Query({ "~p.q.r": "pattern" }, { format: "form" })).toBe("~p.q.r=pattern");
+			});
+
+		});
+
+		describe("value encoding", () => {
+
+			it("should encode integer values", async () => {
+				expect(Query({ "?code": 123 }, { format: "form" })).toBe("code=123");
+				expect(Query({ "?count": 0 }, { format: "form" })).toBe("count=0");
+				expect(Query({ "?value": -42 }, { format: "form" })).toBe("value=-42");
+			});
+
+			it("should encode decimal values", async () => {
+				expect(Query({ "?price": 45.67 }, { format: "form" })).toBe("price=45.67");
+				expect(Query({ "?rate": -0.5 }, { format: "form" })).toBe("rate=-0.5");
+			});
+
+			it("should encode exponential notation", async () => {
+				expect(Query({ "?large": 1e10 }, { format: "form" })).toBe("large=10000000000");
+				expect(Query({ "?small": 1.5e-3 }, { format: "form" })).toBe("small=0.0015");
+			});
+
+			it("should quote string values that look like numbers", async () => {
+				expect(Query({ "?code": "123" }, { format: "form" })).toBe("code='123'");
+				expect(Query({ "?sku": "00042" }, { format: "form" })).toBe("sku='00042'");
+				expect(Query({ "?price": "45.67" }, { format: "form" })).toBe("price='45.67'");
+			});
+
+			it("should preserve leading zeros with quotes", async () => {
+				expect(Query({ "?zip": "00123" }, { format: "form" })).toBe("zip='00123'");
+				expect(Query({ "?id": "007" }, { format: "form" })).toBe("id='007'");
+			});
+
+			it("should not quote non-numeric strings", async () => {
+				expect(Query({ "?name": "hello" }, { format: "form" })).toBe("name=hello");
+				expect(Query({ "?mixed": "123abc" }, { format: "form" })).toBe("mixed=123abc");
+				expect(Query({ "?partial": "12.34.56" }, { format: "form" })).toBe("partial=12.34.56");
+			});
+
+			it("should encode numeric values in range filters", async () => {
+				expect(Query({ "<=price": 100 }, { format: "form" })).toBe("price<=100");
+				expect(Query({ ">=price": 10.5 }, { format: "form" })).toBe("price>=10.5");
+				expect(Query({ ">=temp": -40 }, { format: "form" })).toBe("temp>=-40");
+			});
+
+			it("should not quote non-numeric string values in range filters", async () => {
+				expect(Query({ "<=date": "2024-01-01" }, { format: "form" })).toBe("date<=2024-01-01");
+				expect(Query({ ">=code": "A100" }, { format: "form" })).toBe("code>=A100");
+			});
+
+		});
+
+		describe("roundtrip", () => {
+
+			it("should roundtrip equality filters", async () => {
+				const original = "status=active";
+				expect(Query(Query(original), { format: "form" })).toBe(original);
+			});
+
+			it("should roundtrip range filters", async () => {
+				const decoded = Query("price>=10&price<=100");
+				const encoded = Query(decoded, { format: "form" });
+				expect(Query(encoded)).toEqual(decoded);
+			});
+
+			it("should roundtrip pagination", async () => {
+				const original = "@=0&#=25";
+				const decoded = Query(original);
+				const encoded = Query(decoded, { format: "form" });
+				expect(Query(encoded)).toEqual(decoded);
+			});
+
+			it("should roundtrip complex queries", async () => {
+				const original = Query("status=active&~name=corp&price>=100&^date=decreasing&@=0&#=25");
+				const encoded = Query(original, { format: "form" });
+				expect(Query(encoded)).toEqual(original);
+			});
+
+		});
+
+	});
+
+});
+
 describe("Expression()", () => {
 
 	describe("factory", () => {
@@ -1185,719 +2443,6 @@ describe("Expression()", () => {
 				});
 			});
 
-		});
-
-	});
-
-});
-
-describe("Query()", () => {
-
-	describe("validating factory", () => {
-
-		it("should create immutable query object", () => {
-			const query = Query({ name: "string" });
-			expect(() => {
-				(query as any).name = "other";
-			}).toThrow();
-		});
-
-		it("should create query with immutable nested objects", () => {
-			const query = Query({
-				user: { name: "string" }
-			});
-			expect(() => {
-				(query.user as any).email = "string";
-			}).toThrow();
-		});
-
-		it("should create query with immutable arrays", () => {
-			const query = Query({
-				items: [{ price: "number" }]
-			});
-			expect(() => {
-				(query.items as any).push({ name: "string" });
-			}).toThrow();
-		});
-
-		it("should create query with immutable dictionary values", () => {
-			const query = Query({
-				title: { en: "string", it: "string" }
-			});
-			expect(() => {
-				(query.title as any).de = "string";
-			}).toThrow();
-		});
-
-		it("should isolate result from input mutations", () => {
-			const input = { name: "string", price: "number" };
-			const query = Query(input);
-
-			// Mutating input shouldn't affect the frozen result
-			(input as any).email = "string";
-			delete (input as { name: string; price?: string }).price;
-
-			expect(query).toEqual({ name: "string", price: "number" });
-		});
-
-		it("should preserve query structure with simple keys", () => {
-			const input = { name: "string", age: "number" };
-			const query = Query(input);
-			expect(query).toEqual({ name: "string", age: "number" });
-		});
-
-		it("should preserve query structure with computed keys", () => {
-			const input = { "total=sum:items.price": "number" };
-			const query = Query(input);
-			expect(query).toEqual({ "total=sum:items.price": "number" });
-		});
-
-		it("should preserve query structure with nested arrays", () => {
-			const input = {
-				items: [
-					{ name: "string" },
-					{ ">=price": 10 }
-				]
-			};
-			const query = Query(input);
-			expect(query).toEqual(input);
-		});
-
-		it("should preserve nested query structure", () => {
-			const input = {
-				order: {
-					customer: "string",
-					items: [{ name: "string", price: "number" }]
-				}
-			};
-			const query = Query(input);
-			expect(query).toEqual(input);
-		});
-
-	});
-
-	describe("expression validation in query keys", () => {
-
-		describe("valid simple property keys", () => {
-
-			it("should accept valid identifier keys", () => {
-				expect(() => Query({ name: "string" })).not.toThrow();
-				expect(() => Query({ _private: "string" })).not.toThrow();
-				expect(() => Query({ $ref: "string" })).not.toThrow();
-				expect(() => Query({ value123: "number" })).not.toThrow();
-			});
-
-			it("should accept reserved keyword keys", () => {
-				expect(() => Query({ class: "string" })).not.toThrow();
-				expect(() => Query({ function: "string" })).not.toThrow();
-				expect(() => Query({ return: "string" })).not.toThrow();
-			});
-
-			it("should accept multiple simple keys", () => {
-				expect(() => Query({
-					name: "string",
-					age: "number",
-					active: "boolean"
-				})).not.toThrow();
-			});
-
-		});
-
-		describe("valid computed property keys", () => {
-
-			it("should accept path-only computed keys", () => {
-				expect(() => Query({ "userName=user.name": "string" })).not.toThrow();
-				expect(() => Query({ "firstName=['first-name']": "string" })).not.toThrow();
-			});
-
-			it("should accept transform computed keys", () => {
-				expect(() => Query({ "total=sum:items.price": "number" })).not.toThrow();
-				expect(() => Query({ "count=count:items": "number" })).not.toThrow();
-				expect(() => Query({ "avg=avg:scores": "number" })).not.toThrow();
-			});
-
-			it("should accept multiple transform computed keys", () => {
-				expect(() => Query({
-					"totalRounded=sum:round:prices": "number"
-				})).not.toThrow();
-				expect(() => Query({
-					"avgYear=avg:year:dates": "number"
-				})).not.toThrow();
-			});
-
-			it("should accept computed keys with bracket notation", () => {
-				expect(() => Query({
-					"contentType=['content-type']": "string"
-				})).not.toThrow();
-				expect(() => Query({
-					"id=data['@id']": "string"
-				})).not.toThrow();
-			});
-
-			it("should accept computed keys with empty path", () => {
-				expect(() => Query({ "total=sum:": "number" })).not.toThrow();
-				expect(() => Query({ "value=": "string" })).not.toThrow();
-			});
-
-			it("should accept mixed simple and computed keys", () => {
-				expect(() => Query({
-					name: "string",
-					"total=sum:items.price": "number",
-					age: "number"
-				})).not.toThrow();
-			});
-
-		});
-
-		describe("invalid property keys", () => {
-
-			it("should reject keys starting with digits", () => {
-				expect(() => Query({ "123abc": "string" })).toThrow();
-				expect(() => Query({ "9lives": "string" })).toThrow();
-			});
-
-			it("should reject keys with invalid characters in dot notation", () => {
-				expect(() => Query({ "first-name": "string" })).toThrow();
-				expect(() => Query({ "my property": "string" })).toThrow();
-				expect(() => Query({ "@id": "string" })).toThrow();
-			});
-
-			it("should reject invalid computed key syntax", () => {
-				expect(() => Query({ "name=user..name": "string" })).toThrow();
-				expect(() => Query({ "total=:items": "string" })).toThrow();
-				expect(() => Query({ "=value": "string" })).toThrow();
-			});
-
-		});
-
-	});
-
-	describe("expression validation in specs operators", () => {
-
-		describe("comparison operators", () => {
-
-			it("should validate expressions in < operator", () => {
-				expect(() => Query({ items: [{ "<price": 100 }] })).not.toThrow();
-				expect(() => Query({ items: [{ "<user.age": 30 }] })).not.toThrow();
-				expect(() => Query({ items: [{ "<['max-value']": 50 }] })).not.toThrow();
-			});
-
-			it("should accept Literal for < operator", () => {
-				expect(() => Query({ items: [{ "<count": 10 }] })).not.toThrow();
-				expect(() => Query({ items: [{ "<enabled": true }] })).not.toThrow();
-				expect(() => Query({ items: [{ "<name": "value" }] })).not.toThrow();
-			});
-
-			it("should validate expressions in > operator", () => {
-				expect(() => Query({ items: [{ ">price": 10 }] })).not.toThrow();
-				expect(() => Query({ items: [{ ">items.count": 5 }] })).not.toThrow();
-			});
-
-			it("should accept Literal for > operator", () => {
-				expect(() => Query({ items: [{ ">score": 50 }] })).not.toThrow();
-				expect(() => Query({ items: [{ ">active": false }] })).not.toThrow();
-				expect(() => Query({ items: [{ ">code": "ABC" }] })).not.toThrow();
-			});
-
-			it("should validate expressions in <= operator", () => {
-				expect(() => Query({ items: [{ "<=price": 100 }] })).not.toThrow();
-				expect(() => Query({ items: [{ "<=round:price": 100 }] })).not.toThrow();
-			});
-
-			it("should accept Literal for <= operator", () => {
-				expect(() => Query({ items: [{ "<=limit": 100 }] })).not.toThrow();
-				expect(() => Query({ items: [{ "<=flag": true }] })).not.toThrow();
-				expect(() => Query({ items: [{ "<=id": "xyz" }] })).not.toThrow();
-			});
-
-			it("should validate expressions in >= operator", () => {
-				expect(() => Query({ items: [{ ">=price": 10 }] })).not.toThrow();
-				expect(() => Query({ items: [{ ">=year:created": 2020 }] })).not.toThrow();
-			});
-
-			it("should accept Literal for >= operator", () => {
-				expect(() => Query({ items: [{ ">=min": 5 }] })).not.toThrow();
-				expect(() => Query({ items: [{ ">=valid": false }] })).not.toThrow();
-				expect(() => Query({ items: [{ ">=key": "start" }] })).not.toThrow();
-			});
-
-			it("should reject invalid expressions in comparison operators", () => {
-				expect(() => Query({ items: [{ "<first-name": "test" }] })).toThrow();
-				expect(() => Query({ items: [{ ">123abc": 10 }] })).toThrow();
-				expect(() => Query({ items: [{ "<=user..name": "test" }] })).toThrow();
-			});
-
-			it("should reject non-literal values for < operator", () => {
-				expect(() => Query({ items: [{ "<price": ["100"] }] } as any)).toThrow();
-				expect(() => Query({ items: [{ "<price": { max: 100 } }] } as any)).toThrow();
-			});
-
-			it("should reject non-literal values for > operator", () => {
-				expect(() => Query({ items: [{ ">price": ["10"] }] } as any)).toThrow();
-				expect(() => Query({ items: [{ ">price": { min: 10 } }] } as any)).toThrow();
-			});
-
-			it("should reject non-literal values for <= operator", () => {
-				expect(() => Query({ items: [{ "<=price": ["100"] }] } as any)).toThrow();
-				expect(() => Query({ items: [{ "<=price": { max: 100 } }] } as any)).toThrow();
-			});
-
-			it("should reject non-literal values for >= operator", () => {
-				expect(() => Query({ items: [{ ">=price": ["10"] }] } as any)).toThrow();
-				expect(() => Query({ items: [{ ">=price": { min: 10 } }] } as any)).toThrow();
-			});
-
-		});
-
-		describe("text search operator", () => {
-
-			it("should validate expressions in ~ operator", () => {
-				expect(() => Query({ items: [{ "~title": "search" }] })).not.toThrow();
-				expect(() => Query({ items: [{ "~user.bio": "keyword" }] })).not.toThrow();
-				expect(() => Query({ items: [{ "~['description']": "text" }] })).not.toThrow();
-			});
-
-			it("should reject invalid expressions in ~ operator", () => {
-				expect(() => Query({ items: [{ "~first-name": "search" }] })).toThrow();
-				expect(() => Query({ items: [{ "~@title": "search" }] })).toThrow();
-			});
-
-			it("should reject non-string values for ~ operator", () => {
-				expect(() => Query({ items: [{ "~title": 123 }] } as any)).toThrow();
-				expect(() => Query({ items: [{ "~title": true }] } as any)).toThrow();
-				expect(() => Query({ items: [{ "~title": ["search"] }] } as any)).toThrow();
-			});
-
-		});
-
-		describe("matching operators", () => {
-
-			it("should validate expressions in ? operator", () => {
-				expect(() => Query({ items: [{ "?category": ["A", "B"] }] })).not.toThrow();
-				expect(() => Query({ items: [{ "?user.role": "admin" }] })).not.toThrow();
-				expect(() => Query({ items: [{ "?['tag']": null }] })).not.toThrow();
-			});
-
-			it("should accept Options for ? operator", () => {
-				expect(() => Query({ items: [{ "?status": null }] })).not.toThrow();
-				expect(() => Query({ items: [{ "?count": 5 }] })).not.toThrow();
-				expect(() => Query({ items: [{ "?active": true }] })).not.toThrow();
-				expect(() => Query({ items: [{ "?name": "test" }] })).not.toThrow();
-				expect(() => Query({ items: [{ "?tags": ["a", "b"] }] })).not.toThrow();
-				expect(() => Query({ items: [{ "?tags": [null, "a"] }] })).not.toThrow();
-				expect(() => Query({ items: [{ "?label": { string: "text" } }] })).not.toThrow();
-				expect(() => Query({ items: [{ "?label": { strings: ["a", "b"] } }] })).not.toThrow();
-				expect(() => Query({ items: [{ "?items": [{ name: "A" }] }] })).not.toThrow();
-				expect(() => Query({ items: [{ "?items": [{ id: 1, name: "A" }] }] })).not.toThrow();
-			});
-
-			it("should validate expressions in ! operator", () => {
-				expect(() => Query({ items: [{ "!tags": ["red", "blue"] }] })).not.toThrow();
-				expect(() => Query({ items: [{ "!user.permissions": ["read"] }] })).not.toThrow();
-			});
-
-			it("should accept Options for ! operator", () => {
-				expect(() => Query({ items: [{ "!status": null }] })).not.toThrow();
-				expect(() => Query({ items: [{ "!count": 10 }] })).not.toThrow();
-				expect(() => Query({ items: [{ "!enabled": false }] })).not.toThrow();
-				expect(() => Query({ items: [{ "!type": "user" }] })).not.toThrow();
-				expect(() => Query({ items: [{ "!ids": [1, 2, 3] }] })).not.toThrow();
-				expect(() => Query({ items: [{ "!ids": [null, 5] }] })).not.toThrow();
-				expect(() => Query({ items: [{ "!title": { string: "name" } }] })).not.toThrow();
-				expect(() => Query({ items: [{ "!title": { strings: ["x", "y"] } }] })).not.toThrow();
-				expect(() => Query({ items: [{ "!products": [{ sku: "ABC" }] }] })).not.toThrow();
-				expect(() => Query({ items: [{ "!products": [{ id: 1, sku: "ABC" }] }] })).not.toThrow();
-			});
-
-			it("should reject invalid expressions in matching operators", () => {
-				expect(() => Query({ items: [{ "?first-name": ["test"] }] })).toThrow();
-				expect(() => Query({ items: [{ "!@type": ["test"] }] })).toThrow();
-			});
-
-		});
-
-		describe("ordering operators", () => {
-
-			it("should validate expressions in $ operator", () => {
-				expect(() => Query({ items: [{ "$category": ["A", "B"] }] })).not.toThrow();
-				expect(() => Query({ items: [{ "$user.role": "admin" }] })).not.toThrow();
-			});
-
-			it("should accept Options for $ operator", () => {
-				expect(() => Query({ items: [{ "$priority": null }] })).not.toThrow();
-				expect(() => Query({ items: [{ "$index": 0 }] })).not.toThrow();
-				expect(() => Query({ items: [{ "$visible": true }] })).not.toThrow();
-				expect(() => Query({ items: [{ "$type": "primary" }] })).not.toThrow();
-				expect(() => Query({ items: [{ "$status": ["new", "active"] }] })).not.toThrow();
-				expect(() => Query({ items: [{ "$status": [null, "pending"] }] })).not.toThrow();
-				expect(() => Query({ items: [{ "$name": { string: "title" } }] })).not.toThrow();
-				expect(() => Query({ items: [{ "$name": { strings: ["a", "b"] } }] })).not.toThrow();
-				expect(() => Query({ items: [{ "$categories": [{ code: "A" }] }] })).not.toThrow();
-				expect(() => Query({ items: [{ "$categories": [{ id: 1, code: "A" }] }] })).not.toThrow();
-			});
-
-			it("should validate expressions in ^ operator", () => {
-				expect(() => Query({ items: [{ "^name": "asc" }] })).not.toThrow();
-				expect(() => Query({ items: [{ "^price": 1 }] })).not.toThrow();
-				expect(() => Query({ items: [{ "^created": -1 }] })).not.toThrow();
-				expect(() => Query({ items: [{ "^user.age": "desc" }] })).not.toThrow();
-				expect(() => Query({ items: [{ "^rating": "ascending" }] })).not.toThrow();
-				expect(() => Query({ items: [{ "^score": "descending" }] })).not.toThrow();
-			});
-
-			it("should reject invalid expressions in ordering operators", () => {
-				expect(() => Query({ items: [{ "$first-name": ["test"] }] })).toThrow();
-				expect(() => Query({ items: [{ "^@order": 1 }] })).toThrow();
-			});
-
-			it("should reject invalid values for ^ operator", () => {
-				expect(() => Query({ items: [{ "^name": "invalid" }] } as any)).toThrow();
-				expect(() => Query({ items: [{ "^price": true }] } as any)).toThrow();
-				expect(() => Query({ items: [{ "^created": ["asc"] }] } as any)).toThrow();
-			});
-
-		});
-
-		describe("pagination operators", () => {
-
-			it("should accept pagination operators without expressions", () => {
-				expect(() => Query({ items: [{ "@": 10 }] })).not.toThrow();
-				expect(() => Query({ items: [{ "#": 20 }] })).not.toThrow();
-				expect(() => Query({ items: [{ "@": 0, "#": 50 }] })).not.toThrow();
-			});
-
-			it("should reject non-number values for @ operator", () => {
-				expect(() => Query({ items: [{ "@": "10" }] })).toThrow();
-				expect(() => Query({ items: [{ "@": true }] })).toThrow();
-			});
-
-			it("should reject non-number values for # operator", () => {
-				expect(() => Query({ items: [{ "#": "20" }] })).toThrow();
-				expect(() => Query({ items: [{ "#": false }] })).toThrow();
-			});
-
-		});
-
-		describe("complex specs with multiple operators", () => {
-
-			it("should validate expressions in combined operators", () => {
-				expect(() => Query({
-					items: [{
-						">=price": 10,
-						"<=price": 100,
-						"~title": "search",
-						"?category": ["A", "B"],
-						"^name": "asc",
-						"@": 0,
-						"#": 20
-					}]
-				})).not.toThrow();
-			});
-
-			it("should validate expressions with transforms in specs", () => {
-				expect(() => Query({
-					items: [{
-						">=sum:items.price": 100,
-						"<=avg:scores": 90,
-						"^round:rating": 1
-					}]
-				})).not.toThrow();
-			});
-
-		});
-
-	});
-
-	describe("recursive validation", () => {
-
-		describe("nested query objects", () => {
-
-			it("should validate simple nested queries", () => {
-				expect(() => Query({
-					user: [{ name: "string", email: "string" }]
-				})).not.toThrow();
-			});
-
-			it("should validate deeply nested queries", () => {
-				expect(() => Query({
-					order: [{
-						customer: [{
-							address: [{ city: "string", country: "string" }]
-						}]
-					}]
-				})).not.toThrow();
-			});
-
-			it("should validate nested queries with computed keys", () => {
-				expect(() => Query({
-					items: [{
-						"total=sum:price": "number",
-						"count=count:": "number"
-					}]
-				})).not.toThrow();
-			});
-
-			it("should reject invalid expressions in nested queries", () => {
-				expect(() => Query({
-					user: [{ "first-name": "string" }]
-				})).toThrow();
-			});
-
-		});
-
-		describe("nested specs objects", () => {
-
-			it("should validate simple nested specs", () => {
-				expect(() => Query({
-					items: [{ ">=price": 10, "<=price": 100 }]
-				})).not.toThrow();
-			});
-
-			it("should validate deeply nested specs", () => {
-				expect(() => Query({
-					orders: [{
-						items: [{
-							">=price": 10,
-							"^name": "asc"
-						}]
-					}]
-				})).not.toThrow();
-			});
-
-			it("should reject invalid expressions in nested specs", () => {
-				expect(() => Query({
-					items: [{ ">=first-name": "test" }]
-				})).toThrow();
-			});
-
-		});
-
-		describe("mixed query and specs in arrays", () => {
-
-			it("should validate mixed query and specs", () => {
-				expect(() => Query({
-					items: [
-						{ name: "string", price: "number" },
-						{ ">=price": 10, "^name": "asc" }
-					]
-				})).not.toThrow();
-			});
-
-			it("should validate multiple levels of mixing", () => {
-				expect(() => Query({
-					orders: [
-						{ customer: "string" },
-						{ ">=total": 100 },
-						{
-							items: [
-								{ name: "string" },
-								{ ">=price": 10 }
-							]
-						}
-					]
-				})).not.toThrow();
-			});
-
-		});
-
-		describe("deep recursive structures", () => {
-
-			it("should validate 5 levels of nesting", () => {
-				expect(() => Query({
-					level1: [{
-						level2: [{
-							level3: [{
-								level4: [{
-									level5: [{ name: "string" }]
-								}]
-							}]
-						}]
-					}]
-				})).not.toThrow();
-			});
-
-			it("should validate expressions at all nesting levels", () => {
-				expect(() => Query({
-					"total=sum:level1.value": "number",
-					level1: [{
-						"avg=avg:level2.value": "number",
-						level2: [{
-							"count=count:level3": "number",
-							level3: [{ name: "string" }]
-						}]
-					}]
-				})).not.toThrow();
-			});
-
-			it("should validate specs at all nesting levels", () => {
-				expect(() => Query({
-					level1: [
-						{ ">=value": 10 },
-						{
-							level2: [
-								{ "^name": "asc" },
-								{
-									level3: [{ "~title": "search" }]
-								}
-							]
-						}
-					]
-				})).not.toThrow();
-			});
-
-			it("should reject invalid expressions at any nesting level", () => {
-				expect(() => Query({
-					level1: [{
-						level2: [{
-							level3: [{ "first-name": "string" }]
-						}]
-					}]
-				})).toThrow();
-
-				expect(() => Query({
-					level1: [{
-						level2: [{ ">=first-name": "test" }]
-					}]
-				})).toThrow();
-			});
-
-		});
-
-	});
-
-	describe("value type validation", () => {
-
-		describe("literal values", () => {
-
-			it("should accept boolean values", () => {
-				expect(() => Query({ active: true })).not.toThrow();
-				expect(() => Query({ enabled: false })).not.toThrow();
-			});
-
-			it("should accept number values", () => {
-				expect(() => Query({ age: 25 })).not.toThrow();
-				expect(() => Query({ price: 99.99 })).not.toThrow();
-				expect(() => Query({ count: 0 })).not.toThrow();
-			});
-
-			it("should accept string values", () => {
-				expect(() => Query({ name: "test" })).not.toThrow();
-				expect(() => Query({ description: "" })).not.toThrow();
-			});
-
-		});
-
-		describe("dictionary values", () => {
-
-			it("should accept dictionary with string values", () => {
-				expect(() => Query({
-					title: { en: "English", it: "Italiano" }
-				})).not.toThrow();
-			});
-
-			it("should accept dictionary with array values", () => {
-				expect(() => Query({
-					tags: { en: ["red", "blue"], it: ["rosso", "blu"] }
-				})).not.toThrow();
-			});
-
-			it("should accept nested dictionary structures", () => {
-				expect(() => Query({
-					content: [{
-						title: { en: "Title", it: "Titolo" }
-					}]
-				})).not.toThrow();
-			});
-
-		});
-
-		describe("resource values", () => {
-
-			it("should accept nested resource objects", () => {
-				expect(() => Query({
-					user: { name: "string", age: "number" }
-				})).not.toThrow();
-			});
-
-			it("should accept deeply nested resources", () => {
-				expect(() => Query({
-					order: {
-						customer: {
-							address: {
-								city: "string",
-								country: "string"
-							}
-						}
-					}
-				})).not.toThrow();
-			});
-
-		});
-
-		describe("array values", () => {
-
-			it("should accept arrays with query objects", () => {
-				expect(() => Query({
-					items: [{ name: "string", price: "number" }]
-				})).not.toThrow();
-			});
-
-			it("should accept arrays with specs objects", () => {
-				expect(() => Query({
-					items: [{ ">=price": 10, "^name": "asc" }]
-				})).not.toThrow();
-			});
-
-			it("should accept arrays with mixed query and specs", () => {
-				expect(() => Query({
-					items: [
-						{ name: "string" },
-						{ ">=price": 10 }
-					]
-				})).not.toThrow();
-			});
-
-			it("should accept empty arrays", () => {
-				expect(() => Query({ items: [] })).not.toThrow();
-			});
-
-		});
-
-	});
-
-	describe("edge cases", () => {
-
-		it("should accept empty query object", () => {
-			expect(() => Query({})).not.toThrow();
-		});
-
-		it("should accept query with single property", () => {
-			expect(() => Query({ name: "string" })).not.toThrow();
-		});
-
-		it("should accept query with many properties", () => {
-			expect(() => Query({
-				prop1: "string",
-				prop2: "number",
-				prop3: "boolean",
-				prop4: { en: "test" },
-				prop5: [{ name: "string" }]
-			})).not.toThrow();
-		});
-
-		it("should accept complex real-world query", () => {
-			expect(() => Query({
-				name: "string",
-				"total=sum:items.price": "number",
-				items: [
-					{ name: "string", price: "number" },
-					{ ">=price": 10, "<=price": 100, "^name": "asc", "@": 0, "#": 20 }
-				],
-				customer: [{
-					name: "string",
-					address: [{ city: "string", country: "string" }]
-				}]
-			})).not.toThrow();
 		});
 
 	});

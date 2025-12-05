@@ -23,8 +23,8 @@
  * @module index
  */
 
-import { immutable } from "@metreeca/core/nested";
 import { Tag } from "@metreeca/core/network";
+import { validate } from "./validators/index.js";
 import { $resource } from "./validators/resource.js";
 
 
@@ -117,13 +117,5 @@ export type Resource = {
  * @throws {TypeError} If the resource structure violates {@link Resource} constraints
  */
 export function Resource<T extends Resource>(resource: T): T {
-
-	const error = $resource(resource);
-
-	if ( error ) {
-		throw new TypeError(error);
-	}
-
-	return immutable(resource);
-
+	return validate(resource, $resource);
 }

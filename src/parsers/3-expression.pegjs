@@ -1,3 +1,5 @@
+import {Identifier} from "./1-identifier.js"
+
 {
 
   function decodeEscapes(chars) {
@@ -12,14 +14,7 @@
 
 Expression
   = name:NamePrefix? pipe:Transform* path:Path {
-      const result = {
-        pipe,
-        path
-      };
-      if (name !== null && name !== undefined) {
-        result.name = name;
-      }
-      return result;
+      return name ? { name, pipe, path } : { pipe, path };
     }
 
 NamePrefix
@@ -30,10 +25,7 @@ Transform
 
 Path
   = prefix:Prefix? first:FirstProperty? rest:PropertyAccessor* {
-      const properties = [];
-      if (first !== undefined && first !== null) properties.push(first);
-      if (rest) properties.push(...rest);
-      return properties;
+      return [first, ...rest].filter(p => p != null);
     }
 
 Prefix
@@ -57,5 +49,3 @@ SingleQuotedChar
   / "\\\\" { return "\\\\"; }
   / [^'\\] { return text(); }
 
-Identifier
-  = [a-zA-Z_$][a-zA-Z0-9_$]* { return text(); }

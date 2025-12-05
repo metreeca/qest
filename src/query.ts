@@ -19,14 +19,19 @@
  *
  * {@link Query} objects combine filtering, sorting and pagination criteria (using {@link Specs} constraints) and how
  * to shape the results (using {@link Query} projections).
+ *
  * @module
+ *
+ * @see {@link ./query.md | Query String Format} for URL-encoded query string syntax
  */
 
 import { isArray } from "@metreeca/core";
 import { error } from "@metreeca/core/report";
 import { immutable } from "../../Core/src/common/nested.js";
 import { Dictionary, Literal, Value } from "./index.js";
-import * as parser from "./parsers/expression.js";
+import * as expressionParser from "./parsers/3-expression.js";
+import * as queryParser from "./parsers/4-query.js";
+import { validate } from "./validators/index.js";
 import { $query } from "./validators/query.js";
 
 
@@ -354,9 +359,9 @@ export type Options =
 
 export function Query(query: Query): Query;
 export function Query(query: string): Query;
-export function Query(query: Query, opts: { format: "string" }): string;
+export function Query(query: Query, opts: { format: "form" }): string;
 
-export function Query(query: Query | string, opts?: { format: "string" }): Query | string {
+export function Query(query: Query | string, opts?: { format: "form" }): Query | string {
 
 	return typeof query === "string" ? decode(query)
 		: typeof query === "object" && opts !== undefined ? encode(query, opts)
@@ -365,23 +370,59 @@ export function Query(query: Query | string, opts?: { format: "string" }): Query
 
 
 	function create(query: Query): Query {
-
-		const error = $query(query);
-
-		if ( error ) {
-			throw new TypeError(error);
-		}
-
-		return immutable(query);
-
+		return validate(query, $query);
 	}
 
 	function decode(query: string): Query {
-		throw new Error(";( to be implemented"); // !!!
+		try {
+
+			return immutable(queryParser.parse(query));
+
+		} catch ( e ) {
+
+			return error(new SyntaxError(`invalid query: ${e instanceof Error ? e.message : e}`));
+
+		}
 	}
 
-	function encode(query: Query, opts: { format: "string" }): string {
-		throw new Error(";( to be implemented"); // !!!
+	function encode(query: Query, opts: { format: "form" }): string {
+
+		const isNumericString = (value: string): boolean =>
+			/^-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?$/.test(value);
+
+		const encodeValue = (value: unknown): string => {
+			return value === null ? ""
+				: typeof value === "number" ? String(value)
+					: typeof value === "string" && isNumericString(value) ? `'${value}'`
+						: typeof value === "string" ? encodeURIComponent(value)
+							: String(value);
+		};
+
+		const encodeDirection = (value: number): string => {
+			return value === 1 ? "increasing"
+				: value === -1 ? "decreasing"
+					: String(value);
+		};
+
+		const encodeEquality = (expr: string, value: unknown): string[] => {
+			return Array.isArray(value) && value.length === 0 ? [`${expr}=*`]
+				: Array.isArray(value) ? value.map(v => `${expr}=${encodeValue(v)}`)
+					: [`${expr}=${encodeValue(value)}`];
+		};
+
+		const pairs: string[] = Object.entries(query).flatMap(([key, value]) =>
+
+			key === "@" || key === "#" ? [`${key}=${value}`]
+				: key.startsWith("^") ? [`^${key.slice(1)}=${encodeDirection(value as number)}`]
+					: key.startsWith("~") ? [`~${key.slice(1)}=${encodeValue(value)}`]
+						: key.startsWith("<=") ? [`${key.slice(2)}<=${encodeValue(value)}`]
+							: key.startsWith(">=") ? [`${key.slice(2)}>=${encodeValue(value)}`]
+								: key.startsWith("?") ? encodeEquality(key.slice(1), value)
+									: []
+		);
+
+		return pairs.join("&");
+
 	}
 
 }
@@ -438,7 +479,7 @@ export function Expression(expression: Expression | string, opts?: { format: "st
 				: error(new TypeError("invalid Expression() arguments"));
 
 
-	function create(expression: Expression): Expression {
+	function create(expression: Expression): Expression { // !!! as a validator
 
 		if ( typeof expression !== "object" || expression === null ) {
 			return error(new TypeError("expression must be an object"));
@@ -474,11 +515,11 @@ export function Expression(expression: Expression | string, opts?: { format: "st
 	function decode(expression: string): Expression {
 		try {
 
-			return parser.parse(expression);
+			return immutable(expressionParser.parse(expression));
 
 		} catch ( e ) {
 
-			return error(new SyntaxError(`invalid path <${expression}>`));
+			return error(new SyntaxError(`invalid expression: ${e instanceof Error ? e.message : e}`));
 
 		}
 	}
