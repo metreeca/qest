@@ -18,10 +18,10 @@ import { isObject } from "@metreeca/core";
 import { $field, $property, $values } from "./index.js";
 
 
-export function $resource(value: object): string {
+export function $patch(value: object): string {
 	return !isObject(value) ? `invalid object type <${typeof value}>` : Object.entries(value)
 		.map(([key, value]) =>
-			$property(key) || $field(key, $values(value))
+			$property(key) || $field(key, value === null ? "" : $values(value))
 		)
 		.filter(Boolean)
 		.join("\n");

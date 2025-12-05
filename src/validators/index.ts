@@ -14,8 +14,33 @@
  * limitations under the License.
  */
 
-import { isArray, isObject, isString } from "@metreeca/core";
+import { isArray, isObject, isScalar, isString } from "@metreeca/core";
 import { isTag } from "@metreeca/core/network";
+import { $resource } from "./resource.js";
+
+export function $values(value: unknown): string {
+	return isScalar(value) ? ""
+		: isArray(value) ? $array(value)
+			: isObject(value) ? $union(value, {
+					"string": $string,
+					"strings": $strings,
+					"resource": $resource
+				})
+				: `invalid value type <${typeof value}>`;
+}
+
+export function $array(value: readonly unknown[]): string {
+	return value
+		.map($value)
+		.filter(Boolean)
+		.join(", ");
+}
+
+export function $value(value: unknown): string {
+	return isScalar(value) ? ""
+		: isObject(value) ? $resource(value)
+			: `invalid value type <${typeof value}>`;
+}
 
 
 export function $field(key: string, error: string): string {

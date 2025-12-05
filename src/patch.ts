@@ -23,7 +23,9 @@
  * @module
  */
 
+import { immutable } from "../../Core/src/common/nested.js";
 import { Values } from "./index.js";
+import { $patch } from "./validators/patch.js";
 
 /**
  * Resource patch for partial updates.
@@ -46,5 +48,34 @@ import { Values } from "./index.js";
 export type Patch = {
 
 	readonly [K in string]: null | Values
+
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * Creates a validated, immutable {@link Patch} object.
+ *
+ * Validates the patch structure against {@link Patch} type constraints, recursively checking
+ * all nested structures, and returns a deeply frozen copy that cannot be modified.
+ *
+ * @typeParam T The specific patch type
+ *
+ * @param patch The patch object to validate and freeze
+ *
+ * @returns The validated, immutable patch
+ *
+ * @throws {TypeError} If the patch structure violates {@link Patch} constraints
+ */
+export function Patch<T extends Patch>(patch: T): T {
+
+	const error = $patch(patch);
+
+	if ( error ) {
+		throw new TypeError(error);
+	}
+
+	return immutable(patch);
 
 }

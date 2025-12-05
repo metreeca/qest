@@ -4,7 +4,8 @@
       "Bash(cat:*)",
       "mcp__ide__getDiagnostics",
       "Skill(typescript-developer)",
-      "Skill(typescript-tester)"
+      "Skill(typescript-tester)",
+      "Bash(npm run check:*)"
     ],
     "deny": [],
     "ask": []
