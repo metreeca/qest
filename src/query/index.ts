@@ -23,8 +23,9 @@
  * @module
  */
 
-import { Dictionary, Literal, Value } from "../index.js";
-
+import { Identifier } from "@metreeca/core";
+import { Range } from "@metreeca/core/network";
+import { Dictionary, Literal, Value } from "../value.js";
 
 export * from "./query.js";
 export * from "./specs.js";
@@ -159,10 +160,11 @@ export const Transform: {
  */
 export type Query = {
 
-	readonly [K in string | `${string}=${string}`]:
+	readonly [property in Identifier | `${Identifier}=${string}`]:
 
 	| Value
-	| Dictionary
+	| { readonly [range: Range]: string }
+	| { readonly [range: Range]: readonly string[] }
 	| readonly (Query | Specs)[]
 
 }
@@ -269,14 +271,10 @@ export type Specs = Partial<{
  *
  * **Path Notation**:
  *
- * Paths use a property-navigation subset of [JSONPath](https://datatracker.ietf.org/doc/rfc9535/)
- * (RFC 9535) for accessing object members. The leading `$` root indicator is **optional** and stripped
- * when present, unlike standard JSONPath which requires it:
+ * Paths use dot notation for accessing nested object members:
  *
- * - Dot notation: `user.profile.name` (identifiers: `[a-zA-Z_$][a-zA-Z0-9_$]*`)
- * - Bracket notation: `['first-name']`, `['@id']` (any string, single quotes only)
- * - Mixed notation: `user['first-name'].city`, `['@context'].items`
- * - JSONPath root: `$` or `$.property` (root indicator is stripped)
+ * - Dot notation: `user.profile.name` (identifiers: `[$_\p{ID_Start}][$\p{ID_Continue}]*`)
+ * - Leading dot: `.user.name` (leading `.` is stripped)
  * - Empty path: `""` or `.` → `{ pipe: [], path: [] }`
  *
  * **Transforms**:
@@ -317,10 +315,10 @@ export type Specs = Partial<{
  */
 export type Expression = {
 
-	readonly name?: string,
+	readonly name?: Identifier,
 
-	readonly pipe: readonly string[]
-	readonly path: readonly string[]
+	readonly pipe: readonly Identifier[]
+	readonly path: readonly Identifier[]
 
 }
 

@@ -23,9 +23,7 @@
  * @module
  */
 
-import { isObject } from "../../Core/src/index.js";
-import { Values } from "./index.js";
-import { $field, $identifier, $values, validate } from "./model.js";
+import { Values } from "./value.js";
 
 /**
  * Resource patch for partial updates.
@@ -49,37 +47,4 @@ export type Patch = {
 
 	readonly [K in string]: null | Values
 
-}
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-/**
- * Creates a validated, immutable {@link Patch} object.
- *
- * Validates the patch structure against {@link Patch} type constraints, recursively checking
- * all nested structures, and returns a deeply frozen copy that cannot be modified.
- *
- * @typeParam T The specific patch type
- *
- * @param patch The patch object to validate and freeze
- *
- * @returns The validated, immutable patch
- *
- * @throws {TypeError} If the patch structure violates {@link Patch} constraints
- */
-export function Patch<T extends Patch>(patch: T): T {
-	return validate(patch, $patch);
-}
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-function $patch(value: object): string {
-	return !isObject(value) ? `invalid object type <${typeof value}>` : Object.entries(value)
-		.map(([key, value]) =>
-			$identifier(key) || $field(key, value === null ? "" : $values(value))
-		)
-		.filter(Boolean)
-		.join("\n");
 }

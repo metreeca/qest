@@ -9,10 +9,6 @@
 Provides a type-safe data model for linked data resources represented using a controlled subset of framed JSON-LD,
 ensuring compatibility with standard processors
 
-> while providing:
-
-- Validated Language tags for internationalization (BCP47)
-- Embedded or referenced resource relationships
 
 This serialization format simplifies front-end development by converting linked data descriptions
 to/from idiomatic JSON objects structured according to the conventions a JavaScript developer would
