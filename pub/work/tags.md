@@ -17,7 +17,6 @@ How to represent non-localized content in JSON-LD language maps without using `@
 | `@none` | JSON-LD keyword | No language tag metadata      | Plain literal    |
 | `und`   | BCP 47 tag      | Language undetermined/unknown | `"value"@und`    |
 | `zxx`   | BCP 47 tag      | No linguistic content         | `"value"@zxx`    |
-| `""`    | ❌ Invalid       | Not spec-compliant            | Validation error |
 
 ## Key Distinctions
 

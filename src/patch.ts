@@ -23,9 +23,9 @@
  * @module
  */
 
+import { isObject } from "../../Core/src/index.js";
 import { Values } from "./index.js";
-import { validate } from "./validators/index.js";
-import { $patch } from "./validators/patch.js";
+import { $field, $identifier, $values, validate } from "./model.js";
 
 /**
  * Resource patch for partial updates.
@@ -70,4 +70,16 @@ export type Patch = {
  */
 export function Patch<T extends Patch>(patch: T): T {
 	return validate(patch, $patch);
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+function $patch(value: object): string {
+	return !isObject(value) ? `invalid object type <${typeof value}>` : Object.entries(value)
+		.map(([key, value]) =>
+			$identifier(key) || $field(key, value === null ? "" : $values(value))
+		)
+		.filter(Boolean)
+		.join("\n");
 }

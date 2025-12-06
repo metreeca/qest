@@ -23,21 +23,10 @@
  * @module index
  */
 
-import { Tag } from "@metreeca/core/network";
-import { validate } from "./validators/index.js";
-import { $resource } from "./validators/resource.js";
+import { Identifier } from "@metreeca/core";
+import { IRI, Tag } from "@metreeca/core/network";
+import { $resource, validate } from "./model.js";
 
-
-/**
- * Pattern for valid identifier names.
- *
- * Matches JavaScript identifier syntax: starts with letter, underscore, or dollar sign,
- * followed by any combination of letters, digits, underscores, or dollar signs.
- */
-export const Identifier = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
  * Model value.
@@ -71,44 +60,43 @@ export type Literal =
 	| string
 
 /**
- * Language-tagged dictionary for internationalized text values.
+ * Language-tagged map for internationalized text values.
  *
- * Maps language {@link Tag | tag} to localized text values for representing multilingual content.
+ * Maps language {@link Tag | tags} to localized text, supporting two cardinality patterns:
  *
- * @typeParam T The text value type
+ * - **single-valued**: one text value per language
+ * - **multi-valued**: multiple text values per language
  *
  * @see {@link https://www.rfc-editor.org/rfc/rfc5646.html | RFC 5646 - Tags for Identifying Languages}
  */
-export type Dictionary<T extends string | readonly string[] = string | readonly string[]> = {
-
-	readonly [tag: Tag]: T
-
-}
+export type Dictionary =
+	| { readonly [tag: Tag]: string }
+	| { readonly [tag: Tag]: readonly string[] }
 
 
 /**
- * Resource object.
+ * Linked data resource.
  *
- * Represents a resource as a collection of properties mapped to values, following familiar
- * JSON object conventions. Each property can hold literals, nested resources, arrays, or
- * language-tagged dictionaries.
+ * Represents a resource in one of two forms:
+ *
+ * - **reference**: an {@link IRI} string identifying a resource
+ * - **description**: a property map where each property holds literals, nested resources, arrays,
+ *   or language-tagged {@link Dictionary | dictionaries}; may include an {@link IRI} property identifying the resource
  *
  * @remarks
  *
- * Resources are immutable and follow these rules:
+ * Resource descriptions are immutable and follow these rules:
  *
- * - Property names must match the {@link Identifier} pattern
- * - Property values must be non-null literals, resources, or arrays (no nested arrays)
+ * - Property names must be valid ECMAScript {@link Identifier | identifiers}
+ * - Property values must be non-`null` literals, resources, or arrays (no nested arrays)
  * - Arrays represent sets: duplicate values are ignored and ordering is immaterial
  * - Empty arrays are ignored during processing
  *
- * @see {@link https://datatracker.ietf.org/doc/rfc9535/ | RFC 9535 - JSONPath Query Expressions}
+ * @see {@link https://www.w3.org/TR/json-ld11/ | JSON-LD 1.1 - A JSON-based Serialization for Linked Data}
  */
-export type Resource = {
-
-	readonly [K in string]: Values
-
-}
+export type Resource =
+	| IRI
+	| { readonly [property in Identifier]: Values }
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

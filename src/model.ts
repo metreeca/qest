@@ -16,9 +16,23 @@
 
 import { isArray, isObject, isScalar, isString } from "@metreeca/core";
 import { isTag } from "@metreeca/core/network";
-import { immutable } from "../../../Core/src/common/nested.js";
-import { Identifier } from "../index.js";
-import { $resource } from "./resource.js";
+import { immutable } from "../../Core/src/common/nested.js";
+
+
+/**
+ * Pattern for valid identifier names.
+ *
+ * Matches ECMAScript IdentifierName syntax using Unicode property escapes:
+ *
+ * - starts with ID_Start, underscore, or dollar sign
+ * - followed by ID_Continue or dollar sign characters
+ *
+ * @see {@link https://tc39.es/ecma262/#prod-IdentifierName | ECMAScript - IdentifierName}
+ */
+export const IdentifierPattern = /^[\p{ID_Start}_$][\p{ID_Continue}$]*$/u;
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export function validate<T>(value: T, validator: (value: T) => string) {
 
@@ -36,7 +50,7 @@ export function validate<T>(value: T, validator: (value: T) => string) {
 
 export function $identifier(value: string): string {
 	return !isString(value) ? `invalid property name type <${typeof value}>`
-		: !Identifier.test(value) ? `invalid property name <${value}>`
+		: !IdentifierPattern.test(value) ? `invalid property name <${value}>`
 			: "";
 }
 
@@ -65,6 +79,15 @@ export function $value(value: unknown): string {
 			: `invalid value type <${typeof value}>`;
 }
 
+
+export function $resource(value: object): string {
+	return !isObject(value) ? `invalid object type <${typeof value}>` : Object.entries(value)
+		.map(([key, value]) =>
+			$identifier(key) || $field(key, $values(value))
+		)
+		.filter(Boolean)
+		.join("\n");
+}
 
 export function $field(key: string, error: string): string {
 	return error ? `${key}: ${error}` : "";

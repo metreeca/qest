@@ -25,7 +25,7 @@
   "sideEffects": false,
   "exports": {
     ".": "./dist/index.js",
-    "./query": "./dist/query.js",
+    "./query": "./dist/query/index.js",
     "./patch": "./dist/patch.js"
   },
   "files": [
@@ -37,9 +37,9 @@
     "node": ">=22.0.0"
   },
   "scripts": {
-    "clean": "rm -rf dist docs node_modules src/parsers/*.js src/parsers/*.d.ts",
+    "clean": "rm -rf dist docs node_modules src/query/parsers/*.js src/query/parsers/*.d.ts",
     "setup": "npm install && npm audit fix",
-    "peggy": "for parser in src/parsers/*.pegjs; do npx peggy --dts --format es $parser; done",
+    "peggy": "for parser in src/query/parsers/*.pegjs; do npx peggy --dts --format es $parser; done",
     "build": "rm -rf dist docs && npm run peggy && tsc && typedoc",
     "check": "npx vitest run",
     "watch": "npx tsc --watch",
