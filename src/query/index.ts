@@ -27,7 +27,6 @@ import { Identifier } from "@metreeca/core";
 import { Range } from "@metreeca/core/network";
 import { Dictionary, Literal, Value } from "../value.js";
 
-export * from "./query.js";
 export * from "./specs.js";
 export * from "./expression.js";
 

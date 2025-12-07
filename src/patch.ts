@@ -15,10 +15,98 @@
  */
 
 /**
- * Data model for partial resource updates.
+ * Partial update operations for incremental resource modifications.
  *
- * Defines a patch format for incremental resource modifications where properties can be
- * updated with new values or deleted using `null` (for instance, for HTTP PATCH operations).
+ * Defines partial update specifications for linked data {@link Resource | resources}. Properties can be set to
+ * new {@link Values | values} or deleted using `null`; unlisted properties remain unchanged. This enables efficient
+ * incremental updates, for instance using HTTP PATCH operations.
+ *
+ * **Updating Properties**
+ *
+ * Set properties to new values by including them in the patch:
+ *
+ * ```typescript
+ * const patch: Patch = {
+ *   name: "Bob",                    // update single value
+ *   tags: ["featured", "urgent"],   // update array
+ *   email: "bob@example.org"        // update another value
+ * };
+ * ```
+ *
+ * **Deleting Properties**
+ *
+ * Remove properties by setting them to `null` or an empty array:
+ *
+ * ```typescript
+ * const patch: Patch = {
+ *   deprecated: null,     // delete using null
+ *   tags: []              // delete using empty array (equivalent to null)
+ * };
+ * ```
+ *
+ * **Important**: Empty arrays are treated as property deletions, following set semantics where an empty set
+ * is equivalent to absence.
+ *
+ * **Combined Updates**
+ *
+ * Patches can mix updates and deletions:
+ *
+ * ```typescript
+ * const patch: Patch = {
+ *   name: "Charlie",      // update
+ *   email: null,          // delete
+ *   active: true,         // update
+ *   tags: []              // delete
+ * };
+ * ```
+ *
+ * **Linked Resources**
+ *
+ * References to linked resources can use either IRI strings or nested descriptions, following the same
+ * {@link Resource} model as in regular resource data.
+ *
+ * **Important**:
+ *
+ * - Nested resource descriptions containing properties beyond the resource identifier are only accepted if
+ *   explicitly declared as embedded in the application-defined data model
+ * - The resource identifier (usually named `id`) holds the resource's unique IRI and is mapped to `@id`
+ *   in the application-defined JSON-LD `@context`
+ * - Non-embedded nested resources with additional properties will be rejected during validation
+ *
+ * ```typescript
+ * // Using IRI references (always valid)
+ *
+ * const patch: Patch = {
+ *   author: "https://example.org/users/123",
+ *   publisher: "https://example.org/orgs/acme"
+ * };
+ *
+ * // Using nested descriptions with only the identifier property (always valid)
+ *
+ * const patch: Patch = {
+ *   author: {
+ *     id: "https://example.org/users/123"
+ *   },
+ *   publisher: {
+ *     id: "https://example.org/orgs/acme"
+ *   }
+ * };
+ *
+ * // Using nested descriptions with additional properties (must be declared as embedded)
+ *
+ * const patch: Patch = {
+ *   author: {
+ *     id: "https://example.org/users/123",
+ *     name: "Bob"                          // requires 'author' declared as embedded
+ *   },
+ *   publisher: {
+ *     id: "https://example.org/orgs/acme",
+ *     name: "Acme Corp"                    // requires 'publisher' declared as embedded
+ *   }
+ * };
+ * ```
+ *
+ * @see {@link https://datatracker.ietf.org/doc/html/rfc5789 RFC 5789 - HTTP PATCH Method}
  *
  * @module
  */
@@ -26,22 +114,9 @@
 import { Values } from "./value.js";
 
 /**
- * Resource patch for partial updates.
+ * Partial resource update.
  *
- * Represents a partial resource update where properties can be set to new {@link Values}
- * or deleted using `null`. Empty arrays are treated as `null` (property deletion).
- *
- * @remarks
- *
- * Patches are used for incremental resource updates:
- *
- * - Properties with {@link Values} are updated to the specified values
- * - Properties with `null` are deleted from the resource
- * - Empty value arrays (`readonly Value[]`) are equivalent to `null` and delete the property
- *
- * @see {@link Values}
- * @see {@link Resource}
- * @see {@link https://datatracker.ietf.org/doc/html/rfc5789 | RFC 5789 - HTTP PATCH Method}
+ * Properties map to {@link Values} for updates or `null` for deletions. Empty arrays are equivalent to `null`.
  */
 export type Patch = {
 

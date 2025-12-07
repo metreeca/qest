@@ -1,10 +1,14 @@
 {
   "name": "@metreeca/qest",
   "version": "0.9.0",
-  "description": "{TBD}",
+  "description": "Minimalist foundations for client-driven, queryable REST/JSON APIs",
   "keywords": [
     "typescript",
-    "utilities"
+    "rest",
+    "json",
+    "json-ld",
+    "query",
+    "api"
   ],
   "homepage": "https://metreeca.github.io/qest/",
   "bugs": {
@@ -24,9 +28,9 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": "./dist/index.js",
-    "./query": "./dist/query/index.js",
-    "./patch": "./dist/patch.js"
+    "./value": "./dist/value.js",
+    "./patch": "./dist/patch.js",
+    "./model": "./dist/model.js"
   },
   "files": [
     "README.md",

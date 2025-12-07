@@ -14,7 +14,9 @@
       "Bash(ls:*)",
       "WebFetch(domain:www.w3.org)",
       "WebFetch(domain:gist.github.com)",
-      "WebFetch(domain:peggyjs.org)"
+      "WebFetch(domain:peggyjs.org)",
+      "WebFetch(domain:typedoc.org)",
+      "WebFetch(domain:tsdoc.org)"
     ],
     "deny": [],
     "ask": []

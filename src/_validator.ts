@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { isArray, isObject, isScalar, isString } from "@metreeca/core";
+import { isArray, isObject, isScalar, isString } from "@metreeca/core/json";
 import { isTag } from "@metreeca/core/network";
 import { immutable } from "../../Core/src/common/nested.js";
 

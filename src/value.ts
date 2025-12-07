@@ -15,44 +15,15 @@
  */
 
 /**
- * Core type definitions linked data values.
+ * Core type definitions for linked data values.
  *
- * This data model defines a controlled subset of [JSON-LD](https://www.w3.org/TR/json-ld11/) that can be easily
- * interpreted as plain idiomatic JSON.
- *
- * JSON-LD (JSON for Linked Data) is a [W3C](https://www.w3.org/) standard that extends JSON with web identifiers
- * (IRIs), so that property names and values can reference shared vocabularies. This gives data a precise,
- * machine-readable meaning that survives when combined with data from other sources — a capability at the heart
- * of the [Web of Data](https://www.w3.org/2013/data/) (aka Semantic Web) vision and modern knowledge graphs.
- *
- * This simplified data model is intended to feel natural to JavaScript developers, without exposing them to JSON-LD
- * technicalities, while retaining full JSON-LD interoperability. This enables, for instance, frontend developers
- * to build UIs with familiar REST/JSON patterns on top of knowledge graph backends. To achieve this:
- *
- * - only the [compacted document form](https://www.w3.org/TR/json-ld11/#compacted-document-form) is supported,
- *   which uses short property names and nested objects just like regular JSON
- *
- * - property names ([JSON-LD terms](https://www.w3.org/TR/json-ld11/#terms)) are restricted to [ECMAScript
- * identifiers](https://262.ecma-international.org/15.0/#sec-names-and-keywords), enabling property access with dot
- * notation; this excludes [JSON-LD keywords](https://www.w3.org/TR/json-ld11/#keywords) (`@id`, `@type`, etc.), [blank
- * node identifiers](https://www.w3.org/TR/json-ld11/#identifying-blank-nodes) (`_:`), and arbitrary property names;
- * mapping from property names to IRIs, keyword and arbitrary strings may still be managed by an application-provided
- * [`@context`](https://www.w3.org/TR/json-ld11/#the-context) object
- *
- * - values are native JSON primitives (`boolean`, `number`, `string`) without support for
- *   [typed literals](https://www.w3.org/TR/json-ld11/#typed-values) with arbitrary datatypes; property-specific
- *   datatype coercion may still be handled by an application-provided `@context` object
- *
- * - {@link Dictionary | language maps}, which map to JSON-LD
- *   [`@language` containers](https://www.w3.org/TR/json-ld11/#language-indexing), don't support
- *   [`@none`](https://www.w3.org/TR/json-ld11/#dfn-none) keys for plain literals; for mixed non-localized/localized
- *   content use `string` | {@link Dictionary} union types or [`zxx`](https://iso639-3.sil.org/code/zxx) tags within
- *   a dictionary
+ * Defines a [JSON-LD compatible](https://github.com/metreeca/qest#json-ld-interoperability) linked data model designed
+ * to feel like idiomatic JSON for JavaScript developers.
  *
  * **Data Model**
  *
- * The data model centers on {@link Resource | resources} — entities identified by web addresses (IRIs) that can be
- * linked together into a graph. Unlike isolated JSON documents, linked resources form a web of interconnected data
+ * The linked data model centers on {@link Resource | resources} — entities identified by web addresses (IRIs) that can
+ * be linked together into a graph. Unlike isolated JSON documents, linked resources form a web of interconnected data
  * where relationships can be traversed across system boundaries.
  *
  * **Resources**
@@ -151,7 +122,7 @@
  * treated as absent values. This differs from typical JSON arrays but aligns with JSON-LD's multi-valued property
  * model.
  *
- * **Internationalized Text**
+ * **Localized Text**
  *
  * For multilingual content, use a {@link Dictionary} — an object mapping language tags to localized strings.
  * Language tags follow [RFC 5646](https://www.rfc-editor.org/rfc/rfc5646.html) (e.g., `en`, `de-CH`, `zh-Hans`):
@@ -222,14 +193,22 @@
  * };
  * ```
  *
- * APIs can return compact references for efficiency or expanded descriptions for convenience. Clients may
- * control the response shape through query parameters or request headers, depending on API capabilities.
- * The same data model handles both representations seamlessly.
+ * **Client-Driven Retrieval**
  *
- * @see [JSON-LD 1.1](https://www.w3.org/TR/json-ld11/)
- * @see [RFC 5646 - Tags for Identifying Languages](https://www.rfc-editor.org/rfc/rfc5646.html)
+ * Client-driven data retrieval is integral to this framework. Clients may control which properties to retrieve
+ * and how deeply to expand resources. This enables efficient single-call retrieval of exactly the data needed,
+ * eliminating over-fetching and under-fetching.
  *
- * @module index
+ * When clients don't provide a retrieval specification, the server applies a system-provided default model,
+ * typically derived automatically from the underlying data model. This allows APIs to behave like standard
+ * REST/JSON endpoints while supporting client-driven retrieval when needed.
+ *
+ * See {@link Model} for retrieval specification details.
+ *
+ * @see {@link https://www.w3.org/TR/json-ld11/ JSON-LD 1.1}
+ * @see {@link https://www.rfc-editor.org/rfc/rfc5646.html RFC 5646 - Tags for Identifying Languages}
+ *
+ * @module
  */
 
 import { Identifier } from "@metreeca/core";
@@ -297,8 +276,8 @@ export type Literal =
  * The `@none` key for non-localized values is not supported; for mixed content use `string | Dictionary`
  * union types or the `zxx` tag.
  *
- * @see [RFC 5646 - Tags for Identifying Languages](https://www.rfc-editor.org/rfc/rfc5646.html)
- * @see [ISO 639-3 `zxx` - No Linguistic Content](https://iso639-3.sil.org/code/zxx)
+ * @see {@link https://www.rfc-editor.org/rfc/rfc5646.html RFC 5646 - Tags for Identifying Languages}
+ * @see {@link https://iso639-3.sil.org/code/zxx ISO 639-3 zxx - No Linguistic Content}
  */
 export type Dictionary =
 	| { readonly [tag: Tag]: string }

@@ -2,30 +2,92 @@
 
 [![npm](https://img.shields.io/npm/v/@metreeca/qest)](https://www.npmjs.com/package/@metreeca/qest)
 
+Minimalist foundations for client-driven, queryable REST/JSON APIs.
+
+**@metreeca/qest** standardizes capabilities that vanilla REST/JSON APIs typically lack or implement in ad‑hoc,
+non‑portable ways:
+
+- **Client-driven** — clients specify exactly what data they need, retrieving complex data envelopes in a single call
+- **Queryable** — advanced filtering and aggregation capabilities support faceted search and analytics
+
+Developers seek these capabilities in frameworks like GraphQL. This specification brings them to REST/JSON with:
+
+- **Familiar patterns** — built on REST conventions and standard JSON, with no new paradigms to learn
+- **Simple clients** — no specialized libraries, schema preprocessors, or code generators
+- **Automated servers** — model-driven development, dramatically reducing implementation effort
+- **Standard HTTP caching** — compatibility with CDNs and browser caches using standard GET requests
+- **URL-based versioning** — standard REST versioning without field deprecation complexity
+
+**@metreeca/qest** is the foundation of an integrated full-stack ecosystem for rapid, model-driven REST/JSON
+development:
+
+| Package            | Description                                             |
+|--------------------|---------------------------------------------------------|
+| **@metreeca/qest** | Data models for client-driven, queryable REST/JSON APIs |
+| @metreeca/blue     | Model-driven JSON validation (upcoming)                 |
+| @metreeca/case     | Model-driven JSON storage (upcoming)                    |
+| @metreeca/dock     | Model-driven REST/JSON publishing (upcoming)            |
+| @metreeca/tile     | Model-driven React components (upcoming)                |
+
+# Installation
+
+```shell
+npm install @metreeca/qest
+```
+
 > [!WARNING]
 >
-> Work in proress…
+> TypeScript consumers must use `"moduleResolution": "nodenext"/"node16"/"bundler"` in `tsconfig.json`.
+> The legacy `"node"` resolver is not supported.
 
-Provides a type-safe data model for linked data resources represented using a controlled subset of framed JSON-LD,
-ensuring compatibility with standard processors
+# Usage
 
+| Module                                                                     | Description                                              |
+|----------------------------------------------------------------------------|----------------------------------------------------------|
+| [@metreeca/qest/value](https://metreeca.github.io/qest/modules/value.html) | Core data model for linked data resources and literals   |
+| [@metreeca/qest/patch](https://metreeca.github.io/qest/modules/patch.html) | Partial update operations for incremental modifications  |
+| @metreeca/qest/query                                                       | Query specifications for filtering and aggregation (TBD) |
 
-This serialization format simplifies front-end development by converting linked data descriptions
-to/from idiomatic JSON objects structured according to the conventions a JavaScript developer would
-expect from a typical REST/JSON API.
+# JSON-LD Interoperability
 
-The format extends JSON-LD with an advanced query language for REST/JSON-LD APIs, enabling:
+**@metreeca/qest** is built on a controlled subset of [JSON-LD](https://www.w3.org/TR/json-ld11/) (JSON for Linked
+Data), a [W3C](https://www.w3.org/) standard that extends JSON with web
+identifiers ([IRIs](https://www.rfc-editor.org/rfc/rfc3987)). This enables property
+names and values to reference shared vocabularies, giving data a precise, machine-readable meaning that survives when
+combined with data from other sources — a capability at the heart of
+the [Web of Data / Semantic Web](https://www.w3.org/2013/data/) vision and modern knowledge graphs.
 
-- Single-call retrieval of complex client-specified data envelopes
-- Advanced filtering and aggregation capabilities supporting faceted search and analytics
+The subset is designed to feel like plain idiomatic JSON, letting JavaScript developers work with linked data using
+familiar REST/JSON patterns, without mastering JSON-LD technicalities, while retaining full compatibility with standard
+JSON-LD processors.
 
-These query extensions and client-defined envelopes enable rapid development of REST/JSON-LD APIs
-functionally on par with GraphQL, while avoiding common GraphQL drawbacks:
+The JSON-LD subset is defined by the following constraints:
 
-- **Lower learning curve**: Built on familiar REST conventions and standard JSON
-- **Minimal tooling**: No specialized client libraries, schema preprocessors, or code generators required
-- **Simpler implementation**: Native TypeScript integration without complex resolvers or schema DSLs
-- **Scales with complexity**: Simple CRUD remains simple, yet enables advanced deep fetching,
-  filtering, and analytics when needed
-- **Standard HTTP caching**: Works with CDNs and browser caches using standard GET requests
-- **Natural REST versioning**: Standard URL-based versioning without field deprecation complexity
+- only the [compacted document form](https://www.w3.org/TR/json-ld11/#compacted-document-form) is supported, which uses
+  short property names and nested objects just like regular JSON
+
+- property names ([JSON-LD terms](https://www.w3.org/TR/json-ld11/#terms)) are restricted
+  to [ECMAScript identifiers](https://262.ecma-international.org/15.0/#sec-names-and-keywords), enabling property access
+  with dot notation; this excludes [JSON-LD keywords](https://www.w3.org/TR/json-ld11/#keywords) (`@id`, `@type`,
+  etc.), [blank node identifiers](https://www.w3.org/TR/json-ld11/#identifying-blank-nodes) (`_:`), and arbitrary
+  property names; mapping from property names to IRIs, keywords and arbitrary strings may still be managed by an
+  application-provided [`@context`](https://www.w3.org/TR/json-ld11/#the-context) object
+
+- values are native JSON primitives (`boolean`, `number`, `string`) without support
+  for [typed literals](https://www.w3.org/TR/json-ld11/#typed-values) with arbitrary datatypes; property-specific
+  datatype coercion may still be handled by an application-provided `@context` object
+
+- JSON-LD [`@language` containers](https://www.w3.org/TR/json-ld11/#language-indexing),
+  don't support [`@none`](https://www.w3.org/TR/json-ld11/#dfn-none) keys for plain literals; for mixed
+  non-localized/localized content use `string | Dictionary` union types or [`zxx`](https://iso639-3.sil.org/code/zxx)
+  tags
+
+# Support
+
+- open an [issue](https://github.com/metreeca/qest/issues) to report a problem or to suggest a new feature
+- start a [discussion](https://github.com/metreeca/qest/discussions) to ask a how-to question or to share an idea
+
+# License
+
+This project is licensed under the Apache 2.0 License –
+see [LICENSE](https://github.com/metreeca/qest?tab=Apache-2.0-1-ov-file) file for details.
