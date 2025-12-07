@@ -15,7 +15,7 @@
  */
 
 /**
- * Partial update operations for incremental resource modifications.
+ * Partial resource update model.
  *
  * Defines partial update specifications for linked data {@link Resource | resources}. Properties can be set to
  * new {@link Values | values} or deleted using `null`; unlisted properties remain unchanged. This enables efficient
@@ -65,7 +65,7 @@
  * References to linked resources can use either IRI strings or nested descriptions, following the same
  * {@link Resource} model as in regular resource data.
  *
- * **Important**:
+ * **Important**
  *
  * - Nested resource descriptions containing properties beyond the resource identifier are only accepted if
  *   explicitly declared as embedded in the application-defined data model
@@ -106,9 +106,9 @@
  * };
  * ```
  *
- * @see {@link https://datatracker.ietf.org/doc/html/rfc5789 RFC 5789 - HTTP PATCH Method}
- *
  * @module
+ *
+ * @see {@link https://datatracker.ietf.org/doc/html/rfc5789 RFC 5789 - HTTP PATCH Method}
  */
 
 import { Values } from "./value.js";

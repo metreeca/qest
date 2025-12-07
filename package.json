@@ -50,7 +50,7 @@
     "proof": "npx typedoc && (npx typedoc --watch & npx five-server docs --open)"
   },
   "dependencies": {
-    "@metreeca/core": "^0.9.11"
+    "@metreeca/core": "^0.9.15"
   },
   "devDependencies": {
     "five-server": "^0.4.5",

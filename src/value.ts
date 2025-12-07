@@ -15,7 +15,7 @@
  */
 
 /**
- * Core type definitions for linked data values.
+ * Core linked data model.
  *
  * Defines a [JSON-LD compatible](https://github.com/metreeca/qest#json-ld-interoperability) linked data model designed
  * to feel like idiomatic JSON for JavaScript developers.
@@ -239,8 +239,8 @@ export type Resource =
  */
 export type Values =
 	| Value
-	| readonly Value[]
 	| Dictionary
+	| readonly Value[]
 
 /**
  * Model value.

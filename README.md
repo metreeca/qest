@@ -4,18 +4,18 @@
 
 Minimalist foundations for client-driven, queryable REST/JSON APIs.
 
-**@metreeca/qest** standardizes capabilities that vanilla REST/JSON APIs typically lack or implement in ad‑hoc,
+**@metreeca/qest** standardizes critical capabilities that vanilla REST/JSON APIs typically lack or implement in ad‑hoc,
 non‑portable ways:
 
 - **Client-driven** — clients specify exactly what data they need, retrieving complex data envelopes in a single call
-- **Queryable** — advanced filtering and aggregation capabilities support faceted search and analytics
+- **Queryable** — advanced filtering and aggregation functionalities support faceted search and analytics
 
-Developers seek these capabilities in frameworks like GraphQL. This specification brings them to REST/JSON with:
+Developers seek these features in frameworks like GraphQL. This specification brings them to REST/JSON with:
 
-- **Familiar patterns** — built on REST conventions and standard JSON, with no new paradigms to learn
-- **Simple clients** — no specialized libraries, schema preprocessors, or code generators
+- **Familiar patterns** — standard REST and JSON conventions, no new paradigms to learn
+- **Simple clients** — no specialized libraries, preprocessors, or code generators
 - **Automated servers** — model-driven development, dramatically reducing implementation effort
-- **Standard HTTP caching** — compatibility with CDNs and browser caches using standard GET requests
+- **Standard caching** — compatibility with CDNs and browser caches using standard GET requests
 - **URL-based versioning** — standard REST versioning without field deprecation complexity
 
 **@metreeca/qest** is the foundation of an integrated full-stack ecosystem for rapid, model-driven REST/JSON
@@ -42,20 +42,31 @@ npm install @metreeca/qest
 
 # Usage
 
-| Module                                                                     | Description                                              |
-|----------------------------------------------------------------------------|----------------------------------------------------------|
-| [@metreeca/qest/value](https://metreeca.github.io/qest/modules/value.html) | Core data model for linked data resources and literals   |
-| [@metreeca/qest/patch](https://metreeca.github.io/qest/modules/patch.html) | Partial update operations for incremental modifications  |
-| @metreeca/qest/query                                                       | Query specifications for filtering and aggregation (TBD) |
+| Module                                                                     | Description                   |
+|----------------------------------------------------------------------------|-------------------------------|
+| [@metreeca/qest/value](https://metreeca.github.io/qest/modules/value.html) | Core linked data model        |
+| [@metreeca/qest/model](https://metreeca.github.io/qest/modules/model.html) | Client-driven retrieval model |
+| [@metreeca/qest/patch](https://metreeca.github.io/qest/modules/patch.html) | Partial resource update model |
 
-# JSON-LD Interoperability
+## Data Validation
+
+The **@metreeca/qest** specification doesn't mandate specific data constraints; however, applications may still enforce
+their own rules (required properties, expected types) and reject non-conforming data.
+
+[@metreeca/blue](https://github.com/metreeca/blue), for instance, offers a shape-based validation framework that can
+verify [resources](https://metreeca.github.io/qest/modules/value.html),
+[patches](https://metreeca.github.io/qest/modules/patch.html), and
+[models](https://metreeca.github.io/qest/modules/model.html) against declarative constraints defining allowed
+properties, value types, cardinalities, ranges, patterns, relationships, and inheritance hierarchies.
+
+## JSON-LD Interoperability
 
 **@metreeca/qest** is built on a controlled subset of [JSON-LD](https://www.w3.org/TR/json-ld11/) (JSON for Linked
 Data), a [W3C](https://www.w3.org/) standard that extends JSON with web
-identifiers ([IRIs](https://www.rfc-editor.org/rfc/rfc3987)). This enables property
-names and values to reference shared vocabularies, giving data a precise, machine-readable meaning that survives when
-combined with data from other sources — a capability at the heart of
-the [Web of Data / Semantic Web](https://www.w3.org/2013/data/) vision and modern knowledge graphs.
+identifiers ([IRIs](https://www.rfc-editor.org/rfc/rfc3987)). This enables property names and values to reference shared
+vocabularies, giving data a precise, machine-readable meaning that survives when combined with data from other sources —
+a capability at the heart of the [Web of Data / Semantic Web](https://www.w3.org/2013/data/) vision and modern knowledge
+graphs.
 
 The subset is designed to feel like plain idiomatic JSON, letting JavaScript developers work with linked data using
 familiar REST/JSON patterns, without mastering JSON-LD technicalities, while retaining full compatibility with standard
@@ -77,9 +88,9 @@ The JSON-LD subset is defined by the following constraints:
   for [typed literals](https://www.w3.org/TR/json-ld11/#typed-values) with arbitrary datatypes; property-specific
   datatype coercion may still be handled by an application-provided `@context` object
 
-- JSON-LD [`@language` containers](https://www.w3.org/TR/json-ld11/#language-indexing),
-  don't support [`@none`](https://www.w3.org/TR/json-ld11/#dfn-none) keys for plain literals; for mixed
-  non-localized/localized content use `string | Dictionary` union types or [`zxx`](https://iso639-3.sil.org/code/zxx)
+- JSON-LD [`@language` containers](https://www.w3.org/TR/json-ld11/#language-indexing), don't support [
+  `@none`](https://www.w3.org/TR/json-ld11/#dfn-none) keys for plain literals; for mixed non-localized/localized content
+  use `string | Dictionary` union types or [`zxx`](https://iso639-3.sil.org/code/zxx)
   tags
 
 # Support
