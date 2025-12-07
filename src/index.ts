@@ -208,7 +208,7 @@
  * @see {@link https://www.w3.org/TR/json-ld11/ JSON-LD 1.1}
  * @see {@link https://www.rfc-editor.org/rfc/rfc5646.html RFC 5646 - Tags for Identifying Languages}
  *
- * @module
+ * @module index
  */
 
 import { Identifier } from "@metreeca/core";

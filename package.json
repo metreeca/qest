@@ -28,9 +28,10 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    "./value": "./dist/value.js",
-    "./patch": "./dist/patch.js",
-    "./model": "./dist/model.js"
+    ".": "./dist/index.js",
+    "./model": "./dist/model.js",
+    "./state": "./dist/state.js",
+    "./patch": "./dist/patch.js"
   },
   "files": [
     "README.md",

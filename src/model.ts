@@ -163,7 +163,7 @@
 
 import { Identifier, isIdentifier } from "@metreeca/core";
 import { IRI, Range } from "@metreeca/core/network";
-import { Dictionary, Literal, Resource } from "./value.js";
+import { Dictionary, Literal, Resource } from "./index.js";
 
 
 /**

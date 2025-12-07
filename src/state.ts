@@ -15,50 +15,30 @@
  */
 
 /**
- * Partial resource update model.
+ * Complete resource update model.
  *
- * Defines partial update specifications for linked data {@link Resource | resources}. Properties can be set to
- * new {@link Values | values} or deleted using `null`; unlisted properties remain unchanged. This enables efficient
- * incremental updates, for instance using HTTP PATCH operations.
+ * Defines complete update specifications for linked data {@link Resource | resources}. Properties are set to
+ * new {@link Values | values}; unlisted properties are removed. This enables complete state updates,
+ * typically using HTTP PUT operations.
  *
- * **Updating Properties**
+ * **Replacing State**
  *
- * Set properties to new values by including them in the patch:
+ * Provide the complete desired state of the resource:
  *
  * ```typescript
- * const patch: Patch = {
- *   name: "Bob",                    // update single value
- *   tags: ["featured", "urgent"],   // update array
- *   email: "bob@example.org"        // update another value
+ * const state: State = {
+ *   name: "Bob",
+ *   email: "bob@example.org",
+ *   tags: ["featured", "urgent"],
+ *   active: true
  * };
  * ```
  *
- * **Deleting Properties**
- *
- * Remove properties by setting them to `null` or an empty array:
- *
- * ```typescript
- * const patch: Patch = {
- *   deprecated: null,     // delete using null
- *   tags: []              // delete using empty array (equivalent to null)
- * };
- * ```
+ * **Important:** Unlike partial updates ({@link Patch}), state replacement is total — properties not included
+ * in the state are removed from the resource, while partial updates leave unlisted properties unchanged.
  *
  * **Important**: Empty arrays are treated as property deletions, following set semantics where an empty set
  * is equivalent to absence.
- *
- * **Combined Updates**
- *
- * Patches can mix updates and deletions:
- *
- * ```typescript
- * const patch: Patch = {
- *   name: "Charlie",      // update
- *   email: null,          // delete
- *   active: true,         // update
- *   tags: []              // delete
- * };
- * ```
  *
  * **Linked Resources**
  *
@@ -76,14 +56,16 @@
  * ```typescript
  * // Using IRI references (always valid)
  *
- * const patch: Patch = {
+ * const state: State = {
+ *   name: "Annual Report 2024",
  *   author: "https://example.org/users/123",
  *   publisher: "https://example.org/orgs/acme"
  * };
  *
  * // Using nested descriptions with only the identifier property (always valid)
  *
- * const patch: Patch = {
+ * const state: State = {
+ *   name: "Annual Report 2024",
  *   author: {
  *     id: "https://example.org/users/123"
  *   },
@@ -94,7 +76,8 @@
  *
  * // Using nested descriptions with additional properties (must be declared as embedded)
  *
- * const patch: Patch = {
+ * const state: State = {
+ *   name: "Annual Report 2024",
  *   author: {
  *     id: "https://example.org/users/123",
  *     name: "Bob"                          // requires 'author' declared as embedded
@@ -108,19 +91,19 @@
  *
  * @module
  *
- * @see {@link https://datatracker.ietf.org/doc/html/rfc5789 RFC 5789 - HTTP PATCH Method}
+ * @see {@link https://datatracker.ietf.org/doc/html/rfc9110#section-9.3.4 RFC 9110 - HTTP PUT Method}
  */
 
 import { Identifier } from "@metreeca/core";
-import { Values } from "./index.js";
+import { Resource, Values } from "./index.js";
 
 /**
- * Partial resource update.
+ * Complete resource state.
  *
- * Properties map to {@link Values} for updates or `null` for deletions. Empty arrays are equivalent to `null`.
+ * Properties map to {@link Values} representing the complete desired state. Unlisted properties are removed.
  */
-export type Patch = {
+export type State = {
 
-	readonly [K in Identifier]: null | Values
+	readonly [property in Identifier]: Values
 
 }
