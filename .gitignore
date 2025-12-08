@@ -5,8 +5,7 @@
 /docs/
 /node_modules/
 
-/src/parsers/*.js
-/src/parsers/*.d.ts
+/src/codec.pegjs.*
 
 @*
 ~*

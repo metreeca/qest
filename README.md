@@ -48,6 +48,7 @@ npm install @metreeca/qest
 | [@metreeca/qest/query](https://metreeca.github.io/qest/modules/query.html) | Client-driven retrieval model  |
 | [@metreeca/qest/state](https://metreeca.github.io/qest/modules/state.html) | Complete resource update model |
 | [@metreeca/qest/patch](https://metreeca.github.io/qest/modules/patch.html) | Partial resource update model  |
+| [@metreeca/qest/codec](https://metreeca.github.io/qest/modules/codec.html) | Model serialization codecs     |
 
 ## Client-Driven Retrieval
 

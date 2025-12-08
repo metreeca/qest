@@ -31,7 +31,8 @@
     ".": "./dist/index.js",
     "./query": "./dist/query.js",
     "./state": "./dist/state.js",
-    "./patch": "./dist/patch.js"
+    "./patch": "./dist/patch.js",
+    "./codec": "./dist/codec.js"
   },
   "files": [
     "README.md",
@@ -42,9 +43,9 @@
     "node": ">=22.0.0"
   },
   "scripts": {
-    "clean": "rm -rf dist docs node_modules src/query/parsers/*.js src/query/parsers/*.d.ts",
+    "clean": "rm -rf dist docs node_modules src/codec.pegjs.*",
     "setup": "npm install && npm audit fix",
-    "peggy": "for parser in src/query/parsers/*.pegjs; do npx peggy --dts --format es $parser; done",
+    "peggy": "npx peggy --dts --format es --output src/codec.pegjs.js --allowed-start-rules '*' src/codec.pegjs",
     "build": "rm -rf dist docs && npm run peggy && tsc && typedoc",
     "check": "npx vitest run",
     "watch": "npx tsc --watch",
