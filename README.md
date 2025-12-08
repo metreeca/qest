@@ -42,23 +42,22 @@ npm install @metreeca/qest
 
 # Usage
 
-| Module                                                                     | Description                   |
-|----------------------------------------------------------------------------|-------------------------------|
-| [@metreeca/qest](https://metreeca.github.io/qest/modules/index.html)       | Core linked data model        |
-| [@metreeca/qest/model](https://metreeca.github.io/qest/modules/model.html) | Client-driven retrieval model |
-| [@metreeca/qest/state](https://metreeca.github.io/qest/modules/state.html) | Complete resource state model |
-| [@metreeca/qest/patch](https://metreeca.github.io/qest/modules/patch.html) | Partial resource update model |
+| Module                                                                     | Description                    |
+|----------------------------------------------------------------------------|--------------------------------|
+| [@metreeca/qest](https://metreeca.github.io/qest/modules/index.html)       | Core linked data model         |
+| [@metreeca/qest/model](https://metreeca.github.io/qest/modules/model.html) | Client-driven retrieval model  |
+| [@metreeca/qest/state](https://metreeca.github.io/qest/modules/state.html) | Complete resource update model |
+| [@metreeca/qest/patch](https://metreeca.github.io/qest/modules/patch.html) | Partial resource update model  |
 
 ## Data Validation
 
-The **@metreeca/qest** specification doesn't mandate specific data constraints; however, applications may still enforce
-their own rules (required properties, expected types) and reject non-conforming data.
+**@metreeca/qest** doesn't specify any constraints on managed data; however, applications may still enforce their own
+rules (for instance, required properties, expected types) and reject non-conforming data.
 
 [@metreeca/blue](https://github.com/metreeca/blue), for instance, offers a shape-based validation framework that can
-verify [resources](https://metreeca.github.io/qest/modules/value.html),
-[models](https://metreeca.github.io/qest/modules/model.html),
-[states](https://metreeca.github.io/qest/modules/state.html), and
-[patches](https://metreeca.github.io/qest/modules/patch.html) against declarative constraints defining allowed
+verify [models](https://metreeca.github.io/qest/modules/model.html),
+[states](https://metreeca.github.io/qest/modules/state.html),
+and [patches](https://metreeca.github.io/qest/modules/patch.html) against declarative constraints defining allowed
 properties, value types, cardinalities, ranges, patterns, relationships, and inheritance hierarchies.
 
 ## JSON-LD Interoperability

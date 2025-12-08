@@ -34,7 +34,7 @@
  * };
  * ```
  *
- * **Important:** Unlike partial updates ({@link Patch}), state replacement is total — properties not included
+ * **Important:** Unlike partial updates ({@link patch.Patch}), state replacement is total — properties not included
  * in the state are removed from the resource, while partial updates leave unlisted properties unchanged.
  *
  * **Important**: Empty arrays are treated as property deletions, following set semantics where an empty set

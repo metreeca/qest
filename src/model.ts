@@ -162,6 +162,7 @@
  */
 
 import { Identifier, isIdentifier } from "@metreeca/core";
+import { isBoolean } from "@metreeca/core/json";
 import { IRI, Range } from "@metreeca/core/network";
 import { Dictionary, Literal, Resource } from "./index.js";
 
@@ -192,45 +193,45 @@ import { Dictionary, Literal, Resource } from "./index.js";
 export const Transforms = transforms([
 
 	/** Count of values in collection */
-	{ name: identifier("count"), aggregate: true, datatype: "number" },
+	{ name: "count", aggregate: true, datatype: "number" },
 
 	/** Minimum value in collection */
-	{ name: identifier("min"), aggregate: true },
+	{ name: "min", aggregate: true },
 
 	/** Maximum value in collection */
-	{ name: identifier("max"), aggregate: true },
+	{ name: "max", aggregate: true },
 
 	/** Sum of values in collection */
-	{ name: identifier("sum"), aggregate: true, datatype: "number" },
+	{ name: "sum", aggregate: true, datatype: "number" },
 
 	/** Average of values in collection */
-	{ name: identifier("avg"), aggregate: true, datatype: "number" },
+	{ name: "avg", aggregate: true, datatype: "number" },
 
 	/** Arbitrary value from collection */
-	{ name: identifier("sample"), aggregate: true },
+	{ name: "sample", aggregate: true },
 
 
 	/** Absolute value */
-	{ name: identifier("abs"), aggregate: false, datatype: "number" },
+	{ name: "abs", aggregate: false, datatype: "number" },
 
 	/** Floor to largest integer less than or equal to value */
-	{ name: identifier("floor"), aggregate: false, datatype: "number" },
+	{ name: "floor", aggregate: false, datatype: "number" },
 
 	/** Ceiling to smallest integer greater than or equal to value */
-	{ name: identifier("ceil"), aggregate: false, datatype: "number" },
+	{ name: "ceil", aggregate: false, datatype: "number" },
 
 	/** Round to nearest integer */
-	{ name: identifier("round"), aggregate: false, datatype: "number" },
+	{ name: "round", aggregate: false, datatype: "number" },
 
 
 	/** Extract year component from calendrical values */
-	{ name: identifier("year"), aggregate: false, datatype: "number" },
+	{ name: "year", aggregate: false, datatype: "number" },
 
 	/** Extract month component from calendrical values */
-	{ name: identifier("month"), aggregate: false, datatype: "number" },
+	{ name: "month", aggregate: false, datatype: "number" },
 
 	/** Extract day component from calendrical values */
-	{ name: identifier("day"), aggregate: false, datatype: "number" }
+	{ name: "day", aggregate: false, datatype: "number" }
 
 ]);
 
@@ -442,23 +443,6 @@ export type Option =
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-function identifier<const T extends string>(identifier: T): T {
-
-	if ( !isIdentifier(identifier) ) {
-		throw new TypeError(`invalid identifier <${identifier}>`);
-	}
-
-	return identifier;
-
-}
-
-function expression(expression: string): Expression {
-	throw new Error(";( to be implemented"); // !!!
-}
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 function transforms<const T extends readonly {
 
 	/** Transform name */
@@ -471,7 +455,27 @@ function transforms<const T extends readonly {
 	datatype?: "boolean" | "number" | "string"
 
 }[]>(transforms: T): Record<T[number]["name"], T[number]> {
-	return Object.fromEntries(
-		transforms.map(t => [t.name, t])
-	) as Record<T[number]["name"], T[number]>;
+
+	return Object.fromEntries(transforms.map(t => {
+
+		if ( !isIdentifier(t.name) ) {
+			throw new TypeError(`invalid transform name <${t.name}>`);
+		}
+
+		if ( t.aggregate !== undefined && isBoolean(t.aggregate) ) {
+			throw new TypeError(`invalid transform aggregate <${t.aggregate}>`);
+		}
+
+		if ( t.datatype !== undefined && !["boolean", "number", "string"].includes(t.datatype) ) {
+			throw new TypeError(`invalid transform datatype <${t.datatype}>`);
+		}
+
+		return [t.name, {
+			name: t.name,
+			aggregate: t.aggregate,
+			datatype: t.datatype
+		}];
+
+	})) as unknown as Record<T[number]["name"], T[number]>;
+
 }

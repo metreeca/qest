@@ -203,7 +203,7 @@
  * typically derived automatically from the underlying data model. This allows APIs to behave like standard
  * REST/JSON endpoints while supporting client-driven retrieval when needed.
  *
- * See {@link Model} for retrieval specification details.
+ * See {@link model.Model} for retrieval specification details.
  *
  * @see {@link https://www.w3.org/TR/json-ld11/ JSON-LD 1.1}
  * @see {@link https://www.rfc-editor.org/rfc/rfc5646.html RFC 5646 - Tags for Identifying Languages}

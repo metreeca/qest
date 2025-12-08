@@ -2,6 +2,13 @@
   "plugin": [
     "typedoc-github-theme"
   ],
+  "externalSymbolLinkMappings": {
+    "@metreeca/core": {
+      "IRI": "https://metreeca.github.io/core/types/network.IRI.html",
+      "Tag": "https://metreeca.github.io/core/types/network.Tag.html",
+      "Range": "https://metreeca.github.io/core/types/network.Range.html"
+    }
+  },
   "includeVersion": true,
   "sortEntryPoints": false,
   "sort": [

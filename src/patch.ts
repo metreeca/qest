@@ -17,7 +17,7 @@
 /**
  * Partial resource update model.
  *
- * Defines partial update specifications for linked data {@link Resource | resources}. Properties can be set to
+ * Defines partial update specifications for linked data {@link index.Resource | resources}. Properties can be set to
  * new {@link Values | values} or deleted using `null`; unlisted properties remain unchanged. This enables efficient
  * incremental updates, for instance using HTTP PATCH operations.
  *
@@ -63,7 +63,7 @@
  * **Linked Resources**
  *
  * References to linked resources can use either IRI strings or nested descriptions, following the same
- * {@link Resource} model as in regular resource data.
+ * {@link index.Resource} model as in regular resource data.
  *
  * **Important**
  *
