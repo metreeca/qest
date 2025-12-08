@@ -45,9 +45,18 @@ npm install @metreeca/qest
 | Module                                                                     | Description                    |
 |----------------------------------------------------------------------------|--------------------------------|
 | [@metreeca/qest](https://metreeca.github.io/qest/modules/index.html)       | Core linked data model         |
-| [@metreeca/qest/model](https://metreeca.github.io/qest/modules/model.html) | Client-driven retrieval model  |
+| [@metreeca/qest/query](https://metreeca.github.io/qest/modules/query.html) | Client-driven retrieval model  |
 | [@metreeca/qest/state](https://metreeca.github.io/qest/modules/state.html) | Complete resource update model |
 | [@metreeca/qest/patch](https://metreeca.github.io/qest/modules/patch.html) | Partial resource update model  |
+
+## Client-Driven Retrieval
+
+[Queries](https://metreeca.github.io/qest/types/model.Query.html) specify which properties to retrieve and how deeply
+to expand resources, enabling efficient single-call retrieval of exactly the data needed.
+
+When clients don't provide a query, servers apply a system-provided default model, typically derived automatically
+from the underlying data model. This lets APIs behave like standard REST/JSON endpoints while supporting
+client-driven retrieval when needed.
 
 ## Data Validation
 

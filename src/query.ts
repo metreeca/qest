@@ -21,17 +21,17 @@
  * how deeply to expand linked resources, and what filters to apply. This enables efficient single-call retrieval
  * of exactly the data needed, without over or under-fetching.
  *
- * **Important:** Servers may provide default retrieval models to support regular REST/JSON access patterns.
- * When clients don't explicitly provide a model, the server applies its default model, enabling standard
+ * **Important:** Servers may provide default retrieval queries to support regular REST/JSON access patterns.
+ * When clients don't explicitly provide a query, the server applies its default query, enabling standard
  * REST operations while still supporting client-driven retrieval when needed.
  *
- * **Resource Models**
+ * **Resource Queries**
  *
- * A {@link Model} specifies which properties to retrieve from a single {@link Resource}. Properties map to
+ * A {@link Query} specifies which properties to retrieve from a single {@link Resource}. Properties map to
  * {@link Projection} values that define the expected shape and type:
  *
  * ```typescript
- * const model: Model = {
+ * const query: Query = {
  *   id: "",               // resource identifier
  *   name: "",             // string property
  *   price: 0,             // numeric property
@@ -45,7 +45,7 @@
  *
  * **Collection Queries**
  *
- * A {@link Query} extends resource models with filtering, ordering, and pagination for resource collections:
+ * A {@link Query} supports filtering, ordering, and pagination for resource collections:
  *
  * ```typescript
  * const query: Query = {
@@ -81,7 +81,7 @@
  * For multilingual properties, use {@link Range} keys to select language tags to retrieve:
  *
  * ```typescript
- * const model: Model = {
+ * const query: Query = {
  *   id: "",
  *   name: { "*": "" },                   // all available languages
  *   description: { "en": "", "fr": "" }, // English or French
@@ -94,7 +94,7 @@
  * Use singleton array projections to retrieve nested resource collections with their own filtering criteria:
  *
  * ```typescript
- * const model: Model = {
+ * const query: Query = {
  *   id: "",
  *   name: "",
  *   items: [{          // nested collection
@@ -239,13 +239,13 @@ export const Transforms = transforms([
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
- * Resource retrieval model.
+ * Resource retrieval query.
  *
- * Defines the shape and content of a {@link Resource} object to be retrieved. Relevant properties
- * are mapped to {@link Projection} values specifying what to retrieve:
+ * Defines the shape and content of a {@link Resource} object to be retrieved. Properties are mapped to
+ * {@link Projection} values specifying what to retrieve:
  *
  * - {@link Literal} — Plain literal
- * - {@link Model} — Nested resource
+ * - {@link Query} — Nested resource
  * - `{ readonly [range: Range]: string }` — Single-valued {@link Dictionary}; {@link Range} key selects
  *   language tags to retrieve; `string` is a placeholder
  * - `{ readonly [range: Range]: [string] }` — Multi-valued {@link Dictionary}; {@link Range} key selects
@@ -254,39 +254,24 @@ export const Transforms = transforms([
  *   ordering, and paginating criteria for members
  * - `[]` — Nothing (ignored during processing)
  *
+ * Queries may also define *virtual* properties, whose value is computed from an {@link Expression}; in this case,
+ * the projection defines the expected type of the computed value.
+ *
  * Scalar values in projections serve as type placeholders; their actual value is immaterial, but
- * their type must match the property definition.
+ * their type must match the (possibly computed) property definition.
  *
  * This model enables efficient single-call retrieval of exactly the data needed, without over or
  * under-fetching.
  *
- * **Important:** The model is rejected with an error if it references undefined properties or if it
- * provides a projection of a mismatched type for a defined property.
- */
-export type Model = {
-
-	readonly [property: Identifier]: Projection
-
-};
-
-/**
- * Resource collection retrieval model.
- *
- * Extends resource retrieval {@link Model} with constraints for filtering, ordering, and paginating resource
- * collections, combining multiple elements:
- *
- * - {@link Projection} values mapping resource properties to projection models; unlike resource models,
- *   queries may define *virtual* properties, whose value is computed from an {@link Expression}; in this case,
- *   the projection defines the expected type of the computed value
- * - Filtering and ordering constraints selecting the collection subset to retrieve; each constraint is applied
- *   to the value computed by an {@link Expression} from a candidate member resource
- * - Pagination constraints applied to the filtered and ordered result set
- *
- * Scalar values in projections serve as type placeholders; their actual value is immaterial, but their type must match
- * the (possibly computed) property definition.
- *
  * **Important:** The query is rejected with an error if it references undefined properties or if it
  * provides projections or constraints of mismatched types for defined properties.
+ *
+ * **Filtering and Ordering Constraints**
+ *
+ * Queries support constraints for filtering, ordering, and paginating resource collections. Filtering and
+ * ordering constraints select the collection subset to retrieve; each constraint is applied to the value
+ * computed by an {@link Expression} from a candidate member resource. Pagination constraints are applied
+ * to the filtered and ordered result set.
  *
  * The following constraints are supported:
  *
@@ -329,16 +314,16 @@ export type Model = {
  * - **sort ordering** — `"^expression": number`
  *
  *   Orders results by expression value; the sign of the priority gives ordering direction (positive for ascending,
- *   negative for descending); the absolute value gives 1-based ordering precedence (higher values sorted first);
+ *   negative for descending); the absolute value gives 1-based ordering precedence (1 is highest priority);
  *   zero is ignored; `"asc"`/`"ascending"` and `"desc"`/`"descending"` are shorthands for `±1`.
  *
  * - **offset** — `"@": number`
  *
- *   Skips the first `number` resources from the filtered and ordered result set.
+ *   Skips the first `number` resources from the filtered and ordered result set; zero is ignored.
  *
  * - **limit** — `"#": number`
  *
- *   Returns at most `number` resources from the result set after applying offset.
+ *   Returns at most `number` resources from the result set after applying offset; zero is ignored.
  */
 export type Query = Partial<{
 
@@ -364,24 +349,24 @@ export type Query = Partial<{
 }>;
 
 /**
- * Property value specification for retrieval models.
+ * Property value specification for retrieval queries.
  *
- * Defines the shape and type of property values in {@link Model} and {@link Query} objects:
+ * Defines the shape and type of property values in {@link Query} objects:
  *
  * - {@link Literal} — Plain literal
- * - {@link Model} — Nested resource
+ * - {@link Query} — Nested resource
  * - `{ readonly [range: Range]: string }` — Single-valued {@link Dictionary}; {@link Range} keys select
  *   matching language tags to retrieve; `string` is an immaterial scalar placeholder
  * - `{ readonly [range: Range]: [string] }` — Multi-valued {@link Dictionary}; {@link Range} keys select
  *   matching language tags to retrieve; `[string]` is an immaterial array placeholder
- * - `readonly [Query]` — Nested resource collection; singleton {@link Query} element provides model for retrieved
- * resources and filtering, ordering, and paginating criteria
+ * - `readonly [Query]` — Nested resource collection; singleton {@link Query} element provides query for retrieved
+ *   resources and filtering, ordering, and paginating criteria
  *
  * @see [RFC 4647 - Matching of Language Tags](https://www.rfc-editor.org/rfc/rfc4647.html)
  */
 export type Projection =
 	| Literal
-	| Model
+	| Query
 	| { readonly [range: Range]: string }
 	| { readonly [range: Range]: [string] }
 	| readonly [Query];

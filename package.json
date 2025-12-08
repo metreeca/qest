@@ -29,7 +29,7 @@
   "sideEffects": false,
   "exports": {
     ".": "./dist/index.js",
-    "./model": "./dist/model.js",
+    "./query": "./dist/query.js",
     "./state": "./dist/state.js",
     "./patch": "./dist/patch.js"
   },

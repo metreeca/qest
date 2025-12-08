@@ -193,18 +193,6 @@
  * };
  * ```
  *
- * **Client-Driven Retrieval**
- *
- * Client-driven data retrieval is integral to this framework. Clients may control which properties to retrieve
- * and how deeply to expand resources. This enables efficient single-call retrieval of exactly the data needed,
- * eliminating over-fetching and under-fetching.
- *
- * When clients don't provide a retrieval specification, the server applies a system-provided default model,
- * typically derived automatically from the underlying data model. This allows APIs to behave like standard
- * REST/JSON endpoints while supporting client-driven retrieval when needed.
- *
- * See {@link model.Model} for retrieval specification details.
- *
  * @see {@link https://www.w3.org/TR/json-ld11/ JSON-LD 1.1}
  * @see {@link https://www.rfc-editor.org/rfc/rfc5646.html RFC 5646 - Tags for Identifying Languages}
  *
