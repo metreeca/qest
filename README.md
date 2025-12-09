@@ -10,7 +10,7 @@ non‑portable ways:
 - **Client-driven** — clients specify exactly what data they need, retrieving complex data envelopes in a single call
 - **Queryable** — advanced filtering and aggregation functionalities support faceted search and analytics
 
-Developers seek these features in frameworks like GraphQL. This specification brings them to REST/JSON with:
+Developers seek these features in frameworks like GraphQL. **@metreeca/qest** brings them to REST/JSON, achieving:
 
 - **Familiar patterns** — standard REST and JSON conventions, no new paradigms to learn
 - **Simple clients** — no specialized libraries, preprocessors, or code generators
@@ -27,7 +27,6 @@ development:
 | @metreeca/blue     | Model-driven JSON validation (upcoming)                 |
 | @metreeca/case     | Model-driven JSON storage (upcoming)                    |
 | @metreeca/dock     | Model-driven REST/JSON publishing (upcoming)            |
-| @metreeca/tile     | Model-driven React components (upcoming)                |
 
 # Installation
 
@@ -44,18 +43,36 @@ npm install @metreeca/qest
 
 | Module                                                                     | Description                   |
 |----------------------------------------------------------------------------|-------------------------------|
-| [@metreeca/qest](https://metreeca.github.io/qest/modules/index.html)       | Core linked data model        |
+| [@metreeca/qest/state](https://metreeca.github.io/qest/modules/state.html) | Resource state model          |
 | [@metreeca/qest/query](https://metreeca.github.io/qest/modules/query.html) | Client-driven retrieval model |
-| [@metreeca/qest/codec](https://metreeca.github.io/qest/modules/codec.html) | Model serialization codecs    |
+
+## HTTP Operations
+
+The data models define payload formats for standard REST operations:
+
+| Operation | Method | Model                                                                 | Description                      |
+|-----------|--------|-----------------------------------------------------------------------|----------------------------------|
+| Retrieve  | GET    | [Resource](https://metreeca.github.io/qest/types/state.Resource.html) | Resource retrieval               |
+| Query     | GET    | [Query](https://metreeca.github.io/qest/types/query.Query.html)       | Client-driven resource retrieval |
+| Create    | POST   | [Resource](https://metreeca.github.io/qest/types/state.Resource.html) | Resource creation                |
+| Update    | PUT    | [Resource](https://metreeca.github.io/qest/types/state.Resource.html) | Complete resource state update   |
+| Mutate    | PATCH  | [Patch](https://metreeca.github.io/qest/types/state.Patch.html)       | Partial resource state update    |
+| Delete    | DELETE | [IRI](https://www.rfc-editor.org/rfc/rfc3987)                         | Resource deletion                |
 
 ## Client-Driven Retrieval
 
-[Queries](https://metreeca.github.io/qest/types/model.Query.html) specify which properties to retrieve and how deeply
-to expand resources, enabling efficient single-call retrieval of exactly the data needed.
+A [Query](https://metreeca.github.io/qest/types/query.Query.html) is a declarative specification that controls how
+resources are retrieved: which properties to include and how deeply to expand linked resources. For collections, queries
+also support filtering, sorting, pagination, and computed projections including aggregates supporting faceted search and
+analytics.
 
-When clients don't provide a query, servers apply a system-provided default model, typically derived automatically
-from the underlying data model. This lets APIs behave like standard REST/JSON endpoints while supporting
-client-driven retrieval when needed.
+This is the core contribution of **@metreeca/qest**: vanilla REST/JSON APIs lack a standard way for clients to control
+retrieval, forcing them to accept fixed server responses or rely on ad-hoc query parameters. The Query model fills this
+gap, giving clients precise control over responses while remaining fully compatible with standard HTTP caching.
+
+Client-driven retrieval is fully optional. When clients don't provide a query, servers apply a default model, typically
+derived from the underlying data model. This preserves standard REST/JSON behavior while enabling advanced retrieval
+capabilities when needed.
 
 ## Data Validation
 
@@ -63,10 +80,10 @@ client-driven retrieval when needed.
 rules (for instance, required properties, expected types) and reject non-conforming data.
 
 [@metreeca/blue](https://github.com/metreeca/blue), for instance, offers a shape-based validation framework that can
-verify [resources](https://metreeca.github.io/qest/types/index.Resource.html),
-[patches](https://metreeca.github.io/qest/types/index.Patch.html),
-and [queries](https://metreeca.github.io/qest/types/query.Query.html) against declarative constraints
-defining allowed properties, value types, cardinalities, ranges, patterns, relationships, and inheritance hierarchies.
+verify [resources](https://metreeca.github.io/qest/types/state.Resource.html),
+[patches](https://metreeca.github.io/qest/types/state.Patch.html),
+and [queries](https://metreeca.github.io/qest/types/query.Query.html) against declarative constraints defining allowed
+properties, value types, cardinalities, ranges, patterns, relationships, and inheritance hierarchies.
 
 ## JSON-LD Interoperability
 

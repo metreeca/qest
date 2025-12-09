@@ -28,9 +28,8 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": "./dist/index.js",
-    "./query": "./dist/query.js",
-    "./codec": "./dist/codec.js"
+    "./state": "./dist/state.js",
+    "./query": "./dist/query.js"
   },
   "files": [
     "README.md",
