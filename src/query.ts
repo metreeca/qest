@@ -67,7 +67,7 @@
  *     "<=price": 150,                         // price ≤ 150
  *     "~name": "widget",                      // name contains "widget"
  *     "?category": ["electronics", "home"],   // category in list
- *     "^price": "1",                          // sort by price ascending
+ *     "^price": 1,                           // sort by price ascending
  *     "^name": -2,                            // then by name descending
  *     "@": 0,                                 // skip first 0 results
  *     "#": 25                                 // return at most 25 results
@@ -181,9 +181,14 @@
  * - Labels use the same prefixed operator syntax as {@link Query} constraint keys
  * - Each pair carries a single value; repeated labels are merged into arrays where accepted
  * - Postfix aliases provide natural form syntax for some operators:
- *   - `expression=` for `?` (disjunctive matching)
- *   - `expression<=` for `<=` (less than or equal)
- *   - `expression>=` for `>=` (greater than or equal)
+ *   - `expression=value` for `?expression=value` (disjunctive matching)
+ *   - `expression<=value` for `<=expression=value` (less than or equal)
+ *   - `expression>=value` for `>=expression=value (greater than or equal)
+ *
+ * **Encoding notes:**
+ *
+ * - Some operator characters are unreserved in RFC 3986 and remain unencoded: `~` (like), `!` (all)
+ * - Reserved characters in values are percent-encoded: `&` (separator), `=` (key/value), `+` (space), `%` (escape)
  *
  * ```text
  * category=electronics
@@ -249,8 +254,8 @@
  *
  * - {@link IRI | IRIs} are serialized as strings
  * - Localized strings ({@link Dictionary}) combine a value with a
- *   {@link https://metreeca.github.io/core/types/language.Tag.html language tag} suffix (e.g., `"text@en"`)
- * - For plain strings and IRIs, quotes may be omitted
+ *   {@link https://metreeca.github.io/core/types/language.Tag.html language tag} suffix (e.g., `"text"@en`)
+ * - The encoder always produces double-quoted strings; the decoder accepts unquoted strings as a shorthand
  *
  * > [!WARNING]
  * >
@@ -598,7 +603,7 @@ export type Operator =
  * - Numbers, booleans, and `null` remain unquoted (JSON literals)
  * - Sorting criteria are always numeric (e.g., `^price=1`, `^name=-2`)
  *
- * This ensures consistent, predictable output. The decoder accepts both canonical and optimized forms (e.g., postfix
+ * This ensures consistent, predictable output. The decoder accepts both canonical and shorthand forms (e.g., postfix
  * operators like `price>=100`, unquoted strings like `name=widget`).
  *
  * @returns The encoded query string
@@ -659,12 +664,12 @@ export function encodeQuery(query: Query, format: "json" | "base64" | "form" = "
  *
  * @remarks
  *
- * For `"form"` format, the decoder accepts both canonical and optimized forms:
+ * For `"form"` format, the decoder accepts both canonical and shorthand forms:
  *
  * - Prefix operators (canonical): `>=price=100`
- * - Postfix operators (optimized): `price>=100`
+ * - Postfix operators (shorthand): `price>=100`
  * - Double-quoted strings (canonical): `name="widget"`
- * - Unquoted strings (optimized): `name=widget`
+ * - Unquoted strings (shorthand): `name=widget`
  *
  * Tagged strings always require the canonical `"value"@tag` format.
  *

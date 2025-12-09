@@ -500,7 +500,7 @@ describe("encodeQuery()", () => {
 				const query = asQuery({ "~name": "widget" });
 				const encoded = encodeQuery(query, "form");
 
-				// ~name="widget"
+				// ~name="widget"  (~ not encoded - unreserved in RFC 3986)
 				expect(encoded).toBe("~name=%22widget%22");
 			});
 
@@ -548,7 +548,7 @@ describe("encodeQuery()", () => {
 				const query = asQuery({ "!tags": ["featured", "sale"] });
 				const encoded = encodeQuery(query, "form");
 
-				// !tags="featured"&!tags="sale"
+				// !tags="featured"&!tags="sale"  (! not encoded - unreserved in RFC 3986)
 				expect(encoded).toBe("!tags=%22featured%22&!tags=%22sale%22");
 			});
 
@@ -736,7 +736,7 @@ describe("encodeQuery()", () => {
 				const query = asQuery({ ">=count": 1.5e21 });
 				const encoded = encodeQuery(query, "form");
 
-				// >=count=1.5e+21
+				// >=count=1.5e+21  (+ encoded as %2B to avoid space interpretation)
 				expect(encoded).toBe("%3E%3Dcount=1.5e%2B21");
 			});
 
@@ -772,7 +772,7 @@ describe("encodeQuery()", () => {
 				const query = asQuery({ "~name": "say \"hello\"" });
 				const encoded = encodeQuery(query, "form");
 
-				// ~name="say \"hello\""
+				// ~name="say \"hello\""  (inner quotes escaped as \")
 				expect(encoded).toBe("~name=%22say%20%5C%22hello%5C%22%22");
 			});
 
@@ -780,7 +780,7 @@ describe("encodeQuery()", () => {
 				const query = asQuery({ "~name": "café" });
 				const encoded = encodeQuery(query, "form");
 
-				// ~name="café"
+				// ~name="café"  (é encoded as UTF-8 bytes %C3%A9)
 				expect(encoded).toBe("~name=%22caf%C3%A9%22");
 			});
 
@@ -804,7 +804,7 @@ describe("encodeQuery()", () => {
 				const query = asQuery({ "~name": "foo&bar" });
 				const encoded = encodeQuery(query, "form");
 
-				// ~name="foo&bar"
+				// ~name="foo&bar"  (& encoded to avoid parameter separator)
 				expect(encoded).toBe("~name=%22foo%26bar%22");
 			});
 
@@ -812,7 +812,7 @@ describe("encodeQuery()", () => {
 				const query = asQuery({ "~name": "a=b" });
 				const encoded = encodeQuery(query, "form");
 
-				// ~name="a=b"
+				// ~name="a=b"  (= encoded to avoid key/value separator)
 				expect(encoded).toBe("~name=%22a%3Db%22");
 			});
 
@@ -820,7 +820,7 @@ describe("encodeQuery()", () => {
 				const query = asQuery({ "~name": "a+b" });
 				const encoded = encodeQuery(query, "form");
 
-				// ~name="a+b"
+				// ~name="a+b"  (+ encoded to avoid space interpretation)
 				expect(encoded).toBe("~name=%22a%2Bb%22");
 			});
 
@@ -828,7 +828,7 @@ describe("encodeQuery()", () => {
 				const query = asQuery({ "~name": "100%" });
 				const encoded = encodeQuery(query, "form");
 
-				// ~name="100%"
+				// ~name="100%"  (% encoded to avoid escape sequence)
 				expect(encoded).toBe("~name=%22100%25%22");
 			});
 
@@ -999,10 +999,12 @@ describe("decodeQuery()", () => {
 
 	});
 
-	// Note: Decoder MUST accept optimized versions (postfix operators like `price<=100`,
-	// unquoted strings like `name=widget`) even though encoder produces canonical form
-
 	describe("form format decoding", () => {
+
+		// The decoder is lenient: it accepts both canonical and shorthand forms
+		// - Unencoded operators: ~name=widget (not just %7Ename=widget)
+		// - Unquoted strings: name=widget (not just name="widget")
+		// - Shorthand constraints: price>=100 (postfix) as well as >=price=100 (prefix)
 
 		describe("basic parameters", () => {
 
@@ -1023,31 +1025,60 @@ describe("decodeQuery()", () => {
 
 		describe("comparison operators", () => {
 
-			it("should decode less than postfix", async () => {
+			it("should decode less than postfix encoded", async () => {
+				// price<100
 				const decoded = decodeQuery("price%3C100");
 
 				expect(decoded).toHaveProperty("<price", 100);
 			});
 
-			it("should decode less than or equal postfix", async () => {
+			it("should decode less than postfix unencoded", async () => {
+				const decoded = decodeQuery("price<100");
+
+				expect(decoded).toHaveProperty("<price", 100);
+			});
+
+			it("should decode less than or equal postfix encoded", async () => {
+				// price<=100
 				const decoded = decodeQuery("price%3C%3D100");
 
 				expect(decoded).toHaveProperty("<=price", 100);
 			});
 
-			it("should decode greater than postfix", async () => {
+			it("should decode less than or equal postfix unencoded", async () => {
+				const decoded = decodeQuery("price<=100");
+
+				expect(decoded).toHaveProperty("<=price", 100);
+			});
+
+			it("should decode greater than postfix encoded", async () => {
+				// price>50
 				const decoded = decodeQuery("price%3E50");
 
 				expect(decoded).toHaveProperty(">price", 50);
 			});
 
-			it("should decode greater than or equal postfix", async () => {
+			it("should decode greater than postfix unencoded", async () => {
+				const decoded = decodeQuery("price>50");
+
+				expect(decoded).toHaveProperty(">price", 50);
+			});
+
+			it("should decode greater than or equal postfix encoded", async () => {
+				// price>=50
 				const decoded = decodeQuery("price%3E%3D50");
 
 				expect(decoded).toHaveProperty(">=price", 50);
 			});
 
+			it("should decode greater than or equal postfix unencoded", async () => {
+				const decoded = decodeQuery("price>=50");
+
+				expect(decoded).toHaveProperty(">=price", 50);
+			});
+
 			it("should decode prefix comparison operators", async () => {
+				// >=price=50 (canonical prefix form requires encoding due to = ambiguity)
 				const decoded = decodeQuery("%3E%3Dprice=50");
 
 				expect(decoded).toHaveProperty(">=price", 50);
@@ -1057,8 +1088,16 @@ describe("decodeQuery()", () => {
 
 		describe("search operator", () => {
 
-			it("should decode stemmed word search", async () => {
+			it("should decode stemmed word search encoded", async () => {
+				// ~name=widget
 				const decoded = decodeQuery("%7Ename=widget");
+
+				expect(decoded).toHaveProperty("~name", "widget");
+			});
+
+			it("should decode stemmed word search unencoded", async () => {
+				// ~ is unreserved in RFC 3986, no encoding needed
+				const decoded = decodeQuery("~name=widget");
 
 				expect(decoded).toHaveProperty("~name", "widget");
 			});
@@ -1107,14 +1146,28 @@ describe("decodeQuery()", () => {
 
 		describe("conjunctive matching", () => {
 
-			it("should decode all-match constraint", async () => {
+			it("should decode all-match constraint encoded", async () => {
+				// !tags=featured&!tags=sale
 				const decoded = decodeQuery("%21tags=featured&%21tags=sale") as Record<string, unknown>;
 
 				expect(decoded["!tags"]).toEqual(["featured", "sale"]);
 			});
 
-			it("should decode explicit prefix operator", async () => {
+			it("should decode all-match constraint unencoded", async () => {
+				// ! is unreserved in RFC 3986, no encoding needed
+				const decoded = decodeQuery("!tags=featured&!tags=sale") as Record<string, unknown>;
+
+				expect(decoded["!tags"]).toEqual(["featured", "sale"]);
+			});
+
+			it("should decode explicit prefix operator encoded", async () => {
 				const decoded = decodeQuery("%21tags=premium");
+
+				expect(decoded).toHaveProperty("!tags");
+			});
+
+			it("should decode explicit prefix operator unencoded", async () => {
+				const decoded = decodeQuery("!tags=premium");
 
 				expect(decoded).toHaveProperty("!tags");
 			});
@@ -1123,14 +1176,28 @@ describe("decodeQuery()", () => {
 
 		describe("focus ordering", () => {
 
-			it("should decode focus constraint with single value", async () => {
+			it("should decode focus constraint with single value encoded", async () => {
+				// $category=featured
 				const decoded = decodeQuery("%24category=featured");
 
 				expect(decoded).toHaveProperty("$category");
 			});
 
-			it("should decode focus constraint with multiple values", async () => {
+			it("should decode focus constraint with single value unencoded", async () => {
+				const decoded = decodeQuery("$category=featured");
+
+				expect(decoded).toHaveProperty("$category");
+			});
+
+			it("should decode focus constraint with multiple values encoded", async () => {
+				// $category=featured&$category=popular
 				const decoded = decodeQuery("%24category=featured&%24category=popular") as Record<string, unknown>;
+
+				expect(decoded["$category"]).toEqual(["featured", "popular"]);
+			});
+
+			it("should decode focus constraint with multiple values unencoded", async () => {
+				const decoded = decodeQuery("$category=featured&$category=popular") as Record<string, unknown>;
 
 				expect(decoded["$category"]).toEqual(["featured", "popular"]);
 			});
@@ -1139,26 +1206,54 @@ describe("decodeQuery()", () => {
 
 		describe("ordering operators", () => {
 
-			it("should decode ascending sort", async () => {
+			it("should decode ascending sort encoded", async () => {
+				// ^price=asc (shorthand string value)
 				const decoded = decodeQuery("%5Eprice=asc");
 
 				expect(decoded).toHaveProperty("^price", "asc");
 			});
 
-			it("should decode descending sort", async () => {
+			it("should decode ascending sort unencoded", async () => {
+				const decoded = decodeQuery("^price=asc");
+
+				expect(decoded).toHaveProperty("^price", "asc");
+			});
+
+			it("should decode descending sort encoded", async () => {
+				// ^price=desc (shorthand string value)
 				const decoded = decodeQuery("%5Eprice=desc");
 
 				expect(decoded).toHaveProperty("^price", "desc");
 			});
 
-			it("should decode numeric priority", async () => {
+			it("should decode descending sort unencoded", async () => {
+				const decoded = decodeQuery("^price=desc");
+
+				expect(decoded).toHaveProperty("^price", "desc");
+			});
+
+			it("should decode numeric priority encoded", async () => {
+				// ^price=1 (canonical form)
 				const decoded = decodeQuery("%5Eprice=1");
 
 				expect(decoded).toHaveProperty("^price", 1);
 			});
 
-			it("should decode negative priority", async () => {
+			it("should decode numeric priority unencoded", async () => {
+				const decoded = decodeQuery("^price=1");
+
+				expect(decoded).toHaveProperty("^price", 1);
+			});
+
+			it("should decode negative priority encoded", async () => {
+				// ^price=-2 (canonical form)
 				const decoded = decodeQuery("%5Eprice=-2");
+
+				expect(decoded).toHaveProperty("^price", -2);
+			});
+
+			it("should decode negative priority unencoded", async () => {
+				const decoded = decodeQuery("^price=-2");
 
 				expect(decoded).toHaveProperty("^price", -2);
 			});
@@ -1167,20 +1262,41 @@ describe("decodeQuery()", () => {
 
 		describe("pagination", () => {
 
-			it("should decode offset", async () => {
+			it("should decode offset encoded", async () => {
+				// @=10
 				const decoded = decodeQuery("%40=10");
 
 				expect(decoded).toHaveProperty("@", 10);
 			});
 
-			it("should decode limit", async () => {
+			it("should decode offset unencoded", async () => {
+				const decoded = decodeQuery("@=10");
+
+				expect(decoded).toHaveProperty("@", 10);
+			});
+
+			it("should decode limit encoded", async () => {
+				// #=25
 				const decoded = decodeQuery("%23=25");
 
 				expect(decoded).toHaveProperty("#", 25);
 			});
 
-			it("should decode zero offset", async () => {
+			it("should decode limit unencoded", async () => {
+				// # must be encoded in URLs (fragment delimiter) but decoder should handle if present
+				const decoded = decodeQuery("#=25");
+
+				expect(decoded).toHaveProperty("#", 25);
+			});
+
+			it("should decode zero offset encoded", async () => {
 				const decoded = decodeQuery("%40=0");
+
+				expect(decoded).toHaveProperty("@", 0);
+			});
+
+			it("should decode zero offset unencoded", async () => {
+				const decoded = decodeQuery("@=0");
 
 				expect(decoded).toHaveProperty("@", 0);
 			});
@@ -1239,20 +1355,78 @@ describe("decodeQuery()", () => {
 				expect(decoded["~name"]).toBe("café");
 			});
 
+			it("should decode empty value", async () => {
+				const decoded = decodeQuery("~name=") as Record<string, unknown>;
+
+				expect(decoded["~name"]).toBe("");
+			});
+
+			it("should decode equals in value", async () => {
+				// ~name=a=b (= in value must be encoded)
+				const decoded = decodeQuery("~name=a%3Db") as Record<string, unknown>;
+
+				expect(decoded["~name"]).toBe("a=b");
+			});
+
 		});
 
-		describe("edge cases", () => {
+		describe("expression paths", () => {
+
+			it("should decode unencoded dots in paths", async () => {
+				// >=vendor.rating=4 (dot unreserved, no encoding needed)
+				const decoded = decodeQuery("%3E%3Dvendor.rating=4");
+
+				expect(decoded).toHaveProperty(">=vendor.rating", 4);
+			});
+
+			it("should decode percent-encoded dots in paths", async () => {
+				// >=vendor.rating=4 (dot encoded as %2E)
+				const decoded = decodeQuery("%3E%3Dvendor%2Erating=4");
+
+				expect(decoded).toHaveProperty(">=vendor.rating", 4);
+			});
+
+		});
+
+		describe("expression transforms", () => {
+
+			it("should decode constraint with single transform", async () => {
+				// >=year:releaseDate=2020
+				const decoded = decodeQuery("%3E%3Dyear%3AreleaseDate=2020");
+
+				expect(decoded).toHaveProperty(">=year:releaseDate", 2020);
+			});
+
+			it("should decode constraint with transform pipeline", async () => {
+				// >=round:avg:items.price=100
+				const decoded = decodeQuery("%3E%3Dround%3Aavg%3Aitems.price=100");
+
+				expect(decoded).toHaveProperty(">=round:avg:items.price", 100);
+			});
+
+			it("should decode disjunction with transform", async () => {
+				// ?month:releaseDate=1&?month:releaseDate=6&?month:releaseDate=12
+				const decoded = decodeQuery("%3Fmonth%3AreleaseDate=1&%3Fmonth%3AreleaseDate=6&%3Fmonth%3AreleaseDate=12") as Record<string, unknown>;
+
+				expect(decoded["?month:releaseDate"]).toEqual([1, 6, 12]);
+			});
+
+			it("should decode ordering with transform", async () => {
+				// ^year:releaseDate=1
+				const decoded = decodeQuery("%5Eyear%3AreleaseDate=1");
+
+				expect(decoded).toHaveProperty("^year:releaseDate", 1);
+			});
+
+		});
+
+		describe("malformed input handling", () => {
+			// The decoder is lenient with common URL parsing quirks
 
 			it("should handle empty string", async () => {
 				const decoded = decodeQuery("");
 
 				expect(decoded).toEqual({});
-			});
-
-			it("should handle empty value", async () => {
-				const decoded = decodeQuery("%7Ename=") as Record<string, unknown>;
-
-				expect(decoded["~name"]).toBe("");
 			});
 
 			it("should handle parameter without value", async () => {
@@ -1278,28 +1452,6 @@ describe("decodeQuery()", () => {
 
 				expect(decoded).toHaveProperty("?name");
 				expect(decoded).toHaveProperty("?price");
-			});
-
-			it("should handle equals in value", async () => {
-				const decoded = decodeQuery("%7Ename=a%3Db") as Record<string, unknown>;
-
-				expect(decoded["~name"]).toBe("a=b");
-			});
-
-		});
-
-		describe("expression paths", () => {
-
-			it("should decode dotted paths", async () => {
-				const decoded = decodeQuery("%3E%3Dvendor.rating=4");
-
-				expect(decoded).toHaveProperty(">=vendor.rating", 4);
-			});
-
-			it("should decode encoded dots", async () => {
-				const decoded = decodeQuery("%3E%3Dvendor%2Erating=4");
-
-				expect(decoded).toHaveProperty(">=vendor.rating", 4);
 			});
 
 		});
