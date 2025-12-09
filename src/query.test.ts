@@ -1234,3 +1234,206 @@ describe("decodeQuery()", () => {
 	});
 
 });
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+describe("encodeCriterion()", () => {
+
+	describe("projection keys", () => {
+
+		it("should encode simple property", async () => {
+			// { target: "name", pipe: [], path: [] } => "name"
+		});
+
+		it("should encode property with path", async () => {
+			// { target: "city", pipe: [], path: ["address"] } => "address.city"
+		});
+
+		it("should encode property with deep path", async () => {
+			// { target: "city", pipe: [], path: ["customer", "address"] } => "customer.address.city"
+		});
+
+		it("should encode aliased property", async () => {
+			// { target: "vendorName", pipe: [], path: ["vendor", "name"] } => "vendorName=vendor.name"
+		});
+
+		it("should encode property with transform", async () => {
+			// { target: "releaseYear", pipe: ["year"], path: ["releaseDate"] } => "releaseYear=year:releaseDate"
+		});
+
+		it("should encode property with transform pipeline", async () => {
+			// { target: "avgPrice", pipe: ["round", "avg"], path: ["price"] } => "avgPrice=round:avg:price"
+		});
+
+		it("should encode aggregate without path", async () => {
+			// { target: "total", pipe: ["count"], path: [] } => "total=count:"
+		});
+
+	});
+
+	describe("constraint keys", () => {
+
+		it("should encode less than constraint", async () => {
+			// { target: "<", pipe: [], path: ["price"] } => "<price"
+		});
+
+		it("should encode less than or equal constraint", async () => {
+			// { target: "<=", pipe: [], path: ["price"] } => "<=price"
+		});
+
+		it("should encode greater than constraint", async () => {
+			// { target: ">", pipe: [], path: ["price"] } => ">price"
+		});
+
+		it("should encode greater than or equal constraint", async () => {
+			// { target: ">=", pipe: [], path: ["price"] } => ">=price"
+		});
+
+		it("should encode search constraint", async () => {
+			// { target: "~", pipe: [], path: ["name"] } => "~name"
+		});
+
+		it("should encode disjunctive constraint", async () => {
+			// { target: "?", pipe: [], path: ["category"] } => "?category"
+		});
+
+		it("should encode conjunctive constraint", async () => {
+			// { target: "!", pipe: [], path: ["tags"] } => "!tags"
+		});
+
+		it("should encode focus constraint", async () => {
+			// { target: "$", pipe: [], path: ["category"] } => "$category"
+		});
+
+		it("should encode order constraint", async () => {
+			// { target: "^", pipe: [], path: ["price"] } => "^price"
+		});
+
+		it("should encode offset constraint", async () => {
+			// { target: "@", pipe: [], path: [] } => "@"
+		});
+
+		it("should encode limit constraint", async () => {
+			// { target: "#", pipe: [], path: [] } => "#"
+		});
+
+		it("should encode constraint with path", async () => {
+			// { target: ">=", pipe: [], path: ["vendor", "rating"] } => ">=vendor.rating"
+		});
+
+		it("should encode constraint with transform", async () => {
+			// { target: ">=", pipe: ["year"], path: ["releaseDate"] } => ">=year:releaseDate"
+		});
+
+	});
+
+});
+
+describe("decodeCriterion()", () => {
+
+	describe("projection keys", () => {
+
+		it("should decode simple property", async () => {
+			// "name" => { target: "name", pipe: [], path: [] }
+		});
+
+		it("should decode property with path", async () => {
+			// "address.city" => { target: "city", pipe: [], path: ["address"] }
+		});
+
+		it("should decode property with deep path", async () => {
+			// "customer.address.city" => { target: "city", pipe: [], path: ["customer", "address"] }
+		});
+
+		it("should decode aliased property", async () => {
+			// "vendorName=vendor.name" => { target: "vendorName", pipe: [], path: ["vendor", "name"] }
+		});
+
+		it("should decode property with transform", async () => {
+			// "releaseYear=year:releaseDate" => { target: "releaseYear", pipe: ["year"], path: ["releaseDate"] }
+		});
+
+		it("should decode property with transform pipeline", async () => {
+			// "avgPrice=round:avg:price" => { target: "avgPrice", pipe: ["round", "avg"], path: ["price"] }
+		});
+
+		it("should decode aggregate without path", async () => {
+			// "total=count:" => { target: "total", pipe: ["count"], path: [] }
+		});
+
+	});
+
+	describe("constraint keys", () => {
+
+		it("should decode less than constraint", async () => {
+			// "<price" => { target: "<", pipe: [], path: ["price"] }
+		});
+
+		it("should decode less than or equal constraint", async () => {
+			// "<=price" => { target: "<=", pipe: [], path: ["price"] }
+		});
+
+		it("should decode greater than constraint", async () => {
+			// ">price" => { target: ">", pipe: [], path: ["price"] }
+		});
+
+		it("should decode greater than or equal constraint", async () => {
+			// ">=price" => { target: ">=", pipe: [], path: ["price"] }
+		});
+
+		it("should decode search constraint", async () => {
+			// "~name" => { target: "~", pipe: [], path: ["name"] }
+		});
+
+		it("should decode disjunctive constraint", async () => {
+			// "?category" => { target: "?", pipe: [], path: ["category"] }
+		});
+
+		it("should decode conjunctive constraint", async () => {
+			// "!tags" => { target: "!", pipe: [], path: ["tags"] }
+		});
+
+		it("should decode focus constraint", async () => {
+			// "$category" => { target: "$", pipe: [], path: ["category"] }
+		});
+
+		it("should decode order constraint", async () => {
+			// "^price" => { target: "^", pipe: [], path: ["price"] }
+		});
+
+		it("should decode offset constraint", async () => {
+			// "@" => { target: "@", pipe: [], path: [] }
+		});
+
+		it("should decode limit constraint", async () => {
+			// "#" => { target: "#", pipe: [], path: [] }
+		});
+
+		it("should decode constraint with path", async () => {
+			// ">=vendor.rating" => { target: ">=", pipe: [], path: ["vendor", "rating"] }
+		});
+
+		it("should decode constraint with transform", async () => {
+			// ">=year:releaseDate" => { target: ">=", pipe: ["year"], path: ["releaseDate"] }
+		});
+
+	});
+
+	describe("roundtrip", () => {
+
+		it("should roundtrip simple property", async () => {
+			// decodeCriterion(encodeCriterion(criterion)) === criterion
+		});
+
+		it("should roundtrip aliased property with transform", async () => {
+			// decodeCriterion(encodeCriterion(criterion)) === criterion
+		});
+
+		it("should roundtrip constraint with path", async () => {
+			// decodeCriterion(encodeCriterion(criterion)) === criterion
+		});
+
+	});
+
+});

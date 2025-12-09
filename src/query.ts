@@ -24,13 +24,14 @@
  * This module provides types for defining queries:
  *
  * - {@link Query} — Resource retrieval query
- * - {@link Projection} — Property value specification
+ * - {@link Model} — Property value specification
  * - {@link Expression} — Computed expression for transforms and paths
  * - {@link Transforms} — Standard value transformations
  *
- * Utilities for serializing queries:
+ * It also provides utilities for converting between serialized and structured representations::
  *
- * - {@link encodeQuery} / {@link decodeQuery} — Query codecs
+ * - {@link encodeQuery} / {@link decodeQuery} — codecs for URL-safe query strings queries
+ * - {@link encodeCriterion} / {@link decodeCriterion} — codecs for {@link Query} criterion keys
  *
  * # Query Patterns
  *
@@ -341,7 +342,7 @@ export const Transforms = transforms([
  * Resource retrieval query.
  *
  * Defines the shape and content of a {@link Resource} object to be retrieved. Properties are mapped to
- * {@link Projection} values specifying what to retrieve:
+ * {@link Model} values specifying what to retrieve:
  *
  * - {@link Literal} — Plain literal
  * - {@link Query} — Nested resource
@@ -426,7 +427,7 @@ export const Transforms = transforms([
  */
 export type Query = Partial<{
 
-	readonly [property: Identifier | `${Identifier}=${Expression}`]: Projection
+	readonly [property: Identifier | `${Identifier}=${Expression}`]: Model
 
 	readonly [lt: `<${Expression}`]: Literal
 	readonly [gt: `>${Expression}`]: Literal
@@ -453,18 +454,18 @@ export type Query = Partial<{
  * Defines the shape and type of property values in {@link Query} objects:
  *
  * - {@link Literal} — Plain literal value
- * - {@link IRI} — Resource reference
- * - {@link Query} — Nested resource
  * - `{ readonly [range: Range]: string }` — Single-valued {@link Dictionary}; {@link TagRange} keys select
  *   matching language tags to retrieve; `string` is an immaterial scalar placeholder
  * - `{ readonly [range: Range]: [string] }` — Multi-valued {@link Dictionary}; {@link TagRange} keys select
  *   matching language tags to retrieve; `[string]` is an immaterial array placeholder
+ * - {@link IRI} — Resource reference
+ * - {@link Query} — Nested resource
  * - `readonly [Query]` — Nested resource collection; singleton {@link Query} element provides query for retrieved
  *   resources and filtering, ordering, and paginating criteria
  *
  * @see [RFC 4647 - Matching of Language Tags](https://www.rfc-editor.org/rfc/rfc4647.html)
  */
-export type Projection =
+export type Model =
 	| Literal
 	| { readonly [range: TagRange]: string }
 	| { readonly [range: TagRange]: [string] }
@@ -529,6 +530,52 @@ export type Option =
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
+ * Parsed representation of a {@link Query} key.
+ *
+ * Decomposes projection keys (`property` or `alias=expression`) and constraint keys (`operator expression`)
+ * into their structural components.
+ *
+ * A unified type suffices as projections and constraints are easily
+ * disambiguated after parsing using {@link isIdentifier} on the `target` field.
+ *
+ * @see {@link encodeCriterion}
+ * @see {@link decodeCriterion}
+ */
+export type Criterion = {
+
+	/** Property name for projections or constraint {@link Operator}. */
+	readonly target: Identifier | Operator;
+
+	/** Transform pipeline applied to the value, in application order. */
+	readonly pipe: readonly Identifier[];
+
+	/** Dot-separated property path to the target value. */
+	readonly path: readonly Identifier[];
+
+}
+
+/**
+ * Constraint operator symbols for {@link Query} keys.
+ *
+ * @see {@link Query} for constraint semantics
+ */
+export type Operator =
+	| "<"
+	| ">"
+	| "<="
+	| ">="
+	| "~"
+	| "?"
+	| "!"
+	| "$"
+	| "^"
+	| "@"
+	| "#";
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
  * Encodes a query as a URL-safe string.
  *
  * Serializes a {@link Query} object into a string representation suitable for transmission as a URL query string in
@@ -565,6 +612,40 @@ export function encodeQuery(query: Query, format: | "json" | "base64" | "form" =
  * @see {@link encodeQuery}
  */
 export function decodeQuery(query: string): Query {
+
+	throw new Error(";( to be implemented"); // !!!
+
+}
+
+
+/**
+ * Encodes a criterion as a {@link Query} key string.
+ *
+ * Serializes a parsed {@link Criterion} back into its compact string representation suitable for use as a Query key.
+ *
+ * @param criterion The criterion to encode
+ * @returns The encoded key string
+ *
+ * @see {@link decodeCriterion}
+ */
+export function encodeCriterion(criterion: Criterion): string {
+
+	throw new Error(";( to be implemented"); // !!!
+
+}
+
+/**
+ * Decodes a {@link Query} key string into a criterion.
+ *
+ * Parses a Query key string into its structural {@link Criterion} components, distinguishing projection keys
+ * from constraint keys based on the presence of an {@link Operator} prefix.
+ *
+ * @param key The query key string to decode
+ * @returns The parsed criterion
+ *
+ * @see {@link encodeCriterion}
+ */
+export function decodeCriterion(key: string): Criterion {
 
 	throw new Error(";( to be implemented"); // !!!
 
