@@ -1503,11 +1503,9 @@ describe("decodeQuery()", () => {
 			expect(() => decodeQuery(encodeURIComponent("{invalid"))).toThrow();
 		});
 
-		it("should handle invalid base64 gracefully", async () => {
-			// Invalid base64 that looks like base64 falls through to form parsing
-			// This behavior allows graceful degradation
-			const decoded = decodeQuery("eyJpbnZhbGlk"); // valid base64 but invalid JSON
-			expect(decoded).toBeDefined(); // Parsed as form format
+		it("should throw on invalid base64 JSON", async () => {
+			// Valid base64 but invalid JSON throws with cause
+			expect(() => decodeQuery("eyJpbnZhbGlk")).toThrow("invalid query");
 		});
 
 		it("should handle truncated percent-encoding", async () => {

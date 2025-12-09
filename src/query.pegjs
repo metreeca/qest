@@ -41,7 +41,8 @@
   }
 
   function parseValue(str) {
-    const decoded = decodeURIComponentSafe(str);
+    // Replace + with space before decoding (application/x-www-form-urlencoded)
+    const decoded = decodeURIComponentSafe(str.replace(/\+/g, " "));
 
     // Localized string: "text"@lang → [text, lang]
     const localizedMatch = decoded.match(/^"((?:[^"\\]|\\.)*)"\s*@\s*([a-zA-Z]+(?:-[a-zA-Z0-9]+)*)$/);
@@ -121,8 +122,24 @@
 
   function mergePairs(pairs) {
     const isOperator = ([key]) => /^[@#^~?!$<>]/.test(key);
+    const isMultiValueOperator = ([key]) => /^[?!$]/.test(key);
 
-    const direct = Object.fromEntries(pairs.filter(isOperator));
+    // Handle operator-prefixed pairs
+    const direct = {};
+    for (const [key, value] of pairs.filter(isOperator)) {
+      if (isMultiValueOperator([key])) {
+        // ?/!/$ operators accumulate multiple values into arrays
+        if (key in direct) {
+          const existing = direct[key];
+          direct[key] = Array.isArray(existing) ? [...existing, value] : [existing, value];
+        } else {
+          direct[key] = value;
+        }
+      } else {
+        // Other operators (@/#/^/~/</>/<=/>=) just overwrite
+        direct[key] = value;
+      }
+    }
 
     const grouped = pairs
       .filter(p => !isOperator(p))
@@ -229,7 +246,10 @@ Pair
   / GtPair
   / LtePair
   / GtePair
+  / LtPostfixPair
+  / GtPostfixPair
   / EqualityPair
+  / BareIdentifierPair
 
 OffsetPair
   = "@=" value:Value { return ["@", parsePagination(value)]; }
@@ -238,7 +258,7 @@ LimitPair
   = "#=" value:Value { return ["#", parsePagination(value)]; }
 
 SortPair
-  = "^" expr:QueryPath "=" value:Value { return ["^" + expr, parseDirection(value)]; }
+  = "^" expr:QueryPath "=" value:Value { return ["^" + expr, parseValue(value)]; }
 
 LikePair
   = "~" expr:QueryPath "=" value:Value { return ["~" + expr, parseValue(value)]; }
@@ -270,13 +290,26 @@ LtePair
 GtePair
   = expr:QueryPath ">=" value:Value { return [">=" + expr, parseValue(value)]; }
 
+LtPostfixPair
+  = expr:QueryPath "<" value:Value { return ["<" + expr, parseValue(value)]; }
+
+GtPostfixPair
+  = expr:QueryPath ">" value:Value { return [">" + expr, parseValue(value)]; }
+
 EqualityPair
   = expr:QueryPath "=" value:Value {
       return [expr, value === "*" ? "*" : parseValue(value)];
     }
 
+BareIdentifierPair
+  = expr:QueryPath { return [expr, ""]; }
+
 QueryPath
-  = path:Path { return path.join("."); }
+  = expr:QueryExpr { return expr; }
+
+// QueryExpr captures transform expressions like "year:releaseDate" or "round:avg:items.price"
+QueryExpr
+  = $(Transform* Path)
 
 Value
   = $[^&]*

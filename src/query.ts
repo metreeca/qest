@@ -263,11 +263,11 @@
  *
  * @module
  */
-
 import { Identifier, isIdentifier } from "@metreeca/core";
-import { isBoolean } from "@metreeca/core/json";
+import { isArray, isBoolean, isObject, isString } from "@metreeca/core/json";
 import { TagRange } from "@metreeca/core/language";
 import { IRI } from "@metreeca/core/resource";
+import * as QueryParser from "./query.pegjs.js";
 import { Dictionary, Literal, Resource } from "./state.js";
 
 
@@ -619,22 +619,6 @@ export function encodeQuery(query: Query, format: "json" | "base64" | "form" = "
 			: encodeFormQuery(query);
 
 
-	function encodeBase64(json: string): string {
-
-		// Encode Unicode to UTF-8 bytes, then to URL-safe base64
-
-		const bytes = new TextEncoder().encode(json);
-		const base64 = btoa(String.fromCharCode(...bytes));
-
-		// Convert to URL-safe base64: replace + with -, / with _, remove = padding
-
-		return base64
-			.replace(/\+/g, "-")
-			.replace(/\//g, "_")
-			.replace(/=+$/, "");
-
-	}
-
 	function encodeFormQuery(query: Query): string {
 
 		return Object.entries(query)
@@ -645,10 +629,36 @@ export function encodeQuery(query: Query, format: "json" | "base64" | "form" = "
 
 	function encodeFormEntry(key: string, value: unknown): string[] {
 
-		return value === null ? [`${encodeURIComponent(key)}=null`]
-			: Array.isArray(value) ? value.map(v => `${encodeURIComponent(key)}=${encodeURIComponent(String(v))}`)
-				: typeof value === "object" ? [`${encodeURIComponent(key)}=${encodeURIComponent(JSON.stringify(value))}`]
-					: [`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`];
+		const encodedKey = encodeURIComponent(key);
+
+		return value === null ? [`${encodedKey}=null`]
+			: isArray(value) ? value.flatMap(v => encodeFormEntry(key, v))
+				: isObject(value) ? encodeFormDictionary(encodedKey, value as Record<string, unknown>)
+					: [`${encodedKey}=${encodeFormValue(value)}`];
+
+	}
+
+	function encodeFormDictionary(encodedKey: string, dict: Record<string, unknown>): string[] {
+
+		// Dictionary (localized content): expand to tagged strings
+
+		return Object.entries(dict).flatMap(([tag, tagValue]) => isArray(tagValue)
+			? tagValue.map(v => `${encodedKey}=${encodeFormValue(v)}%40${tag}`)
+			: [`${encodedKey}=${encodeFormValue(tagValue)}%40${tag}`]
+		);
+
+	}
+
+	function encodeFormValue(value: unknown): string {
+
+		// Strings are double-quoted with inner quotes escaped
+
+		return isString(value)
+			? encodeURIComponent(`"${value
+				.replace(/\\/g, "\\\\")
+				.replace(/"/g, "\\\"")
+			}"`)
+			: encodeURIComponent(String(value));
 
 	}
 
@@ -679,99 +689,53 @@ export function encodeQuery(query: Query, format: "json" | "base64" | "form" = "
  */
 export function decodeQuery(query: string): Query {
 
-	if ( !query ) { return {} as Query; }
+	try {
 
-	// Try JSON format first (starts with %7B which is encoded '{')
-	if ( query.startsWith("%7B") || query.startsWith("{") ) {
-		return JSON.parse(decodeURIComponent(query)) as Query;
-	}
+		if ( query === "" ) {
 
-	// Try base64 format (standard or URL-safe base64)
-	if ( /^[A-Za-z0-9+/_=-]+$/.test(query) && !query.includes("&") ) {
-		try {
+			return {} as Query;
+
+		} else if ( query.startsWith("%7B") || query.startsWith("{") ) {
+
+			// JSON format (starts with %7B which is encoded '{')
+
+			return JSON.parse(decodeURIComponent(query)) as Query;
+
+		} else if ( /^e[A-Za-z0-9+/_-]*=*$/.test(query) ) {
+
+			// Base64 format - JSON objects encode to base64 starting with 'e'
+
 			return JSON.parse(decodeBase64(query)) as Query;
-		} catch {
-			// Not valid base64, fall through to form format
+
+		} else {
+
+			// Form format (application/x-www-form-urlencoded) parsed via Peggy grammar
+			// Decode keys separately while preserving encoded values for the parser's value handling
+
+			return QueryParser.parse(decodeFormKeys(query), { startRule: "Query" }) as Query;
+
 		}
+
+	} catch (cause) {
+		throw new Error(`invalid query: ${query}`, { cause });
 	}
 
-	// Form format (application/x-www-form-urlencoded)
-	return decodeFormQuery(query);
 
+	function decodeFormKeys(query: string): string {
 
-	function decodeBase64(encoded: string): string {
+		return query.split("&").map(pair => {
 
-		// Convert from URL-safe base64 to standard base64 and ensure padding
-		const base64 = encoded.replace(/-/g, "+").replace(/_/g, "/");
-		const padLen = (4 - base64.length % 4) % 4;
-		const padded = padLen > 0 && !base64.endsWith("=") ? base64 + "=".repeat(padLen) : base64;
-		const bytes = Uint8Array.from(atob(padded), c => c.charCodeAt(0));
+			const eqIndex = pair.indexOf("=");
 
-		return new TextDecoder().decode(bytes);
-
-	}
-
-	function decodeFormQuery(query: string): Query {
-
-		const result: Record<string, unknown> = {};
-		const prefixOperators = /^(<|>|<=|>=|~|\?|!|\$|\^|@|#)/;
-		// Postfix syntax: property<=value or property<value (operator in middle)
-		const postfixOperators = /^(.+?)(<=|>=|<|>)(.+)$/;
-
-		for ( const pair of query.split("&") ) {
-
-			if ( !pair ) { continue; }
-
-			const decoded = decodeURIComponent(pair.replace(/\+/g, " "));
-
-			// First check for postfix syntax in the full parameter (property<value)
-			const postfixMatch = decoded.match(postfixOperators);
-			if ( postfixMatch ) {
-				const property = postfixMatch[1];
-				const op = postfixMatch[2];
-				const rawValue = postfixMatch[3];
-				const key = op + property;
-				const value = parseFormValue(rawValue);
-				addFormValue(result, key, value);
-				continue;
+			if ( eqIndex === -1 ) {
+				return decodeURIComponent(pair);
+			} else {
+				const key = pair.slice(0, eqIndex);
+				const value = pair.slice(eqIndex+1);
+				return decodeURIComponent(key)+"="+value;
 			}
 
-			// Standard key=value parsing
-			const [encodedKey, ...valueParts] = pair.split("=");
-			const decodedKey = decodeURIComponent(encodedKey);
-			const rawValue = valueParts.join("="); // Handle values with = in them
-			const value = parseFormValue(rawValue);
-
-			// Check for prefix operator
-			const prefixMatch = decodedKey.match(prefixOperators);
-			const key = prefixMatch ? decodedKey : "?" + decodedKey;
-
-			addFormValue(result, key, value);
-
-		}
-
-		return result as Query;
-
-	}
-
-	function parseFormValue(rawValue: string): unknown {
-
-		return rawValue === "null" ? null
-			: rawValue === "true" ? true
-				: rawValue === "false" ? false
-					: /^-?\d+(\.\d+)?$/.test(rawValue) ? Number(rawValue)
-						: decodeURIComponent(rawValue.replace(/\+/g, " "));
-
-	}
-
-	function addFormValue(result: Record<string, unknown>, key: string, value: unknown): void {
-
-		if ( key in result ) {
-			const existing = result[key];
-			result[key] = Array.isArray(existing) ? [...existing, value] : [existing, value];
-		} else {
-			result[key] = value;
-		}
+		}).join("&");
 
 	}
 
@@ -860,5 +824,56 @@ function transforms<const T extends readonly {
 		}];
 
 	})) as unknown as Record<T[number]["name"], T[number]>;
+
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * Encodes a string to URL-safe base64.
+ *
+ * Converts Unicode content to UTF-8 bytes, then encodes to URL-safe base64 per RFC 4648 §5. Uses `-` instead of `+`,
+ * `_` instead of `/`, and omits `=` padding for URL compatibility.
+ *
+ * @param plain The string to encode
+ * @returns The URL-safe base64-encoded string
+ *
+ * @see {@link https://datatracker.ietf.org/doc/html/rfc4648#section-5 RFC 4648 §5 - Base64url Encoding}
+ */
+function encodeBase64(plain: string): string {
+
+	const bytes = new TextEncoder().encode(plain);
+	const base64 = btoa(String.fromCharCode(...bytes));
+
+	return base64
+		.replace(/\+/g, "-")
+		.replace(/\//g, "_")
+		.replace(/=+$/, "");
+
+}
+
+/**
+ * Decodes a URL-safe base64 string.
+ *
+ * Converts URL-safe base64 (RFC 4648 §5) back to standard base64, restores padding as needed, then decodes to a UTF-8
+ * string. Handles both padded and unpadded input.
+ *
+ * @param encoded The URL-safe base64-encoded string
+ * @returns The decoded string
+ *
+ * @see {@link https://datatracker.ietf.org/doc/html/rfc4648#section-5 RFC 4648 §5 - Base64url Encoding}
+ */
+function decodeBase64(encoded: string): string {
+
+	const base64 = encoded
+		.replace(/-/g, "+")
+		.replace(/_/g, "/");
+
+	const padLen = (4-base64.length%4)%4;
+	const padded = padLen > 0 && !base64.endsWith("=") ? base64+"=".repeat(padLen) : base64;
+	const bytes = Uint8Array.from(atob(padded), c => c.charCodeAt(0));
+
+	return new TextDecoder().decode(bytes);
 
 }

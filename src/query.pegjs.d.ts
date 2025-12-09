@@ -170,7 +170,7 @@ export type ParserTracerEvent
       readonly result: unknown;
     };
 
-export type StartRuleNames = "Identifier" | "Path" | "Expression" | "NamePrefix" | "Transform" | "ExpressionPath" | "Prefix" | "FirstProperty" | "PropertyAccessor" | "BracketProperty" | "SingleQuotedChar" | "Query" | "PairList" | "Pair" | "OffsetPair" | "LimitPair" | "SortPair" | "LikePair" | "DisjunctivePair" | "ConjunctivePair" | "FocusPair" | "LtPair" | "GtPair" | "LtePrefixPair" | "GtePrefixPair" | "LtePair" | "GtePair" | "EqualityPair" | "QueryPath" | "Value";
+export type StartRuleNames = "Identifier" | "Path" | "Expression" | "NamePrefix" | "Transform" | "ExpressionPath" | "Prefix" | "FirstProperty" | "PropertyAccessor" | "BracketProperty" | "SingleQuotedChar" | "Query" | "PairList" | "Pair" | "OffsetPair" | "LimitPair" | "SortPair" | "LikePair" | "DisjunctivePair" | "ConjunctivePair" | "FocusPair" | "LtPair" | "GtPair" | "LtePrefixPair" | "GtePrefixPair" | "LtePair" | "GtePair" | "LtPostfixPair" | "GtPostfixPair" | "EqualityPair" | "BareIdentifierPair" | "QueryPath" | "QueryExpr" | "Value";
 export interface ParseOptions<T extends StartRuleNames = "Identifier"> {
   /**
    * String or object that will be attached to the each `LocationRange` object
@@ -333,12 +333,32 @@ declare function ParseFunction<Options extends ParseOptions<"GtePair">>(
   options?: Options,
 ): any;
 
+declare function ParseFunction<Options extends ParseOptions<"LtPostfixPair">>(
+  input: string,
+  options?: Options,
+): any;
+
+declare function ParseFunction<Options extends ParseOptions<"GtPostfixPair">>(
+  input: string,
+  options?: Options,
+): any;
+
 declare function ParseFunction<Options extends ParseOptions<"EqualityPair">>(
   input: string,
   options?: Options,
 ): any;
 
+declare function ParseFunction<Options extends ParseOptions<"BareIdentifierPair">>(
+  input: string,
+  options?: Options,
+): any;
+
 declare function ParseFunction<Options extends ParseOptions<"QueryPath">>(
+  input: string,
+  options?: Options,
+): any;
+
+declare function ParseFunction<Options extends ParseOptions<"QueryExpr">>(
   input: string,
   options?: Options,
 ): any;
