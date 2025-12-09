@@ -119,7 +119,7 @@
  *
  * **Faceted Search**
  *
- * Aggregates in queries support common faceted search patterns:
+ * Aggregates enable faceted search patterns, computing category counts, value ranges, and totals in a single call:
  *
  * ```typescript
  * // Category facet with product counts
@@ -196,7 +196,7 @@
  * | `@=number`            | number                             | Offset                                            |
  * | `#=number`            | number                             | Limit                                             |
  *
- * ```
+ * ```text
  * category=electronics
  *   &category=home
  *   &~name=widget
@@ -206,7 +206,7 @@
  *   &@=0
  *   &#=25
  * ```
-  *
+ *
  * This query:
  *
  * 1. Filters items where `category` is "electronics" OR "home"
@@ -220,7 +220,9 @@
  * > Form queries specify only constraints; wrapping inside the target endpoint's collection property and providing
  * > a default projection is server-managed.
  *
- * **Query Grammar** elements shared by both JSON and Form serialization formats.
+ * **Query Grammar**
+ *
+ * The following grammar elements are shared by both JSON and Form serialization formats.
  *
  * **Expressions** ({@link Expression}) identify properties or computed values combining an optional result name,
  * a pipeline of {@link Transforms}, and a property path:
@@ -232,7 +234,7 @@
  * path        = identifier ( '.' identifier )*
  * ```
  *
- * Identifiers follow {@link Identifier} rules (ECMAScript names)
+ * - Identifiers follow {@link Identifier} rules (ECMAScript names)
  * - Transforms form a pipeline applied right-to-left (functional composition order)
  * - An empty path computes aggregates over the input collection
  *
@@ -350,15 +352,15 @@ export const Transforms = transforms([
  *
  * - {@link Literal} — Plain literal
  * - {@link Query} — Nested resource
- * - `{ readonly [range: Range]: string }` — Single-valued {@link Dictionary}; {@link Range} key selects
+ * - `{ readonly [range: TagRange]: string }` — Single-valued {@link Dictionary}; {@link TagRange} key selects
  *   language tags to retrieve; `string` is a placeholder
- * - `{ readonly [range: Range]: [string] }` — Multi-valued {@link Dictionary}; {@link Range} key selects
+ * - `{ readonly [range: TagRange]: [string] }` — Multi-valued {@link Dictionary}; {@link TagRange} key selects
  *   language tags to retrieve; array marks multi-valued
  * - `readonly [Query]` — Nested resource collection; singleton {@link Query} element provides filtering,
  *   ordering, and paginating criteria for members
  * - `[]` — Nothing (ignored during processing)
  *
- * Queries may also define *virtual* properties, whose value is computed from an {@link Expression}; in this case,
+ * Queries may also define *computed* properties, whose value is computed from an {@link Expression}; in this case,
  * the projection defines the expected type of the computed value.
  *
  * Scalar values in projections serve as type placeholders; their actual value is immaterial, but
@@ -490,8 +492,7 @@ export type Projection =
  * - **transforms** is a sequence of transform names, each followed by a colon (e.g., `round:avg:`)
  *   and applied right-to-left (functional order)
  *
- * Both path steps and transform names are
- * {@link https://262.ecma-international.org/15.0/#sec-names-and-keywords | ECMAScript identifiers}.
+ * Both path steps and transform names follow {@link Identifier} rules (ECMAScript names).
  *
  * **Important:** Expressions are rejected with an error if they reference undefined properties
  * or undefined transforms.
