@@ -17,8 +17,9 @@
 /**
  * Resource state model.
  *
- * **@metreeca/qest** defines a [JSON-LD compatible](https://github.com/metreeca/qest#json-ld-interoperability) linked
- * data model designed to feel like idiomatic JSON for JavaScript developers.
+ * Defines the data structures exchanged between clients and servers in REST/JSON APIs. Resources represent
+ * complete entity states for retrieval and updates; patches describe partial modifications. Both use native
+ * JSON types with optional localized text support.
  *
  * This module provides types for describing resource states and updates:
  *

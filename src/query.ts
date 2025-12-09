@@ -17,27 +17,25 @@
 /**
  * Client-driven resource model.
  *
- * Defines the shape of data clients want to retrieve from an API. Clients specify which properties to include,
- * how deeply to expand linked resources, and what filters to apply. This enables efficient single-call retrieval
- * of exactly the data needed, without over or under-fetching.
+ * Defines the shape of data clients want to retrieve from an API. Clients specify which properties to include
+ * and how deeply to expand linked resources. For collections, queries also support filtering, ordering, and
+ * pagination. This enables efficient single-call retrieval of exactly the data needed.
  *
- * **Important:** Servers may provide default retrieval queries to support regular REST/JSON access patterns.
- * When clients don't explicitly provide a query, the server applies its default query, enabling standard
- * REST operations while still supporting client-driven retrieval when needed.
- *
- * This module provides types and functions for defining and serializing queries:
+ * This module provides types for defining queries:
  *
  * - {@link Query} — Resource retrieval query
  * - {@link Projection} — Property value specification
  * - {@link Expression} — Computed expression for transforms and paths
  * - {@link Transforms} — Standard value transformations
- * - {@link encodeQuery} — Serialize query to string
- * - {@link decodeQuery} — Parse query from string
+ *
+ * Utilities for serializing queries:
+ *
+ * - {@link encodeQuery} / {@link decodeQuery} — Query codecs
  *
  * **Resource Queries**
  *
- * A {@link Query} specifies which properties to retrieve from a single {@link Resource}. Properties map to
- * {@link Projection} values that define the expected shape and type:
+ * A {@link Query} specifies which properties to retrieve from a single {@link Resource} and how deeply to
+ * expand linked resources. No over-fetching of unwanted fields, no under-fetching requiring additional calls:
  *
  * ```typescript
  * const query: Query = {
@@ -45,7 +43,7 @@
  *   name: "",             // string property
  *   price: 0,             // numeric property
  *   available: true,      // boolean property
- *   publisher: {          // nested resource
+ *   vendor: {             // nested resource
  *     id: "",
  *     name: ""
  *   }
@@ -54,40 +52,32 @@
  *
  * **Collection Queries**
  *
- * A {@link Query} supports filtering, ordering, and pagination for resource collections:
+ * Collection queries are nested inside a managing resource that owns the collection, following REST/JSON best
+ * practices. Singleton array projections retrieve filtered, sorted, and paginated results with arbitrarily deep
+ * expansions in a single call - no over-fetching, no under-fetching:
  *
  * ```typescript
  * const query: Query = {
- *
- *   // projections
- *
- *   id: "",
- *   name: "",
- *   price: 0,
- *
- *   // filtering
- *
- *   ">=price": 10,                        // price ≥ 10
- *   "<=price": 100,                       // price ≤ 100
- *   "~name": "widget",                    // name contains "widget"
- *   "?category": ["electronics", "home"], // category in list
- *
- *   // ordering
- *
- *   "^price": "asc",                      // sort by price ascending
- *   "^name": -2,                          // then by name descending
- *
- *   // pagination
- *
- *   "@": 0,                               // skip first 0 results
- *   "#": 25                               // return at most 25 results
- *
+ *   items: [{                                 // collection owned by parent
+ *     id: "",
+ *     name: "",
+ *     price: 0,
+ *     vendor: { id: "", name: "" },           // nested resource
+ *     ">=price": 50,                          // price ≥ 50
+ *     "<=price": 150,                         // price ≤ 150
+ *     "~name": "widget",                      // name contains "widget"
+ *     "?category": ["electronics", "home"],   // category in list
+ *     "^price": "1",                          // sort by price ascending
+ *     "^name": -2,                            // then by name descending
+ *     "@": 0,                                 // skip first 0 results
+ *     "#": 25                                 // return at most 25 results
+ *   }]
  * };
  * ```
  *
  * **Localized Content**
  *
- * For multilingual properties, use {@link Range} keys to select language tags to retrieve:
+ * For multilingual properties, use {@link TagRange} keys to select language tags to retrieve:
  *
  * ```typescript
  * const query: Query = {
@@ -98,73 +88,75 @@
  * };
  * ```
  *
- * **Nested Collections**
+ * **Computed Properties**
  *
- * Use singleton array projections to retrieve nested resource collections with their own filtering criteria:
+ * Queries can define computed properties using {@link Expression | expressions} combining property paths
+ * with {@link Transforms}.
+ *
+ * Plain transforms operate on individual values:
  *
  * ```typescript
  * const query: Query = {
  *   id: "",
  *   name: "",
- *   items: [{          // nested collection
- *     id: "",
- *     name: "",
- *     price: 0,
- *     "^price": "asc", // order items by price
- *     "#": 10          // limit to 10 items
- *   }]
+ *   price: 0,
+ *   "vendorName=vendor.name": "",       // property path
+ *   "releaseYear=year:releaseDate": 0   // transform
  * };
  * ```
  *
- * **Virtual Properties**
- *
- * Queries can define computed properties using {@link Expression | expressions} with {@link Transforms}:
+ * Aggregate transforms operate on collections:
  *
  * ```typescript
  * const query: Query = {
- *   id: "",
- *   name: "",
- *   "total=sum:items.price": 0,       // computed sum
- *   "avgRating=round:avg:ratings": 0, // computed average, rounded
- *   "itemCount=count:items": 0        // computed count
+ *   items: [{
+ *     vendor: { id: "", name: "" },    // group by vendor
+ *     "items=count:": 0,               // count of items per vendor
+ *     "avgPrice=avg:price": 0          // average price per vendor
+ *   }]
  * };
  * ```
  *
  * **Faceted Search**
  *
- * Queries support common patterns for faceted search interfaces. These minimal sketches illustrate basic
- * usage; real-world facet analytics can combine filtering, grouping, and aggregation for richer and coordinated
- * results:
+ * Aggregates in queries support common faceted search patterns:
  *
  * ```typescript
- * // Multi-value facet with counts
+ * // Category facet with product counts
  *
- * const categoriesFacet: Query = {
- *   "category=sample:categories": "",
- *   "products=count:": 0,
- *   "^products:": "desc"
+ * const categoryFacet: Query = {
+ *   items: [{
+ *     "category=sample:category": "",
+ *     "count=count:": 0,
+ *     "^count": "desc"
+ *   }]
  * };
  *
- * // → [{ category: "Electronics", products: 150 },
- * //    { category: "Clothing", products: 89 },
- * //    { category: "Home", products: 45 }]
+ * // → { items: [
+ * //      { category: "Electronics", count: 150 },
+ * //      { category: "Home", count: 89 }
+ * //    ]}
  *
- * // Numeric range for slider bounds
+ * // Price range for slider bounds
  *
- * const priceFacet: Query = {
- *   "min=min:price": 0,
- *   "max=max:price": 0
+ * const priceRange: Query = {
+ *   items: [{
+ *     "min=min:price": 0,
+ *     "max=max:price": 0
+ *   }]
  * };
  *
- * // → { min: 9.99, max: 1299.00 }
+ * // → { items: [{ min: 9.99, max: 1299.00 }] }
  *
- * // Total matching items
+ * // Total product count
  *
  * const productCount: Query = {
- *   "products=count:": 0
+ *   items: [{
+ *     "count=count:": 0
+ *   }]
  * };
  *
- * // → { products: 284 }
+ * // → { items: [{ count: 284 }] }
  * ```
  *
  * # Query Serialization
@@ -180,8 +172,7 @@
  *
  * ## JSON Serialization
  *
- * Query operators are represented as JSON key prefixes, mirroring the {@link Query} type definition. Keys
- * combine a prefix with an {@link Expression | expression}. Values are JSON-serialized according to operator type:
+ * Query operators are represented as JSON key prefixes, mirroring the {@link Query} type definition:
  *
  * | Operator              | Key Prefix | Value Type | Example                 |
  * |-----------------------|------------|------------|-------------------------|
@@ -212,18 +203,7 @@
  * ## Form Serialization
  *
  * Query objects additionally support `application/x-www-form-urlencoded` encoding via the `form` mode.
- *
- * The `form` format serializes Query objects as query strings, where each `label=value` pair represents a constraint.
- * Labels may include operator prefixes or suffixes to specify the type of criterion being applied.
- *
- * ```
- * query   = pair*
- * pair    = "&"? label ("=" value)?
- * label   = prefix? expression postfix? | "@" | "#"
- * prefix  = "~" | "?" | "!" | "$" | "^"
- * postfix = "<" | ">"
- * value   = <URL-encoded string>
- * ```
+ * The format serializes queries as `label=value` pairs with operator prefixes or suffixes:
  *
  * | Syntax                | Value                              | Description                                       |
  * |-----------------------|------------------------------------|---------------------------------------------------|
@@ -256,88 +236,27 @@
  *
  * ## Expressions
  *
- * {@link Expression | Expressions} identify properties or computed values. An expression combines optional
- * [transform pipes](#transform-pipes) with a [property path](#property-paths).
- *
- * ```
- * expression = transforms path
- * ```
- *
- * Transforms form a pipeline applied right-to-left. An empty path with transforms computes aggregates over the input.
- *
- * ```
- * name
- * user.profile
- * count:items
- * sum:items.price
- * round:avg:scores
- * count:
- * ```
- *
- * ### Transform Pipes
- *
- * {@link Transforms} apply operations to path values. Multiple transforms form a pipeline, applied right-to-left
- * (functional order).
- *
- * ```
- * transforms = (identifier ":")*
- * ```
- *
- * ```
- * count:items                  # count of items
- * sum:items.price              # sum of item prices
- * round:avg:scores             # inner applied first, then outer
- * ```
- *
- * ### Property Paths
- *
- * Property paths identify nested properties within a resource using dot notation. An empty path references
- * the root value.
- *
- * ```
- * path       = property ("." property)*
- * property   = identifier
- * identifier = [$_\p{ID_Start}][$\p{ID_Continue}]*
- * ```
+ * {@link Expression | Expressions} identify properties or computed values. An expression combines an optional
+ * result name, a pipeline of transforms, and a property path. Identifiers follow
+ * {@link https://262.ecma-international.org/15.0/#sec-names-and-keywords ECMAScript identifier} rules.
+ * Transforms form a pipeline applied right-to-left (functional order). An empty path computes aggregates
+ * over the input.
  *
  * ```
  * name                         # simple property
  * user.profile.email           # nested property
- * count:                       # empty path (root)
- * ```
- *
- * ### Identifiers
- *
- * Property names and transform names follow
- * {@link https://262.ecma-international.org/15.0/#sec-names-and-keywords | ECMAScript identifier} rules.
- *
- * ```
- * name                         # simple identifier
- * _private                     # underscore prefix
- * $ref                         # dollar prefix
- * item123                      # contains digits
+ * total=sum:items.price        # named computed sum
+ * round:avg:scores             # pipeline: inner applied first
+ * count:                       # empty path (aggregate over root)
  * ```
  *
  * ## Values
  *
- * - Values are serialized as [JSON](https://www.rfc-editor.org/rfc/rfc8259) primitives
- * - IRIs are serialized as strings
- * - Localized strings ({@link Dictionary}) combine a string with a
- *   {@link https://metreeca.github.io/core/types/language.Tag.html | language tag}
- *
- * ```
- * value      = literal | localized
- * literal    = boolean | number | string
- * boolean    = "true" | "false"
- * number     = <JSON number>
- * string     = <JSON string> | <unquoted>
- * localized  = <JSON string> "@" language-tag
- * ```
- *
- * String quotes may be omitted.
- *
- * > **Warning:** Omitting quotes may cause strings to be interpreted as numbers.
- * > Use `"123"` to preserve string type for numeric-looking values.
+ * Values are serialized as [JSON](https://www.rfc-editor.org/rfc/rfc8259) primitives. IRIs are serialized
+ * as strings. Localized strings ({@link Dictionary}) combine a string value with a
+ * {@link https://metreeca.github.io/core/types/language.Tag.html language tag} suffix (e.g., `"text@en"`).
+ * String quotes may be omitted, but numeric-looking values like `123` will be parsed as numbers unless
+ * quoted (`"123"`).
  *
  * @module
  */
@@ -535,11 +454,12 @@ export type Query = Partial<{
  *
  * Defines the shape and type of property values in {@link Query} objects:
  *
- * - {@link Literal} — Plain literal
+ * - {@link Literal} — Plain literal value
+ * - {@link IRI} — Resource reference
  * - {@link Query} — Nested resource
- * - `{ readonly [range: Range]: string }` — Single-valued {@link Dictionary}; {@link Range} keys select
+ * - `{ readonly [range: Range]: string }` — Single-valued {@link Dictionary}; {@link TagRange} keys select
  *   matching language tags to retrieve; `string` is an immaterial scalar placeholder
- * - `{ readonly [range: Range]: [string] }` — Multi-valued {@link Dictionary}; {@link Range} keys select
+ * - `{ readonly [range: Range]: [string] }` — Multi-valued {@link Dictionary}; {@link TagRange} keys select
  *   matching language tags to retrieve; `[string]` is an immaterial array placeholder
  * - `readonly [Query]` — Nested resource collection; singleton {@link Query} element provides query for retrieved
  *   resources and filtering, ordering, and paginating criteria
@@ -550,6 +470,7 @@ export type Projection =
 	| Literal
 	| { readonly [range: TagRange]: string }
 	| { readonly [range: TagRange]: [string] }
+	| IRI
 	| Query
 	| readonly [Query];
 

@@ -79,18 +79,15 @@ The same format is used for complete resource updates:
 PUT https://data.example.com/products/123
 ```
 
-```json lines
-{
+```js
+({
   "name": "Widget",
   "category": "Electronics",
-  "tags": [
-    "gadget",
-    "premium"
-  ],
+  "tags": ["gadget", "premium"],
   "vendor": "https://data.example.com/vendors/456",
   "price": 79.99
   // inStock                     // not included → deleted
-}
+})
 ```
 
 A [**Patch**](https://metreeca.github.io/qest/types/state.Patch.html) describes partial updates with the same effect:
@@ -99,18 +96,12 @@ A [**Patch**](https://metreeca.github.io/qest/types/state.Patch.html) describes 
 PATCH https://data.example.com/products/123
 ```
 
-```json lines
-{
-  "tags": [
-    "gadget",
-    "premium"
-  ],
-  // updated
-  "price": 79.99,
-  // updated
-  "inStock": null
-  // deleted
-}
+```js
+({
+  "tags": ["gadget", "premium"], // updated
+  "price": 79.99,                // updated
+  "inStock": null                // deleted
+})
 ```
 
 Properties set to `null` are deleted; properties not included are unchanged.
@@ -128,8 +119,8 @@ GET https://data.example.com/products/?<query>
 
 where `<query>` is the following URL-encoded JSON:
 
-```json lines
-{
+```js
+({
   "items": [
     {
       "id": "",
@@ -139,17 +130,13 @@ where `<query>` is the following URL-encoded JSON:
         "id": "",
         "name": ""
       },
-      ">=price": 50,
-      // filter: price ≥ 50
-      "<=price": 150,
-      // filter: price ≤ 150
-      "^price": "asc",
-      // sort: by price ascending
-      "#": 25
-      // limit: 25 results
+      ">=price": 50,     // filter: price ≥ 50
+      "<=price": 150,    // filter: price ≤ 150
+      "^price": "asc",   // sort: by price ascending
+      "#": 25            // limit: 25 results
     }
   ]
-}
+})
 ```
 
 A single call returns exactly what the client requested:
