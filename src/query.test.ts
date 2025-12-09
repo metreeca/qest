@@ -1368,6 +1368,74 @@ describe("decodeQuery()", () => {
 				expect(decoded["~name"]).toBe("a=b");
 			});
 
+			it("should parse null", async () => {
+				const decoded = decodeQuery("value=null") as Record<string, unknown>;
+
+				expect(decoded["?value"]).toBe(null);
+			});
+
+			it("should parse scientific notation", async () => {
+				const decoded = decodeQuery("value=1e10") as Record<string, unknown>;
+
+				expect(decoded["?value"]).toBe(1e10);
+			});
+
+			it("should parse negative exponent", async () => {
+				const decoded = decodeQuery("value=1.5e-10") as Record<string, unknown>;
+
+				expect(decoded["?value"]).toBe(1.5e-10);
+			});
+
+			it("should parse quoted string preserving type", async () => {
+				// "123" should remain string, not convert to number
+				const decoded = decodeQuery("value=%22123%22") as Record<string, unknown>;
+
+				expect(decoded["?value"]).toBe("123");
+				expect(typeof decoded["?value"]).toBe("string");
+			});
+
+			it("should parse quoted null as string", async () => {
+				const decoded = decodeQuery("value=%22null%22") as Record<string, unknown>;
+
+				expect(decoded["?value"]).toBe("null");
+				expect(typeof decoded["?value"]).toBe("string");
+			});
+
+			it("should decode JSON escape sequences", async () => {
+				// "a\nb" encoded
+				const decoded = decodeQuery("value=%22a%5Cnb%22") as Record<string, unknown>;
+
+				expect(decoded["?value"]).toBe("a\nb");
+			});
+
+			it("should decode escaped quotes in strings", async () => {
+				// "a\"b" encoded
+				const decoded = decodeQuery("value=%22a%5C%22b%22") as Record<string, unknown>;
+
+				expect(decoded["?value"]).toBe("a\"b");
+			});
+
+			it("should decode unicode escapes", async () => {
+				// "\u0041" = "A"
+				const decoded = decodeQuery("value=%22%5Cu0041%22") as Record<string, unknown>;
+
+				expect(decoded["?value"]).toBe("A");
+			});
+
+			it("should decode localized string", async () => {
+				// "Hello"@en
+				const decoded = decodeQuery("label=%22Hello%22%40en") as Record<string, unknown>;
+
+				expect(decoded["?label"]).toEqual(["Hello", "en"]);
+			});
+
+			it("should decode localized string with region", async () => {
+				// "Colour"@en-GB
+				const decoded = decodeQuery("label=%22Colour%22%40en-GB") as Record<string, unknown>;
+
+				expect(decoded["?label"]).toEqual(["Colour", "en-GB"]);
+			});
+
 		});
 
 		describe("expression paths", () => {
@@ -1452,6 +1520,25 @@ describe("decodeQuery()", () => {
 
 				expect(decoded).toHaveProperty("?name");
 				expect(decoded).toHaveProperty("?price");
+			});
+
+		});
+
+		describe("integration", () => {
+
+			it("should decode complex query with multiple operators", async () => {
+				// status=active&status=pending&~name=corp&price>=100&price<=1000&^date=desc&@=0&#=25
+				const decoded = decodeQuery(
+					"status=active&status=pending&~name=corp&price%3E%3D100&price%3C%3D1000&%5Edate=desc&%40=0&%23=25"
+				) as Record<string, unknown>;
+
+				expect(decoded["?status"]).toEqual(["active", "pending"]);
+				expect(decoded["~name"]).toBe("corp");
+				expect(decoded[">=price"]).toBe(100);
+				expect(decoded["<=price"]).toBe(1000);
+				expect(decoded["^date"]).toBe("desc");
+				expect(decoded["@"]).toBe(0);
+				expect(decoded["#"]).toBe(25);
 			});
 
 		});
