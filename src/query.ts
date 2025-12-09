@@ -25,9 +25,9 @@
  * - {@link Expression} — Computed expression for transforms and paths
  * - {@link Transforms} — Standard value transformations
  *
- * It also provides utilities for converting between serialized and structured representations::
+ * It also provides utilities for converting between serialized and structured representations:
  *
- * - {@link encodeQuery} / {@link decodeQuery} — codecs for URL-safe query strings queries
+ * - {@link encodeQuery} / {@link decodeQuery} — codecs for URL-safe query strings
  * - {@link encodeCriterion} / {@link decodeCriterion} — codecs for {@link Query} criterion keys
  *
  * # Query Patterns
@@ -180,8 +180,10 @@
  *
  * - Labels use the same prefixed operator syntax as {@link Query} constraint keys
  * - Each pair carries a single value; repeated labels are merged into arrays where accepted
- * - Postfix aliases (`expression=` for `?`, `expression<=` for `<=`, `expression>=` for `>=`) provide natural form
- *   syntax
+ * - Postfix aliases provide natural form syntax for some operators:
+ *   - `expression=` for `?` (disjunctive matching)
+ *   - `expression<=` for `<=` (less than or equal)
+ *   - `expression>=` for `>=` (greater than or equal)
  *
  * ```text
  * category=electronics
@@ -584,8 +586,20 @@ export type Operator =
  * - `"json"` — [Percent-encoded](https://www.rfc-editor.org/rfc/rfc3986#section-2.1) JSON; human-readable but verbose;
  *   see [JSON Serialization](#json-serialization)
  * - `"base64"` — [Base64-encoded](https://www.rfc-editor.org/rfc/rfc4648#section-4) JSON; compact and URL-safe
- * - `"form"` — [Form-encoded](https://url.spec.whatwg.org/#application/x-www-form-urlencoded) `label=value` pairs;
+ * - `"form"` — [Form-encoded](https://url.spec.whatwg.org/#application/x-www-form-urlencoded) `key=value` pairs;
  *   most compatible with standard tooling; see [Form Serialization](#form-serialization)
+ *
+ * @remarks
+ *
+ * The `"form"` format always encodes to canonical form:
+ *
+ * - Operators use prefix notation (e.g., `>=price=100`)
+ * - String values are JSON double-quoted (e.g., `name="widget"`)
+ * - Numbers, booleans, and `null` remain unquoted (JSON literals)
+ * - Sorting criteria are always numeric (e.g., `^price=1`, `^name=-2`)
+ *
+ * This ensures consistent, predictable output. The decoder accepts both canonical and optimized forms (e.g., postfix
+ * operators like `price>=100`, unquoted strings like `name=widget`).
  *
  * @returns The encoded query string
  *
@@ -599,33 +613,39 @@ export function encodeQuery(query: Query, format: "json" | "base64" | "form" = "
 		: format === "base64" ? encodeBase64(json)
 			: encodeFormQuery(query);
 
-}
 
-function encodeBase64(text: string): string {
+	function encodeBase64(json: string): string {
 
-	// Encode Unicode to UTF-8 bytes, then to URL-safe base64
-	const bytes = new TextEncoder().encode(text);
-	const base64 = btoa(String.fromCharCode(...bytes));
+		// Encode Unicode to UTF-8 bytes, then to URL-safe base64
 
-	// Convert to URL-safe base64: replace + with -, / with _, remove = padding
-	return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+		const bytes = new TextEncoder().encode(json);
+		const base64 = btoa(String.fromCharCode(...bytes));
 
-}
+		// Convert to URL-safe base64: replace + with -, / with _, remove = padding
 
-function encodeFormQuery(query: Query): string {
+		return base64
+			.replace(/\+/g, "-")
+			.replace(/\//g, "_")
+			.replace(/=+$/, "");
 
-	return Object.entries(query)
-		.flatMap(([key, value]) => encodeFormEntry(key, value))
-		.join("&");
+	}
 
-}
+	function encodeFormQuery(query: Query): string {
 
-function encodeFormEntry(key: string, value: unknown): string[] {
+		return Object.entries(query)
+			.flatMap(([key, value]) => encodeFormEntry(key, value))
+			.join("&");
 
-	return value === null ? [`${encodeURIComponent(key)}=null`]
-		: Array.isArray(value) ? value.map(v => `${encodeURIComponent(key)}=${encodeURIComponent(String(v))}`)
-			: typeof value === "object" ? [] // nested objects not supported in form encoding
-				: [`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`];
+	}
+
+	function encodeFormEntry(key: string, value: unknown): string[] {
+
+		return value === null ? [`${encodeURIComponent(key)}=null`]
+			: Array.isArray(value) ? value.map(v => `${encodeURIComponent(key)}=${encodeURIComponent(String(v))}`)
+				: typeof value === "object" ? [`${encodeURIComponent(key)}=${encodeURIComponent(JSON.stringify(value))}`]
+					: [`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`];
+
+	}
 
 }
 
@@ -636,6 +656,18 @@ function encodeFormEntry(key: string, value: unknown): string[] {
  * input string structure.
  *
  * @param query The encoded query string
+ *
+ * @remarks
+ *
+ * For `"form"` format, the decoder accepts both canonical and optimized forms:
+ *
+ * - Prefix operators (canonical): `>=price=100`
+ * - Postfix operators (optimized): `price>=100`
+ * - Double-quoted strings (canonical): `name="widget"`
+ * - Unquoted strings (optimized): `name=widget`
+ *
+ * Tagged strings always require the canonical `"value"@tag` format.
+ *
  * @returns The decoded query object
  *
  * @see {@link encodeQuery}
@@ -661,80 +693,81 @@ export function decodeQuery(query: string): Query {
 	// Form format (application/x-www-form-urlencoded)
 	return decodeFormQuery(query);
 
-}
 
-function decodeBase64(encoded: string): string {
+	function decodeBase64(encoded: string): string {
 
-	// Convert from URL-safe base64 to standard base64 and ensure padding
-	const base64 = encoded.replace(/-/g, "+").replace(/_/g, "/");
-	const padLen = (4 - base64.length % 4) % 4;
-	const padded = padLen > 0 && !base64.endsWith("=") ? base64 + "=".repeat(padLen) : base64;
-	const bytes = Uint8Array.from(atob(padded), c => c.charCodeAt(0));
+		// Convert from URL-safe base64 to standard base64 and ensure padding
+		const base64 = encoded.replace(/-/g, "+").replace(/_/g, "/");
+		const padLen = (4 - base64.length % 4) % 4;
+		const padded = padLen > 0 && !base64.endsWith("=") ? base64 + "=".repeat(padLen) : base64;
+		const bytes = Uint8Array.from(atob(padded), c => c.charCodeAt(0));
 
-	return new TextDecoder().decode(bytes);
-
-}
-
-function decodeFormQuery(query: string): Query {
-
-	const result: Record<string, unknown> = {};
-	const prefixOperators = /^(<|>|<=|>=|~|\?|!|\$|\^|@|#)/;
-	// Postfix syntax: property<=value or property<value (operator in middle)
-	const postfixOperators = /^(.+?)(<=|>=|<|>)(.+)$/;
-
-	for ( const pair of query.split("&") ) {
-
-		if ( !pair ) { continue; }
-
-		const decoded = decodeURIComponent(pair.replace(/\+/g, " "));
-
-		// First check for postfix syntax in the full parameter (property<value)
-		const postfixMatch = decoded.match(postfixOperators);
-		if ( postfixMatch ) {
-			const property = postfixMatch[1];
-			const op = postfixMatch[2];
-			const rawValue = postfixMatch[3];
-			const key = op + property;
-			const value = parseFormValue(rawValue);
-			addFormValue(result, key, value);
-			continue;
-		}
-
-		// Standard key=value parsing
-		const [encodedKey, ...valueParts] = pair.split("=");
-		const decodedKey = decodeURIComponent(encodedKey);
-		const rawValue = valueParts.join("="); // Handle values with = in them
-		const value = parseFormValue(rawValue);
-
-		// Check for prefix operator
-		const prefixMatch = decodedKey.match(prefixOperators);
-		const key = prefixMatch ? decodedKey : "?" + decodedKey;
-
-		addFormValue(result, key, value);
+		return new TextDecoder().decode(bytes);
 
 	}
 
-	return result as Query;
+	function decodeFormQuery(query: string): Query {
 
-}
+		const result: Record<string, unknown> = {};
+		const prefixOperators = /^(<|>|<=|>=|~|\?|!|\$|\^|@|#)/;
+		// Postfix syntax: property<=value or property<value (operator in middle)
+		const postfixOperators = /^(.+?)(<=|>=|<|>)(.+)$/;
 
-function parseFormValue(rawValue: string): unknown {
+		for ( const pair of query.split("&") ) {
 
-	return rawValue === "null" ? null
-		: rawValue === "true" ? true
-			: rawValue === "false" ? false
-				: /^-?\d+(\.\d+)?$/.test(rawValue) ? Number(rawValue)
-					: decodeURIComponent(rawValue.replace(/\+/g, " "));
+			if ( !pair ) { continue; }
 
-}
+			const decoded = decodeURIComponent(pair.replace(/\+/g, " "));
 
-function addFormValue(result: Record<string, unknown>, key: string, value: unknown): void {
+			// First check for postfix syntax in the full parameter (property<value)
+			const postfixMatch = decoded.match(postfixOperators);
+			if ( postfixMatch ) {
+				const property = postfixMatch[1];
+				const op = postfixMatch[2];
+				const rawValue = postfixMatch[3];
+				const key = op + property;
+				const value = parseFormValue(rawValue);
+				addFormValue(result, key, value);
+				continue;
+			}
 
-	if ( key in result ) {
-		const existing = result[key];
-		result[key] = Array.isArray(existing) ? [...existing, value] : [existing, value];
-	} else {
-		result[key] = value;
+			// Standard key=value parsing
+			const [encodedKey, ...valueParts] = pair.split("=");
+			const decodedKey = decodeURIComponent(encodedKey);
+			const rawValue = valueParts.join("="); // Handle values with = in them
+			const value = parseFormValue(rawValue);
+
+			// Check for prefix operator
+			const prefixMatch = decodedKey.match(prefixOperators);
+			const key = prefixMatch ? decodedKey : "?" + decodedKey;
+
+			addFormValue(result, key, value);
+
+		}
+
+		return result as Query;
+
+	}
+
+	function parseFormValue(rawValue: string): unknown {
+
+		return rawValue === "null" ? null
+			: rawValue === "true" ? true
+				: rawValue === "false" ? false
+					: /^-?\d+(\.\d+)?$/.test(rawValue) ? Number(rawValue)
+						: decodeURIComponent(rawValue.replace(/\+/g, " "));
+
+	}
+
+	function addFormValue(result: Record<string, unknown>, key: string, value: unknown): void {
+
+		if ( key in result ) {
+			const existing = result[key];
+			result[key] = Array.isArray(existing) ? [...existing, value] : [existing, value];
+		} else {
+			result[key] = value;
+		}
+
 	}
 
 }

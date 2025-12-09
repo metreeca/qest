@@ -431,7 +431,7 @@ describe("encodeQuery()", () => {
 
 	describe("form format", () => {
 
-		describe("basic projections", () => {
+		describe("basic constraints", () => {
 
 			it("should encode empty query", async () => {
 				const query = asQuery({});
@@ -440,52 +440,56 @@ describe("encodeQuery()", () => {
 				expect(encoded).toBe("");
 			});
 
-			it("should encode single property", async () => {
-				const query = asQuery({ name: "" });
+			it("should encode single constraint", async () => {
+				const query = asQuery({ "?name": "widget" });
 				const encoded = encodeQuery(query, "form");
 
-				expect(encoded).toContain("name=");
+				// ?name="widget"
+				expect(encoded).toBe("%3Fname=%22widget%22");
 			});
 
-			it("should encode multiple properties", async () => {
-				const query = asQuery({ name: "", price: 0 });
+			it("should encode multiple constraints", async () => {
+				const query = asQuery({ "?name": "widget", ">=price": 100 });
 				const encoded = encodeQuery(query, "form");
 
-				expect(encoded).toContain("name=");
-				expect(encoded).toContain("price=");
+				// ?name="widget"&>=price=100
+				expect(encoded).toBe("%3Fname=%22widget%22&%3E%3Dprice=100");
 			});
 
 		});
 
 		describe("comparison operators", () => {
 
-			it("should encode less than with postfix syntax", async () => {
+			it("should encode less than", async () => {
 				const query = asQuery({ "<price": 100 });
 				const encoded = encodeQuery(query, "form");
 
-				// Form format may use postfix alias: price<100 or prefix: <price=100
-				expect(encoded).toMatch(/price<100|<price=100|%3Cprice=100/);
+				// <price=100
+				expect(encoded).toBe("%3Cprice=100");
 			});
 
-			it("should encode less than or equal with postfix syntax", async () => {
+			it("should encode less than or equal", async () => {
 				const query = asQuery({ "<=price": 100 });
 				const encoded = encodeQuery(query, "form");
 
-				expect(encoded).toMatch(/price<=100|<=price=100|%3C%3Dprice=100/);
+				// <=price=100
+				expect(encoded).toBe("%3C%3Dprice=100");
 			});
 
-			it("should encode greater than with postfix syntax", async () => {
+			it("should encode greater than", async () => {
 				const query = asQuery({ ">price": 50 });
 				const encoded = encodeQuery(query, "form");
 
-				expect(encoded).toMatch(/price>50|>price=50|%3Eprice=50/);
+				// >price=50
+				expect(encoded).toBe("%3Eprice=50");
 			});
 
-			it("should encode greater than or equal with postfix syntax", async () => {
+			it("should encode greater than or equal", async () => {
 				const query = asQuery({ ">=price": 50 });
 				const encoded = encodeQuery(query, "form");
 
-				expect(encoded).toMatch(/price>=50|>=price=50|%3E%3Dprice=50/);
+				// >=price=50
+				expect(encoded).toBe("%3E%3Dprice=50");
 			});
 
 		});
@@ -496,15 +500,16 @@ describe("encodeQuery()", () => {
 				const query = asQuery({ "~name": "widget" });
 				const encoded = encodeQuery(query, "form");
 
-				expect(encoded).toMatch(/~name=widget|%7Ename=widget/);
+				// ~name="widget"
+				expect(encoded).toBe("~name=%22widget%22");
 			});
 
 			it("should encode search with spaces", async () => {
 				const query = asQuery({ "~name": "red widget" });
 				const encoded = encodeQuery(query, "form");
 
-				// Spaces should be encoded
-				expect(encoded).toMatch(/red(%20|\+)widget/);
+				// ~name="red widget"
+				expect(encoded).toBe("~name=%22red%20widget%22");
 			});
 
 		});
@@ -515,23 +520,24 @@ describe("encodeQuery()", () => {
 				const query = asQuery({ "?category": "electronics" });
 				const encoded = encodeQuery(query, "form");
 
-				expect(encoded).toMatch(/category=electronics|\?category=electronics|%3Fcategory=electronics/);
+				// ?category="electronics"
+				expect(encoded).toBe("%3Fcategory=%22electronics%22");
 			});
 
 			it("should encode multiple values as repeated parameters", async () => {
 				const query = asQuery({ "?category": ["electronics", "home"] });
 				const encoded = encodeQuery(query, "form");
 
-				// Should have repeated category= entries
-				const matches = encoded.match(/category=/g);
-				expect(matches?.length).toBeGreaterThanOrEqual(2);
+				// ?category="electronics"&?category="home"
+				expect(encoded).toBe("%3Fcategory=%22electronics%22&%3Fcategory=%22home%22");
 			});
 
 			it("should encode null option for undefined matching", async () => {
 				const query = asQuery({ "?vendor": null });
 				const encoded = encodeQuery(query, "form");
 
-				expect(encoded).toMatch(/vendor|%3Fvendor/);
+				// ?vendor=null
+				expect(encoded).toBe("%3Fvendor=null");
 			});
 
 		});
@@ -542,7 +548,28 @@ describe("encodeQuery()", () => {
 				const query = asQuery({ "!tags": ["featured", "sale"] });
 				const encoded = encodeQuery(query, "form");
 
-				expect(encoded).toMatch(/!tags|%21tags/);
+				// !tags="featured"&!tags="sale"
+				expect(encoded).toBe("!tags=%22featured%22&!tags=%22sale%22");
+			});
+
+		});
+
+		describe("focus operator", () => {
+
+			it("should encode single focus value", async () => {
+				const query = asQuery({ "$category": "electronics" });
+				const encoded = encodeQuery(query, "form");
+
+				// $category="electronics"
+				expect(encoded).toBe("%24category=%22electronics%22");
+			});
+
+			it("should encode multiple focus values", async () => {
+				const query = asQuery({ "$category": ["electronics", "home"] });
+				const encoded = encodeQuery(query, "form");
+
+				// $category="electronics"&$category="home"
+				expect(encoded).toBe("%24category=%22electronics%22&%24category=%22home%22");
 			});
 
 		});
@@ -550,25 +577,27 @@ describe("encodeQuery()", () => {
 		describe("ordering operators", () => {
 
 			it("should encode ascending sort", async () => {
-				const query = asQuery({ "^price": "asc" });
+				const query = asQuery({ "^price": 1 });
 				const encoded = encodeQuery(query, "form");
 
-				expect(encoded).toMatch(/%5Eprice=asc|\^price=asc/);
+				// ^price=1
+				expect(encoded).toBe("%5Eprice=1");
 			});
 
 			it("should encode descending sort", async () => {
-				const query = asQuery({ "^price": "desc" });
+				const query = asQuery({ "^price": -1 });
 				const encoded = encodeQuery(query, "form");
 
-				expect(encoded).toMatch(/%5Eprice=desc|\^price=desc/);
+				// ^price=-1
+				expect(encoded).toBe("%5Eprice=-1");
 			});
 
-			it("should encode numeric sort priority", async () => {
+			it("should encode multiple sort priorities", async () => {
 				const query = asQuery({ "^price": 1, "^name": -2 });
 				const encoded = encodeQuery(query, "form");
 
-				expect(encoded).toMatch(/%5Eprice=1|\^price=1/);
-				expect(encoded).toMatch(/%5Ename=-2|\^name=-2/);
+				// ^price=1&^name=-2
+				expect(encoded).toBe("%5Eprice=1&%5Ename=-2");
 			});
 
 		});
@@ -579,100 +608,24 @@ describe("encodeQuery()", () => {
 				const query = asQuery({ "@": 10 });
 				const encoded = encodeQuery(query, "form");
 
-				expect(encoded).toMatch(/@=10|%40=10/);
+				// @=10
+				expect(encoded).toBe("%40=10");
 			});
 
 			it("should encode limit", async () => {
 				const query = asQuery({ "#": 25 });
 				const encoded = encodeQuery(query, "form");
 
-				expect(encoded).toMatch(/#=25|%23=25/);
+				// #=25
+				expect(encoded).toBe("%23=25");
 			});
 
 			it("should encode offset and limit together", async () => {
 				const query = asQuery({ "@": 0, "#": 25 });
 				const encoded = encodeQuery(query, "form");
 
-				expect(encoded).toMatch(/@=0|%40=0/);
-				expect(encoded).toMatch(/#=25|%23=25/);
-			});
-
-		});
-
-		describe("edge cases", () => {
-
-			it("should encode special characters in values", async () => {
-				const query = asQuery({ "~name": "foo&bar" });
-				const encoded = encodeQuery(query, "form");
-
-				// & must be encoded to not break form parsing
-				expect(encoded).toContain("%26");
-			});
-
-			it("should encode equals sign in values", async () => {
-				const query = asQuery({ "~name": "a=b" });
-				const encoded = encodeQuery(query, "form");
-
-				// = must be encoded in values
-				expect(encoded).toContain("%3D");
-			});
-
-			it("should encode plus sign in values", async () => {
-				const query = asQuery({ "~name": "a+b" });
-				const encoded = encodeQuery(query, "form");
-
-				// + has special meaning in form encoding
-				expect(encoded).toMatch(/%2B|a%20b/);
-			});
-
-			it("should encode percent sign in values", async () => {
-				const query = asQuery({ "~name": "100%" });
-				const encoded = encodeQuery(query, "form");
-
-				expect(encoded).toContain("%25");
-			});
-
-			it("should handle empty string values", async () => {
-				const query = asQuery({ "~name": "" });
-				const encoded = encodeQuery(query, "form");
-
-				expect(encoded).toMatch(/~name=|%7Ename=/);
-			});
-
-			it("should handle zero values", async () => {
-				const query = asQuery({ "@": 0 });
-				const encoded = encodeQuery(query, "form");
-
-				expect(encoded).toMatch(/@=0|%40=0/);
-			});
-
-			it("should handle negative numbers", async () => {
-				const query = asQuery({ "^price": -1 });
-				const encoded = encodeQuery(query, "form");
-
-				expect(encoded).toMatch(/%5Eprice=-1|\^price=-1/);
-			});
-
-			it("should encode unicode characters", async () => {
-				const query = asQuery({ "~name": "café" });
-				const encoded = encodeQuery(query, "form");
-
-				// Unicode should be percent-encoded
-				expect(encoded).toMatch(/caf%C3%A9|caf%c3%a9/i);
-			});
-
-			it("should encode newlines in values", async () => {
-				const query = asQuery({ "~description": "line1\nline2" });
-				const encoded = encodeQuery(query, "form");
-
-				expect(encoded).toMatch(/%0A|%0a/i);
-			});
-
-			it("should encode tabs in values", async () => {
-				const query = asQuery({ "~description": "col1\tcol2" });
-				const encoded = encodeQuery(query, "form");
-
-				expect(encoded).toMatch(/%09/);
+				// @=0&#=25
+				expect(encoded).toBe("%40=0&%23=25");
 			});
 
 		});
@@ -683,15 +636,44 @@ describe("encodeQuery()", () => {
 				const query = asQuery({ ">=vendor.rating": 4 });
 				const encoded = encodeQuery(query, "form");
 
-				expect(encoded).toMatch(/vendor\.rating|vendor%2Erating/i);
+				// >=vendor.rating=4
+				expect(encoded).toBe("%3E%3Dvendor.rating=4");
 			});
 
-			it("should encode named expressions", async () => {
-				const query = asQuery({ "vendorName=vendor.name": "" });
+		});
+
+		describe("expression transforms", () => {
+
+			it("should encode constraint with single transform", async () => {
+				const query = asQuery({ ">=year:releaseDate": 2020 });
 				const encoded = encodeQuery(query, "form");
 
-				// = is encoded as %3D, but . is not encoded in encodeURIComponent
-				expect(encoded).toMatch(/vendorName%3Dvendor\.name=/i);
+				// >=year:releaseDate=2020
+				expect(encoded).toBe("%3E%3Dyear%3AreleaseDate=2020");
+			});
+
+			it("should encode constraint with transform pipeline", async () => {
+				const query = asQuery({ ">=round:avg:items.price": 100 });
+				const encoded = encodeQuery(query, "form");
+
+				// >=round:avg:items.price=100
+				expect(encoded).toBe("%3E%3Dround%3Aavg%3Aitems.price=100");
+			});
+
+			it("should encode disjunction with transform", async () => {
+				const query = asQuery({ "?month:releaseDate": [1, 6, 12] });
+				const encoded = encodeQuery(query, "form");
+
+				// ?month:releaseDate=1&?month:releaseDate=6&?month:releaseDate=12
+				expect(encoded).toBe("%3Fmonth%3AreleaseDate=1&%3Fmonth%3AreleaseDate=6&%3Fmonth%3AreleaseDate=12");
+			});
+
+			it("should encode ordering with transform", async () => {
+				const query = asQuery({ "^year:releaseDate": 1 });
+				const encoded = encodeQuery(query, "form");
+
+				// ^year:releaseDate=1
+				expect(encoded).toBe("%5Eyear%3AreleaseDate=1");
 			});
 
 		});
@@ -702,39 +684,180 @@ describe("encodeQuery()", () => {
 				const query = asQuery({ "?available": true });
 				const encoded = encodeQuery(query, "form");
 
-				expect(encoded).toMatch(/available=true/i);
+				// ?available=true
+				expect(encoded).toBe("%3Favailable=true");
 			});
 
 			it("should encode false value", async () => {
 				const query = asQuery({ "?available": false });
 				const encoded = encodeQuery(query, "form");
 
-				expect(encoded).toMatch(/available=false/i);
+				// ?available=false
+				expect(encoded).toBe("%3Favailable=false");
 			});
 
 		});
 
 		describe("numeric values", () => {
 
-			it("should encode integer values", async () => {
+			it("should encode zero", async () => {
+				const query = asQuery({ "@": 0 });
+				const encoded = encodeQuery(query, "form");
+
+				// @=0
+				expect(encoded).toBe("%40=0");
+			});
+
+			it("should encode positive integer", async () => {
 				const query = asQuery({ ">=price": 100 });
 				const encoded = encodeQuery(query, "form");
 
-				expect(encoded).toContain("100");
+				// >=price=100
+				expect(encoded).toBe("%3E%3Dprice=100");
 			});
 
-			it("should encode decimal values", async () => {
+			it("should encode negative integer", async () => {
+				const query = asQuery({ ">=balance": -50 });
+				const encoded = encodeQuery(query, "form");
+
+				// >=balance=-50
+				expect(encoded).toBe("%3E%3Dbalance=-50");
+			});
+
+			it("should encode decimal", async () => {
 				const query = asQuery({ ">=price": 99.99 });
 				const encoded = encodeQuery(query, "form");
 
-				expect(encoded).toContain("99.99");
+				// >=price=99.99
+				expect(encoded).toBe("%3E%3Dprice=99.99");
 			});
 
 			it("should encode scientific notation", async () => {
-				const query = asQuery({ ">=count": 1e6 });
+				const query = asQuery({ ">=count": 1.5e21 });
 				const encoded = encodeQuery(query, "form");
 
-				expect(encoded).toMatch(/1000000|1e6|1E6/);
+				// >=count=1.5e+21
+				expect(encoded).toBe("%3E%3Dcount=1.5e%2B21");
+			});
+
+		});
+
+		describe("string values", () => {
+
+			it("should encode empty string", async () => {
+				const query = asQuery({ "~name": "" });
+				const encoded = encodeQuery(query, "form");
+
+				// ~name=""
+				expect(encoded).toBe("~name=%22%22");
+			});
+
+			it("should encode simple string", async () => {
+				const query = asQuery({ "~name": "widget" });
+				const encoded = encodeQuery(query, "form");
+
+				// ~name="widget"
+				expect(encoded).toBe("~name=%22widget%22");
+			});
+
+			it("should encode string with spaces", async () => {
+				const query = asQuery({ "~name": "my widget" });
+				const encoded = encodeQuery(query, "form");
+
+				// ~name="my widget"
+				expect(encoded).toBe("~name=%22my%20widget%22");
+			});
+
+			it("should encode string with quotes", async () => {
+				const query = asQuery({ "~name": "say \"hello\"" });
+				const encoded = encodeQuery(query, "form");
+
+				// ~name="say \"hello\""
+				expect(encoded).toBe("~name=%22say%20%5C%22hello%5C%22%22");
+			});
+
+			it("should encode unicode characters", async () => {
+				const query = asQuery({ "~name": "café" });
+				const encoded = encodeQuery(query, "form");
+
+				// ~name="café"
+				expect(encoded).toBe("~name=%22caf%C3%A9%22");
+			});
+
+			it("should encode newlines", async () => {
+				const query = asQuery({ "~description": "line1\nline2" });
+				const encoded = encodeQuery(query, "form");
+
+				// ~description="line1\nline2"
+				expect(encoded).toBe("~description=%22line1%0Aline2%22");
+			});
+
+			it("should encode tabs", async () => {
+				const query = asQuery({ "~description": "col1\tcol2" });
+				const encoded = encodeQuery(query, "form");
+
+				// ~description="col1\tcol2"
+				expect(encoded).toBe("~description=%22col1%09col2%22");
+			});
+
+			it("should encode ampersand", async () => {
+				const query = asQuery({ "~name": "foo&bar" });
+				const encoded = encodeQuery(query, "form");
+
+				// ~name="foo&bar"
+				expect(encoded).toBe("~name=%22foo%26bar%22");
+			});
+
+			it("should encode equals sign", async () => {
+				const query = asQuery({ "~name": "a=b" });
+				const encoded = encodeQuery(query, "form");
+
+				// ~name="a=b"
+				expect(encoded).toBe("~name=%22a%3Db%22");
+			});
+
+			it("should encode plus sign", async () => {
+				const query = asQuery({ "~name": "a+b" });
+				const encoded = encodeQuery(query, "form");
+
+				// ~name="a+b"
+				expect(encoded).toBe("~name=%22a%2Bb%22");
+			});
+
+			it("should encode percent sign", async () => {
+				const query = asQuery({ "~name": "100%" });
+				const encoded = encodeQuery(query, "form");
+
+				// ~name="100%"
+				expect(encoded).toBe("~name=%22100%25%22");
+			});
+
+		});
+
+		describe("localized content", () => {
+
+			it("should encode single tagged string", async () => {
+				const query = asQuery({ "?name": { "en": "Widget" } });
+				const encoded = encodeQuery(query, "form");
+
+				// ?name="Widget"@en
+				expect(encoded).toBe("%3Fname=%22Widget%22%40en");
+			});
+
+			it("should encode multiple tagged strings", async () => {
+				const query = asQuery({ "?name": { "en": "Widget", "fr": "Gadget" } });
+				const encoded = encodeQuery(query, "form");
+
+				// ?name="Widget"@en&?name="Gadget"@fr
+				expect(encoded).toBe("%3Fname=%22Widget%22%40en&%3Fname=%22Gadget%22%40fr");
+			});
+
+			it("should encode dictionary with multi-value tags", async () => {
+				const query = asQuery({ "?name": { "en": ["Widget", "Gadget"], "fr": "Bidule" } });
+				const encoded = encodeQuery(query, "form");
+
+				// ?name="Widget"@en&?name="Gadget"@en&?name="Bidule"@fr
+				expect(encoded).toBe("%3Fname=%22Widget%22%40en&%3Fname=%22Gadget%22%40en&%3Fname=%22Bidule%22%40fr");
 			});
 
 		});
@@ -875,6 +998,9 @@ describe("decodeQuery()", () => {
 		});
 
 	});
+
+	// Note: Decoder MUST accept optimized versions (postfix operators like `price<=100`,
+	// unquoted strings like `name=widget`) even though encoder produces canonical form
 
 	describe("form format decoding", () => {
 
