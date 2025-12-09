@@ -594,9 +594,41 @@ export type Operator =
  *
  * @see {@link decodeQuery}
  */
-export function encodeQuery(query: Query, format: | "json" | "base64" | "form" = "json"): string {
+export function encodeQuery(query: Query, format: "json" | "base64" | "form" = "json"): string {
 
-	throw new Error(";( to be implemented"); // !!!
+	const json = JSON.stringify(query);
+
+	return format === "json" ? encodeURIComponent(json)
+		: format === "base64" ? encodeBase64(json)
+			: encodeFormQuery(query);
+
+}
+
+function encodeBase64(text: string): string {
+
+	// Encode Unicode to UTF-8 bytes, then to URL-safe base64
+	const bytes = new TextEncoder().encode(text);
+	const base64 = btoa(String.fromCharCode(...bytes));
+
+	// Convert to URL-safe base64: replace + with -, / with _, remove = padding
+	return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+}
+
+function encodeFormQuery(query: Query): string {
+
+	return Object.entries(query)
+		.flatMap(([key, value]) => encodeFormEntry(key, value))
+		.join("&");
+
+}
+
+function encodeFormEntry(key: string, value: unknown): string[] {
+
+	return value === null ? [`${encodeURIComponent(key)}=null`]
+		: Array.isArray(value) ? value.map(v => `${encodeURIComponent(key)}=${encodeURIComponent(String(v))}`)
+			: typeof value === "object" ? [] // nested objects not supported in form encoding
+				: [`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`];
 
 }
 
@@ -613,7 +645,100 @@ export function encodeQuery(query: Query, format: | "json" | "base64" | "form" =
  */
 export function decodeQuery(query: string): Query {
 
-	throw new Error(";( to be implemented"); // !!!
+	if ( !query ) { return {} as Query; }
+
+	// Try JSON format first (starts with %7B which is encoded '{')
+	if ( query.startsWith("%7B") || query.startsWith("{") ) {
+		return JSON.parse(decodeURIComponent(query)) as Query;
+	}
+
+	// Try base64 format (standard or URL-safe base64)
+	if ( /^[A-Za-z0-9+/_=-]+$/.test(query) && !query.includes("&") ) {
+		try {
+			return JSON.parse(decodeBase64(query)) as Query;
+		} catch {
+			// Not valid base64, fall through to form format
+		}
+	}
+
+	// Form format (application/x-www-form-urlencoded)
+	return decodeFormQuery(query);
+
+}
+
+function decodeBase64(encoded: string): string {
+
+	// Convert from URL-safe base64 to standard base64 and ensure padding
+	const base64 = encoded.replace(/-/g, "+").replace(/_/g, "/");
+	const padLen = (4 - base64.length % 4) % 4;
+	const padded = padLen > 0 && !base64.endsWith("=") ? base64 + "=".repeat(padLen) : base64;
+	const bytes = Uint8Array.from(atob(padded), c => c.charCodeAt(0));
+
+	return new TextDecoder().decode(bytes);
+
+}
+
+function decodeFormQuery(query: string): Query {
+
+	const result: Record<string, unknown> = {};
+	const prefixOperators = /^(<|>|<=|>=|~|\?|!|\$|\^|@|#)/;
+	// Postfix syntax: property<=value or property<value (operator in middle)
+	const postfixOperators = /^(.+?)(<=|>=|<|>)(.+)$/;
+
+	for ( const pair of query.split("&") ) {
+
+		if ( !pair ) { continue; }
+
+		const decoded = decodeURIComponent(pair.replace(/\+/g, " "));
+
+		// First check for postfix syntax in the full parameter (property<value)
+		const postfixMatch = decoded.match(postfixOperators);
+		if ( postfixMatch ) {
+			const property = postfixMatch[1];
+			const op = postfixMatch[2];
+			const rawValue = postfixMatch[3];
+			const key = op + property;
+			const value = parseFormValue(rawValue);
+			addFormValue(result, key, value);
+			continue;
+		}
+
+		// Standard key=value parsing
+		const [encodedKey, ...valueParts] = pair.split("=");
+		const decodedKey = decodeURIComponent(encodedKey);
+		const rawValue = valueParts.join("="); // Handle values with = in them
+		const value = parseFormValue(rawValue);
+
+		// Check for prefix operator
+		const prefixMatch = decodedKey.match(prefixOperators);
+		const key = prefixMatch ? decodedKey : "?" + decodedKey;
+
+		addFormValue(result, key, value);
+
+	}
+
+	return result as Query;
+
+}
+
+function parseFormValue(rawValue: string): unknown {
+
+	return rawValue === "null" ? null
+		: rawValue === "true" ? true
+			: rawValue === "false" ? false
+				: /^-?\d+(\.\d+)?$/.test(rawValue) ? Number(rawValue)
+					: decodeURIComponent(rawValue.replace(/\+/g, " "));
+
+}
+
+function addFormValue(result: Record<string, unknown>, key: string, value: unknown): void {
+
+	if ( key in result ) {
+		const existing = result[key];
+		result[key] = Array.isArray(existing) ? [...existing, value] : [existing, value];
+	} else {
+		result[key] = value;
+	}
 
 }
 
@@ -685,7 +810,7 @@ function transforms<const T extends readonly {
 			throw new TypeError(`invalid transform name <${t.name}>`);
 		}
 
-		if ( t.aggregate !== undefined && isBoolean(t.aggregate) ) {
+		if ( t.aggregate !== undefined && !isBoolean(t.aggregate) ) {
 			throw new TypeError(`invalid transform aggregate <${t.aggregate}>`);
 		}
 
