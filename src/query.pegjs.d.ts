@@ -170,7 +170,7 @@ export type ParserTracerEvent
       readonly result: unknown;
     };
 
-export type StartRuleNames = "Identifier" | "Path" | "Expression" | "NamePrefix" | "Transform" | "ExpressionPath" | "Prefix" | "FirstProperty" | "PropertyAccessor" | "BracketProperty" | "SingleQuotedChar" | "Query" | "PairList" | "Pair" | "OffsetPair" | "LimitPair" | "SortPair" | "LikePair" | "DisjunctivePair" | "ConjunctivePair" | "FocusPair" | "LtPair" | "GtPair" | "LtePrefixPair" | "GtePrefixPair" | "LtePair" | "GtePair" | "LtPostfixPair" | "GtPostfixPair" | "EqualityPair" | "BareIdentifierPair" | "QueryPath" | "QueryExpr" | "Value";
+export type StartRuleNames = "Identifier" | "Integer" | "Query" | "PairList" | "Pair" | "LtPair" | "GtPair" | "LtePrefixPair" | "GtePrefixPair" | "LtePostfixPair" | "GtePostfixPair" | "LtPostfixPair" | "GtPostfixPair" | "LikePair" | "DisjunctivePair" | "ConjunctivePair" | "FocusPair" | "SortPair" | "Direction" | "OffsetPair" | "LimitPair" | "Pagination" | "EqualityPair" | "BareExprPair" | "Expr" | "Transform" | "Path" | "Value";
 export interface ParseOptions<T extends StartRuleNames = "Identifier"> {
   /**
    * String or object that will be attached to the each `LocationRange` object
@@ -203,52 +203,7 @@ declare function ParseFunction<Options extends ParseOptions<"Identifier">>(
   options?: Options,
 ): any;
 
-declare function ParseFunction<Options extends ParseOptions<"Path">>(
-  input: string,
-  options?: Options,
-): any;
-
-declare function ParseFunction<Options extends ParseOptions<"Expression">>(
-  input: string,
-  options?: Options,
-): any;
-
-declare function ParseFunction<Options extends ParseOptions<"NamePrefix">>(
-  input: string,
-  options?: Options,
-): any;
-
-declare function ParseFunction<Options extends ParseOptions<"Transform">>(
-  input: string,
-  options?: Options,
-): any;
-
-declare function ParseFunction<Options extends ParseOptions<"ExpressionPath">>(
-  input: string,
-  options?: Options,
-): any;
-
-declare function ParseFunction<Options extends ParseOptions<"Prefix">>(
-  input: string,
-  options?: Options,
-): any;
-
-declare function ParseFunction<Options extends ParseOptions<"FirstProperty">>(
-  input: string,
-  options?: Options,
-): any;
-
-declare function ParseFunction<Options extends ParseOptions<"PropertyAccessor">>(
-  input: string,
-  options?: Options,
-): any;
-
-declare function ParseFunction<Options extends ParseOptions<"BracketProperty">>(
-  input: string,
-  options?: Options,
-): any;
-
-declare function ParseFunction<Options extends ParseOptions<"SingleQuotedChar">>(
+declare function ParseFunction<Options extends ParseOptions<"Integer">>(
   input: string,
   options?: Options,
 ): any;
@@ -264,41 +219,6 @@ declare function ParseFunction<Options extends ParseOptions<"PairList">>(
 ): any;
 
 declare function ParseFunction<Options extends ParseOptions<"Pair">>(
-  input: string,
-  options?: Options,
-): any;
-
-declare function ParseFunction<Options extends ParseOptions<"OffsetPair">>(
-  input: string,
-  options?: Options,
-): any;
-
-declare function ParseFunction<Options extends ParseOptions<"LimitPair">>(
-  input: string,
-  options?: Options,
-): any;
-
-declare function ParseFunction<Options extends ParseOptions<"SortPair">>(
-  input: string,
-  options?: Options,
-): any;
-
-declare function ParseFunction<Options extends ParseOptions<"LikePair">>(
-  input: string,
-  options?: Options,
-): any;
-
-declare function ParseFunction<Options extends ParseOptions<"DisjunctivePair">>(
-  input: string,
-  options?: Options,
-): any;
-
-declare function ParseFunction<Options extends ParseOptions<"ConjunctivePair">>(
-  input: string,
-  options?: Options,
-): any;
-
-declare function ParseFunction<Options extends ParseOptions<"FocusPair">>(
   input: string,
   options?: Options,
 ): any;
@@ -323,12 +243,12 @@ declare function ParseFunction<Options extends ParseOptions<"GtePrefixPair">>(
   options?: Options,
 ): any;
 
-declare function ParseFunction<Options extends ParseOptions<"LtePair">>(
+declare function ParseFunction<Options extends ParseOptions<"LtePostfixPair">>(
   input: string,
   options?: Options,
 ): any;
 
-declare function ParseFunction<Options extends ParseOptions<"GtePair">>(
+declare function ParseFunction<Options extends ParseOptions<"GtePostfixPair">>(
   input: string,
   options?: Options,
 ): any;
@@ -343,22 +263,72 @@ declare function ParseFunction<Options extends ParseOptions<"GtPostfixPair">>(
   options?: Options,
 ): any;
 
+declare function ParseFunction<Options extends ParseOptions<"LikePair">>(
+  input: string,
+  options?: Options,
+): any;
+
+declare function ParseFunction<Options extends ParseOptions<"DisjunctivePair">>(
+  input: string,
+  options?: Options,
+): any;
+
+declare function ParseFunction<Options extends ParseOptions<"ConjunctivePair">>(
+  input: string,
+  options?: Options,
+): any;
+
+declare function ParseFunction<Options extends ParseOptions<"FocusPair">>(
+  input: string,
+  options?: Options,
+): any;
+
+declare function ParseFunction<Options extends ParseOptions<"SortPair">>(
+  input: string,
+  options?: Options,
+): any;
+
+declare function ParseFunction<Options extends ParseOptions<"Direction">>(
+  input: string,
+  options?: Options,
+): any;
+
+declare function ParseFunction<Options extends ParseOptions<"OffsetPair">>(
+  input: string,
+  options?: Options,
+): any;
+
+declare function ParseFunction<Options extends ParseOptions<"LimitPair">>(
+  input: string,
+  options?: Options,
+): any;
+
+declare function ParseFunction<Options extends ParseOptions<"Pagination">>(
+  input: string,
+  options?: Options,
+): any;
+
 declare function ParseFunction<Options extends ParseOptions<"EqualityPair">>(
   input: string,
   options?: Options,
 ): any;
 
-declare function ParseFunction<Options extends ParseOptions<"BareIdentifierPair">>(
+declare function ParseFunction<Options extends ParseOptions<"BareExprPair">>(
   input: string,
   options?: Options,
 ): any;
 
-declare function ParseFunction<Options extends ParseOptions<"QueryPath">>(
+declare function ParseFunction<Options extends ParseOptions<"Expr">>(
   input: string,
   options?: Options,
 ): any;
 
-declare function ParseFunction<Options extends ParseOptions<"QueryExpr">>(
+declare function ParseFunction<Options extends ParseOptions<"Transform">>(
+  input: string,
+  options?: Options,
+): any;
+
+declare function ParseFunction<Options extends ParseOptions<"Path">>(
   input: string,
   options?: Options,
 ): any;

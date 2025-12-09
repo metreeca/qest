@@ -15,139 +15,68 @@
  */
 
 /**
- * Codec Grammar
+ * Query Form-Encoded Format Grammar
  *
- * Parses Query form-encoded format as specified in pub/serialization.md
- *
- * @see pub/serialization.md#query-form-serialization
+ * @see query.ts#form-serialization
  */
 
 {
 
-  function decodeEscapes(chars) {
-    return chars.map(char =>
-      char === "\\'" ? "'"
-        : char === "\\\\" ? "\\"
-        : char
-    ).join('');
-  }
+  const JsonEscapes = {
+    'n': '\n', 'r': '\r', 't': '\t', 'b': '\b', 'f': '\f',
+    '"': '"', '/': '/', '\\': '\\'
+  };
 
-  function decodeURIComponentSafe(str) {
-    try {
-      return decodeURIComponent(str);
-    } catch (e) {
-      return str;
-    }
-  }
+  const LocalizedPattern = /^"((?:[^"\\]|\\.)*)"\s*@\s*([a-zA-Z]+(?:-[a-zA-Z0-9]+)*)$/;
+  const NumberPattern = /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/;
+  const IdentifierPattern = /^[_$\p{ID_Start}][$\u200C\u200D\p{ID_Continue}]*$/u;
 
-  function parseValue(str) {
-    // Replace + with space before decoding (application/x-www-form-urlencoded)
-    const decoded = decodeURIComponentSafe(str.replace(/\+/g, " "));
 
-    // Localized string: "text"@lang → [text, lang]
-    const localizedMatch = decoded.match(/^"((?:[^"\\]|\\.)*)"\s*@\s*([a-zA-Z]+(?:-[a-zA-Z0-9]+)*)$/);
-    if (localizedMatch) {
-      return [parseJsonString(localizedMatch[1]), localizedMatch[2]];
-    }
-
-    // JSON string (double-quoted)
-    if (decoded.startsWith('"') && decoded.endsWith('"')) {
-      return parseJsonString(decoded.slice(1, -1));
-    }
-
-    // Boolean / null
-    if (decoded === "true") {
-      return true;
-    }
-    if (decoded === "false") {
-      return false;
-    }
-    if (decoded === "null") {
-      return null;
-    }
-
-    // JSON number
-    if (/^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/.test(decoded)) {
-      return Number(decoded);
-    }
-
-    // Unquoted string
-    return decoded;
+  function decodeValue(str) {
+    try { return decodeURIComponent(str.replace(/\+/g, " ")); }
+    catch { return str; }
   }
 
   function parseJsonString(str) {
-    // Handle JSON escape sequences (RFC 8259)
-    return str.replace(/\\(u[0-9a-fA-F]{4}|.)/g, (match, seq) => {
-      if (seq.startsWith('u')) {
-        return String.fromCharCode(parseInt(seq.slice(1), 16));
-      }
-      switch (seq) {
-        case 'n': return '\n';
-        case 'r': return '\r';
-        case 't': return '\t';
-        case 'b': return '\b';
-        case 'f': return '\f';
-        case '"': return '"';
-        case '/': return '/';
-        case '\\': return '\\';
-        default: return seq;
-      }
-    });
+    return str.replace(/\\(u[0-9a-fA-F]{4}|.)/g, (match, seq) =>
+      seq.startsWith('u') ? String.fromCharCode(parseInt(seq.slice(1), 16))
+        : JsonEscapes[seq] ?? seq
+    );
   }
 
-  function parseDirection(value) {
-    const lower = value.toLowerCase();
-    if (lower === "asc" || lower === "ascending" || lower === "") {
-      return 1;
-    } else if (lower === "desc" || lower === "descending") {
-      return -1;
-    } else {
-      const num = Number(value);
-      if (!Number.isInteger(num)) {
-        error("invalid sort order value");
-      }
-      return num;
-    }
-  }
+  function parseValue(str) {
+    const decoded = decodeValue(str);
+    const localized = decoded.match(LocalizedPattern);
 
-  function parsePagination(value) {
-    const num = Number(value);
-    if (value === "") {
-      error("empty pagination value");
-    } else if (!Number.isInteger(num) || num < 0) {
-      error("invalid pagination value");
-    }
-    return num;
+    return localized ? [parseJsonString(localized[1]), localized[2]]
+      : decoded.startsWith('"') && decoded.endsWith('"') ? parseJsonString(decoded.slice(1, -1))
+      : decoded === "true" ? true
+      : decoded === "false" ? false
+      : decoded === "null" ? null
+      : NumberPattern.test(decoded) ? Number(decoded)
+      : decoded;
   }
 
   function mergePairs(pairs) {
     const isOperator = ([key]) => /^[@#^~?!$<>]/.test(key);
-    const isMultiValueOperator = ([key]) => /^[?!$]/.test(key);
+    const isMultiValue = ([key]) => /^[?!$]/.test(key);
 
-    // Handle operator-prefixed pairs
-    const direct = {};
-    for (const [key, value] of pairs.filter(isOperator)) {
-      if (isMultiValueOperator([key])) {
-        // ?/!/$ operators accumulate multiple values into arrays
-        if (key in direct) {
-          const existing = direct[key];
-          direct[key] = Array.isArray(existing) ? [...existing, value] : [existing, value];
-        } else {
-          direct[key] = value;
-        }
-      } else {
-        // Other operators (@/#/^/~/</>/<=/>=) just overwrite
-        direct[key] = value;
-      }
-    }
+    const operators = pairs
+      .filter(isOperator)
+      .reduce((merged, [key, value]) => ({
+        ...merged,
+        [key]: isMultiValue([key]) && key in merged
+          ? (Array.isArray(merged[key]) ? [...merged[key], value] : [merged[key], value])
+          : value
+      }), {});
 
     const grouped = pairs
       .filter(p => !isOperator(p))
-      .reduce((acc, [key, value]) => ({
-        ...acc,
+      .reduce((groups, [key, value]) => ({
+        ...groups,
         [key]: {
-          values: value === "*" ? (acc[key]?.values ?? []) : [...(acc[key]?.values ?? []), value],
-          hasWildcard: value === "*" || (acc[key]?.hasWildcard ?? false)
+          values: value === "*" ? (groups[key]?.values ?? []) : [...(groups[key]?.values ?? []), value],
+          hasWildcard: value === "*" || (groups[key]?.hasWildcard ?? false)
         }
       }), {});
 
@@ -160,156 +89,138 @@
       ])
     );
 
-    return { ...direct, ...equality };
+    return { ...operators, ...equality };
   }
 
 }
 
-// ============================================================================
-// Identifier
-// ============================================================================
+
+/// Primitives /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 Identifier "identifier"
-  = $([a-zA-Z_$][a-zA-Z0-9_$]*)
+  = id:$[^.=<>&:!?~^@#$\[\]]+ &{ return IdentifierPattern.test(id); }
 
-// ============================================================================
-// Path (simple dot-separated identifiers)
-// ============================================================================
+Integer "integer"
+  = n:$("-"? [0-9]+) { return parseInt(n, 10); }
 
-Path "path"
-  = first:Identifier rest:("." @Identifier)* { return [first, ...rest]; }
 
-// ============================================================================
-// Expression
-// ============================================================================
-
-Expression
-  = name:NamePrefix? pipe:Transform* path:ExpressionPath {
-      return name ? { name, pipe, path } : { pipe, path };
-    }
-
-NamePrefix
-  = id:Identifier "=" { return id; }
-
-Transform
-  = id:Identifier ":" { return id; }
-
-ExpressionPath
-  = prefix:Prefix? first:FirstProperty? rest:PropertyAccessor* {
-      return [first, ...rest].filter(p => p != null);
-    }
-
-Prefix
-  = "$" &("." / "[" / !.) / "." &([a-zA-Z_$] / "[" / !.)
-
-FirstProperty
-  = Identifier
-  / BracketProperty
-
-PropertyAccessor
-  = "." id:Identifier { return id; }
-  / BracketProperty
-
-BracketProperty
-  = "[" "'" chars:SingleQuotedChar* "'" "]" {
-      return decodeEscapes(chars);
-    }
-
-SingleQuotedChar
-  = "\\'" { return "\\'"; }
-  / "\\\\" { return "\\\\"; }
-  / [^'\\] { return text(); }
-
-// ============================================================================
-// Query (form-encoded)
-// ============================================================================
+/// Query //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 Query
   = pairs:PairList { return mergePairs(pairs); }
 
 PairList
-  = first:Pair? rest:("&" @Pair?)* {
-      return [first, ...rest].filter(p => p !== null);
-    }
+  = first:Pair? rest:("&" @Pair?)* { return [first, ...rest].filter(p => p !== null); }
 
 Pair
-  = OffsetPair
-  / LimitPair
-  / SortPair
+  = LtePrefixPair   // <= before < (prefix)
+  / GtePrefixPair   // >= before > (prefix)
+  / LtPair
+  / GtPair
+  / LtePostfixPair  // postfix before equality
+  / GtePostfixPair
+  / LtPostfixPair
+  / GtPostfixPair
   / LikePair
   / DisjunctivePair
   / ConjunctivePair
   / FocusPair
-  / LtePrefixPair
-  / GtePrefixPair
-  / LtPair
-  / GtPair
-  / LtePair
-  / GtePair
-  / LtPostfixPair
-  / GtPostfixPair
+  / SortPair
+  / OffsetPair
+  / LimitPair
   / EqualityPair
-  / BareIdentifierPair
+  / BareExprPair
 
-OffsetPair
-  = "@=" value:Value { return ["@", parsePagination(value)]; }
 
-LimitPair
-  = "#=" value:Value { return ["#", parsePagination(value)]; }
-
-SortPair
-  = "^" expr:QueryPath "=" value:Value { return ["^" + expr, parseValue(value)]; }
-
-LikePair
-  = "~" expr:QueryPath "=" value:Value { return ["~" + expr, parseValue(value)]; }
-
-DisjunctivePair
-  = "?" expr:QueryPath "=" value:Value { return ["?" + expr, parseValue(value)]; }
-
-ConjunctivePair
-  = "!" expr:QueryPath "=" value:Value { return ["!" + expr, parseValue(value)]; }
-
-FocusPair
-  = "$" expr:QueryPath "=" value:Value { return ["$" + expr, parseValue(value)]; }
+/// Comparisons ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 LtPair
-  = "<" expr:QueryPath "=" value:Value { return ["<" + expr, parseValue(value)]; }
+  = "<" expr:Expr "=" value:Value { return ["<" + expr, parseValue(value)]; }
 
 GtPair
-  = ">" expr:QueryPath "=" value:Value { return [">" + expr, parseValue(value)]; }
+  = ">" expr:Expr "=" value:Value { return [">" + expr, parseValue(value)]; }
 
 LtePrefixPair
-  = "<=" expr:QueryPath "=" value:Value { return ["<=" + expr, parseValue(value)]; }
+  = "<=" expr:Expr "=" value:Value { return ["<=" + expr, parseValue(value)]; }
 
 GtePrefixPair
-  = ">=" expr:QueryPath "=" value:Value { return [">=" + expr, parseValue(value)]; }
+  = ">=" expr:Expr "=" value:Value { return [">=" + expr, parseValue(value)]; }
 
-LtePair
-  = expr:QueryPath "<=" value:Value { return ["<=" + expr, parseValue(value)]; }
+LtePostfixPair
+  = expr:Expr "<=" value:Value { return ["<=" + expr, parseValue(value)]; }
 
-GtePair
-  = expr:QueryPath ">=" value:Value { return [">=" + expr, parseValue(value)]; }
+GtePostfixPair
+  = expr:Expr ">=" value:Value { return [">=" + expr, parseValue(value)]; }
 
 LtPostfixPair
-  = expr:QueryPath "<" value:Value { return ["<" + expr, parseValue(value)]; }
+  = expr:Expr "<" value:Value { return ["<" + expr, parseValue(value)]; }
 
 GtPostfixPair
-  = expr:QueryPath ">" value:Value { return [">" + expr, parseValue(value)]; }
+  = expr:Expr ">" value:Value { return [">" + expr, parseValue(value)]; }
+
+
+/// Matching ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+LikePair
+  = "~" expr:Expr "=" value:Value { return ["~" + expr, parseValue(value)]; }
+
+DisjunctivePair
+  = "?" expr:Expr "=" value:Value { return ["?" + expr, parseValue(value)]; }
+
+ConjunctivePair
+  = "!" expr:Expr "=" value:Value { return ["!" + expr, parseValue(value)]; }
+
+
+/// Ordering ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+FocusPair
+  = "$" expr:Expr "=" value:Value { return ["$" + expr, parseValue(value)]; }
+
+SortPair
+  = "^" expr:Expr "=" value:Direction { return ["^" + expr, value]; }
+
+Direction
+  = $("asc"i ("ending"i)?)
+  / $("desc"i ("ending"i)?)
+  / n:Integer &([&] / !.) { return n; }
+  / $[^&]+ { error("invalid sort direction"); }
+
+
+/// Pagination /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+OffsetPair
+  = "@=" value:Pagination { return ["@", value]; }
+
+LimitPair
+  = "#=" value:Pagination { return ["#", value]; }
+
+Pagination
+  = n:$[0-9]+ &([&] / !.) { return parseInt(n, 10); }
+  / $[^&]+ { error("invalid pagination value"); }
+
+
+/// Equality ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 EqualityPair
-  = expr:QueryPath "=" value:Value {
-      return [expr, value === "*" ? "*" : parseValue(value)];
-    }
+  = expr:Expr "=" value:Value { return [expr, value === "*" ? "*" : parseValue(value)]; }
 
-BareIdentifierPair
-  = expr:QueryPath { return [expr, ""]; }
+BareExprPair
+  = expr:Expr { return [expr, ""]; }
 
-QueryPath
-  = expr:QueryExpr { return expr; }
 
-// QueryExpr captures transform expressions like "year:releaseDate" or "round:avg:items.price"
-QueryExpr
+/// Expressions ////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Expr
   = $(Transform* Path)
+
+Transform
+  = Identifier ":"
+
+Path
+  = Identifier ("." Identifier)*
+
+
+/// Values /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 Value
   = $[^&]*

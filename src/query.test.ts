@@ -1232,6 +1232,30 @@ describe("decodeQuery()", () => {
 				expect(decoded).toHaveProperty("^price", "desc");
 			});
 
+			it("should decode ascending extended form", async () => {
+				const decoded = decodeQuery("^price=ascending");
+
+				expect(decoded).toHaveProperty("^price", "ascending");
+			});
+
+			it("should decode descending extended form", async () => {
+				const decoded = decodeQuery("^price=descending");
+
+				expect(decoded).toHaveProperty("^price", "descending");
+			});
+
+			it("should decode ascending case-insensitive", async () => {
+				const decoded = decodeQuery("^price=ASC");
+
+				expect(decoded).toHaveProperty("^price", "ASC");
+			});
+
+			it("should decode descending case-insensitive", async () => {
+				const decoded = decodeQuery("^price=DESCENDING");
+
+				expect(decoded).toHaveProperty("^price", "DESCENDING");
+			});
+
 			it("should decode numeric priority encoded", async () => {
 				// ^price=1 (canonical form)
 				const decoded = decodeQuery("%5Eprice=1");
@@ -1452,6 +1476,45 @@ describe("decodeQuery()", () => {
 				const decoded = decodeQuery("%3E%3Dvendor%2Erating=4");
 
 				expect(decoded).toHaveProperty(">=vendor.rating", 4);
+			});
+
+		});
+
+		describe("unicode identifiers", () => {
+
+			it("should decode identifier with unicode letter (Greek)", async () => {
+				// πrice=100 (Greek pi as first character)
+				const decoded = decodeQuery("%CF%80rice=100");
+
+				expect(decoded).toHaveProperty("?πrice", 100);
+			});
+
+			it("should decode identifier with unicode letter (Cyrillic)", async () => {
+				// цена=100 (Russian "price")
+				const decoded = decodeQuery("%D1%86%D0%B5%D0%BD%D0%B0=100");
+
+				expect(decoded).toHaveProperty("?цена", 100);
+			});
+
+			it("should decode identifier with unicode letter (CJK)", async () => {
+				// 价格=100 (Chinese "price")
+				const decoded = decodeQuery("%E4%BB%B7%E6%A0%BC=100");
+
+				expect(decoded).toHaveProperty("?价格", 100);
+			});
+
+			it("should decode identifier with unicode continuation characters", async () => {
+				// na\u0301me=test (combining acute accent in identifier)
+				const decoded = decodeQuery("na%CC%81me=test");
+
+				expect(decoded).toHaveProperty("?na\u0301me", "test");
+			});
+
+			it("should decode path with unicode identifiers", async () => {
+				// >=производитель.рейтинг=4 (Russian vendor.rating)
+				const decoded = decodeQuery("%3E%3D%D0%BF%D1%80%D0%BE%D0%B8%D0%B7%D0%B2%D0%BE%D0%B4%D0%B8%D1%82%D0%B5%D0%BB%D1%8C.%D1%80%D0%B5%D0%B9%D1%82%D0%B8%D0%BD%D0%B3=4");
+
+				expect(decoded).toHaveProperty(">=производитель.рейтинг", 4);
 			});
 
 		});
