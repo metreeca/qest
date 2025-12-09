@@ -15,7 +15,7 @@
  */
 
 /**
- * Client-driven retrieval model.
+ * Client-driven resource model.
  *
  * Defines the shape of data clients want to retrieve from an API. Clients specify which properties to include,
  * how deeply to expand linked resources, and what filters to apply. This enables efficient single-call retrieval
@@ -24,6 +24,15 @@
  * **Important:** Servers may provide default retrieval queries to support regular REST/JSON access patterns.
  * When clients don't explicitly provide a query, the server applies its default query, enabling standard
  * REST operations while still supporting client-driven retrieval when needed.
+ *
+ * This module provides types and functions for defining and serializing queries:
+ *
+ * - {@link Query} — Resource retrieval query
+ * - {@link Projection} — Property value specification
+ * - {@link Expression} — Computed expression for transforms and paths
+ * - {@link Transforms} — Standard value transformations
+ * - {@link encodeQuery} — Serialize query to string
+ * - {@link decodeQuery} — Parse query from string
  *
  * **Resource Queries**
  *
@@ -158,13 +167,186 @@
  * // → { products: 284 }
  * ```
  *
+ * # Query Serialization
+ *
+ * Queries can be serialized in multiple formats for transmission:
+ *
+ * | Mode     | Format                                                                                |
+ * | -------- | ------------------------------------------------------------------------------------- |
+ * | `json`   | [JSON](#json-serialization)                                                           |
+ * | `url`    | [Percent-Encoded](https://www.rfc-editor.org/rfc/rfc3986#section-2.1) JSON            |
+ * | `base64` | [Base64](https://www.rfc-editor.org/rfc/rfc4648#section-4) encoded JSON               |
+ * | `form`   | [Form-encoded](#form-serialization)                                                   |
+ *
+ * ## JSON Serialization
+ *
+ * Query operators are represented as JSON key prefixes, mirroring the {@link Query} type definition. Keys
+ * combine a prefix with an {@link Expression | expression}. Values are JSON-serialized according to operator type:
+ *
+ * | Operator              | Key Prefix | Value Type | Example                 |
+ * |-----------------------|------------|------------|-------------------------|
+ * | Less than             | `<`        | Literal    | `{"<price": 100}`       |
+ * | Greater than          | `>`        | Literal    | `{">price": 50}`        |
+ * | Less than or equal    | `<=`       | Literal    | `{"<=price": 100}`      |
+ * | Greater than or equal | `>=`       | Literal    | `{">=price": 50}`       |
+ * | Pattern filter        | `~`        | string     | `{"~name": "corp"}`     |
+ * | Disjunctive matching  | `?`        | Options    | `{"?status": "active"}` |
+ * | Conjunctive matching  | `!`        | Options    | `{"!tags": ["a", "b"]}` |
+ * | Focus ordering        | `$`        | Options    | `{"$status": "active"}` |
+ * | Sort order            | `^`        | Order      | `{"^date": -1}`         |
+ * | Offset                | `@`        | number     | `{"@": 0}`              |
+ * | Limit                 | `#`        | number     | `{"#": 10}`             |
+ *
+ * ```json
+ * {
+ *   "?status": ["active", "pending"],
+ *   "~name": "corp",
+ *   ">=price": 100,
+ *   "<=price": 1000,
+ *   "^date": -1,
+ *   "@": 0,
+ *   "#": 25
+ * }
+ * ```
+ *
+ * ## Form Serialization
+ *
+ * Query objects additionally support `application/x-www-form-urlencoded` encoding via the `form` mode.
+ *
+ * The `form` format serializes Query objects as query strings, where each `label=value` pair represents a constraint.
+ * Labels may include operator prefixes or suffixes to specify the type of criterion being applied.
+ *
+ * ```
+ * query   = pair*
+ * pair    = "&"? label ("=" value)?
+ * label   = prefix? expression postfix? | "@" | "#"
+ * prefix  = "~" | "?" | "!" | "$" | "^"
+ * postfix = "<" | ">"
+ * value   = <URL-encoded string>
+ * ```
+ *
+ * | Syntax                | Value                              | Description                                       |
+ * |-----------------------|------------------------------------|---------------------------------------------------|
+ * | `expression=option`   | [value](#values)                   | Disjunctive; alias for `?expression=option`       |
+ * | `expression<=literal` | [value](#values)                   | Less than or equal                                |
+ * | `expression>=literal` | [value](#values)                   | Greater than or equal                             |
+ * | `~expression=string`  | string                             | Stemmed word search                               |
+ * | `?expression=option`  | [value](#values)                   | Disjunctive; multiple instances combined with OR  |
+ * | `!expression=option`  | [value](#values)                   | Conjunctive; multiple instances combined with AND |
+ * | `$expression=option`  | [value](#values)                   | Focus ordering                                    |
+ * | `^expression=order`   | `asc`/`ascending`/`desc`/`descending`/number | Sort ordering                        |
+ * | `@=number`            | number                             | Offset                                            |
+ * | `#=number`            | number                             | Limit                                             |
+ *
+ * ```
+ * status=active&status=pending&~name=corp&price>=100&price<=1000&^date=descending&@=0&#=25
+ * ```
+ *
+ * This query:
+ *
+ * 1. Filters items where `status` is "active" OR "pending"
+ * 2. Filters items where `name` contains "corp"
+ * 3. Filters items where `price` is between 100 and 1000 (inclusive)
+ * 4. Sorts results by `date` in descending order
+ * 5. Returns the first 25 items (offset 0, limit 25)
+ *
+ * # Query Grammar
+ *
+ * Grammar elements shared by both JSON and Form serialization formats.
+ *
+ * ## Expressions
+ *
+ * {@link Expression | Expressions} identify properties or computed values. An expression combines optional
+ * [transform pipes](#transform-pipes) with a [property path](#property-paths).
+ *
+ * ```
+ * expression = transforms path
+ * ```
+ *
+ * Transforms form a pipeline applied right-to-left. An empty path with transforms computes aggregates over the input.
+ *
+ * ```
+ * name
+ * user.profile
+ * count:items
+ * sum:items.price
+ * round:avg:scores
+ * count:
+ * ```
+ *
+ * ### Transform Pipes
+ *
+ * {@link Transforms} apply operations to path values. Multiple transforms form a pipeline, applied right-to-left
+ * (functional order).
+ *
+ * ```
+ * transforms = (identifier ":")*
+ * ```
+ *
+ * ```
+ * count:items                  # count of items
+ * sum:items.price              # sum of item prices
+ * round:avg:scores             # inner applied first, then outer
+ * ```
+ *
+ * ### Property Paths
+ *
+ * Property paths identify nested properties within a resource using dot notation. An empty path references
+ * the root value.
+ *
+ * ```
+ * path       = property ("." property)*
+ * property   = identifier
+ * identifier = [$_\p{ID_Start}][$\p{ID_Continue}]*
+ * ```
+ *
+ * ```
+ * name                         # simple property
+ * user.profile.email           # nested property
+ * count:                       # empty path (root)
+ * ```
+ *
+ * ### Identifiers
+ *
+ * Property names and transform names follow
+ * {@link https://262.ecma-international.org/15.0/#sec-names-and-keywords | ECMAScript identifier} rules.
+ *
+ * ```
+ * name                         # simple identifier
+ * _private                     # underscore prefix
+ * $ref                         # dollar prefix
+ * item123                      # contains digits
+ * ```
+ *
+ * ## Values
+ *
+ * - Values are serialized as [JSON](https://www.rfc-editor.org/rfc/rfc8259) primitives
+ * - IRIs are serialized as strings
+ * - Localized strings ({@link Dictionary}) combine a string with a
+ *   {@link https://metreeca.github.io/core/types/language.Tag.html | language tag}
+ *
+ * ```
+ * value      = literal | localized
+ * literal    = boolean | number | string
+ * boolean    = "true" | "false"
+ * number     = <JSON number>
+ * string     = <JSON string> | <unquoted>
+ * localized  = <JSON string> "@" language-tag
+ * ```
+ *
+ * String quotes may be omitted.
+ *
+ * > **Warning:** Omitting quotes may cause strings to be interpreted as numbers.
+ * > Use `"123"` to preserve string type for numeric-looking values.
+ *
  * @module
  */
 
 import { Identifier, isIdentifier } from "@metreeca/core";
 import { isBoolean } from "@metreeca/core/json";
-import { IRI, Range } from "@metreeca/core/network";
-import { Dictionary, Literal, Resource } from "./index.js";
+import { TagRange } from "@metreeca/core/language";
+import { IRI } from "@metreeca/core/resource";
+import { Dictionary, Literal, Resource } from "./state.js";
 
 
 /**
@@ -366,9 +548,9 @@ export type Query = Partial<{
  */
 export type Projection =
 	| Literal
+	| { readonly [range: TagRange]: string }
+	| { readonly [range: TagRange]: [string] }
 	| Query
-	| { readonly [range: Range]: string }
-	| { readonly [range: Range]: [string] }
 	| readonly [Query];
 
 /**
@@ -395,7 +577,7 @@ export type Projection =
  * Compliant processors support all standard {@link Transforms}.
  */
 export type Expression =
-	string & { readonly __brand: unique symbol };
+	| string & { readonly __brand: unique symbol };
 
 /**
  * Option values for {@link Query} matching and ordering operators.
@@ -424,6 +606,28 @@ export type Option =
 	| null
 	| Literal
 	| IRI;
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+type Format =
+	| "json"
+	| "url"
+	| "base64"
+	| "form";
+
+export function encodeQuery(query: Query, format: Format = "json"): string {
+
+	throw new Error(";( to be implemented"); // !!!
+
+}
+
+
+export function decodeQuery(query: string, format: Format = "json"): string {
+
+	throw new Error(";( to be implemented"); // !!!
+
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

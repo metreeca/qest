@@ -40,9 +40,9 @@
     "node": ">=22.0.0"
   },
   "scripts": {
-    "clean": "rm -rf dist docs node_modules src/codec.pegjs.*",
+    "clean": "rm -rf dist docs node_modules src/query.pegjs.*",
     "setup": "npm install && npm audit fix",
-    "peggy": "npx peggy --dts --format es --output src/codec.pegjs.js --allowed-start-rules '*' src/codec.pegjs",
+    "peggy": "npx peggy --dts --format es --output src/query.pegjs.js --allowed-start-rules '*' src/query.pegjs",
     "build": "rm -rf dist docs && npm run peggy && tsc && typedoc",
     "check": "npx vitest run",
     "watch": "npx tsc --watch",

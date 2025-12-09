@@ -10,7 +10,7 @@ non‑portable ways:
 - **Client-driven** — clients specify exactly what data they need, retrieving complex data envelopes in a single call
 - **Queryable** — advanced filtering and aggregation functionalities support faceted search and analytics
 
-Developers seek these features in frameworks like GraphQL. **@metreeca/qest** brings them to REST/JSON, achieving:
+Developers seek these features in frameworks like GraphQL; **@metreeca/qest** brings them to REST/JSON, achieving:
 
 - **Familiar patterns** — standard REST and JSON conventions, no new paradigms to learn
 - **Simple clients** — no specialized libraries, preprocessors, or code generators
@@ -25,8 +25,8 @@ development:
 |--------------------|---------------------------------------------------------|
 | **@metreeca/qest** | Data models for client-driven, queryable REST/JSON APIs |
 | @metreeca/blue     | Model-driven JSON validation (upcoming)                 |
-| @metreeca/case     | Model-driven JSON storage (upcoming)                    |
-| @metreeca/dock     | Model-driven REST/JSON publishing (upcoming)            |
+| @metreeca/keep     | Model-driven JSON storage (upcoming)                    |
+| @metreeca/gate     | Model-driven REST/JSON publishing (upcoming)            |
 
 # Installation
 

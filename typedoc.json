@@ -2,9 +2,6 @@
   "plugin": [
     "typedoc-github-theme"
   ],
-  "projectDocuments": [
-    "pub/*.md"
-  ],
   "externalSymbolLinkMappings": {
     "@metreeca/core": {
       "IRI": "https://metreeca.github.io/core/types/resource.IRI.html",
