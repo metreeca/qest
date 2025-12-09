@@ -159,51 +159,29 @@
  * // → { items: [{ count: 284 }] }
  * ```
  *
- * # Query Serialization
+ * **Query Serialization** supports multiple formats for transmission as URL query strings in GET requests:
  *
- * Queries can be serialized in multiple formats for transmission:
+ * | Mode     | Format                                                                     |
+ * |----------|----------------------------------------------------------------------------|
+ * | `json`   | [Percent-Encoded](https://www.rfc-editor.org/rfc/rfc3986#section-2.1) JSON |
+ * | `base64` | [Base64](https://www.rfc-editor.org/rfc/rfc4648#section-4) encoded JSON    |
+ * | `form`   | [Form-encoded](#form-serialization)                                        |
  *
- * | Mode     | Format                                                                                |
- * | -------- | ------------------------------------------------------------------------------------- |
- * | `json`   | [JSON](#json-serialization)                                                           |
- * | `url`    | [Percent-Encoded](https://www.rfc-editor.org/rfc/rfc3986#section-2.1) JSON            |
- * | `base64` | [Base64](https://www.rfc-editor.org/rfc/rfc4648#section-4) encoded JSON               |
- * | `form`   | [Form-encoded](#form-serialization)                                                   |
+ * **JSON Serialization** directly encodes {@link Query} objects using operator key prefixes.
  *
- * ## JSON Serialization
- *
- * Query operators are represented as JSON key prefixes, mirroring the {@link Query} type definition:
- *
- * | Operator              | Key Prefix | Value Type | Example                 |
- * |-----------------------|------------|------------|-------------------------|
- * | Less than             | `<`        | Literal    | `{"<price": 100}`       |
- * | Greater than          | `>`        | Literal    | `{">price": 50}`        |
- * | Less than or equal    | `<=`       | Literal    | `{"<=price": 100}`      |
- * | Greater than or equal | `>=`       | Literal    | `{">=price": 50}`       |
- * | Pattern filter        | `~`        | string     | `{"~name": "corp"}`     |
- * | Disjunctive matching  | `?`        | Options    | `{"?status": "active"}` |
- * | Conjunctive matching  | `!`        | Options    | `{"!tags": ["a", "b"]}` |
- * | Focus ordering        | `$`        | Options    | `{"$status": "active"}` |
- * | Sort order            | `^`        | Order      | `{"^date": -1}`         |
- * | Offset                | `@`        | number     | `{"@": 0}`              |
- * | Limit                 | `#`        | number     | `{"#": 10}`             |
- *
- * ```json
- * {
- *   "?status": ["active", "pending"],
- *   "~name": "corp",
- *   ">=price": 100,
- *   "<=price": 1000,
- *   "^date": -1,
- *   "@": 0,
- *   "#": 25
- * }
- * ```
- *
- * ## Form Serialization
- *
- * Query objects additionally support `application/x-www-form-urlencoded` encoding via the `form` mode.
+ * **Form Serialization** additionally supports `application/x-www-form-urlencoded` encoding via the `form` mode.
  * The format serializes queries as `label=value` pairs with operator prefixes or suffixes:
+ *
+ * ```
+ * query   = pair ( '&' pair )*
+ * pair    = label '=' value
+ * label   = prefix expression | expression postfix | '@' | '#'
+ * prefix  = '~' | '?' | '!' | '$' | '^'
+ * postfix = '<=' | '>='
+ * literal = primitive
+ * option  = primitive
+ * order   = 'asc' | 'ascending' | 'desc' | 'descending' | number
+ * ```
  *
  * | Syntax                | Value                              | Description                                       |
  * |-----------------------|------------------------------------|---------------------------------------------------|
@@ -219,44 +197,69 @@
  * | `#=number`            | number                             | Limit                                             |
  *
  * ```
- * status=active&status=pending&~name=corp&price>=100&price<=1000&^date=descending&@=0&#=25
+ * category=electronics
+ *   &category=home
+ *   &~name=widget
+ *   &price>=50
+ *   &price<=150
+ *   &^price=asc
+ *   &@=0
+ *   &#=25
  * ```
- *
+  *
  * This query:
  *
- * 1. Filters items where `status` is "active" OR "pending"
- * 2. Filters items where `name` contains "corp"
- * 3. Filters items where `price` is between 100 and 1000 (inclusive)
- * 4. Sorts results by `date` in descending order
+ * 1. Filters items where `category` is "electronics" OR "home"
+ * 2. Filters items where `name` contains "widget"
+ * 3. Filters items where `price` is between 50 and 150 (inclusive)
+ * 4. Sorts results by `price` ascending
  * 5. Returns the first 25 items (offset 0, limit 25)
  *
- * # Query Grammar
+ * > [!WARNING]
+ * >
+ * > Form queries specify only constraints; wrapping inside the target endpoint's collection property and providing
+ * > a default projection is server-managed.
  *
- * Grammar elements shared by both JSON and Form serialization formats.
+ * **Query Grammar** elements shared by both JSON and Form serialization formats.
  *
- * ## Expressions
+ * **Expressions** ({@link Expression}) identify properties or computed values combining an optional result name,
+ * a pipeline of {@link Transforms}, and a property path:
  *
- * {@link Expression | Expressions} identify properties or computed values. An expression combines an optional
- * result name, a pipeline of transforms, and a property path. Identifiers follow
- * {@link https://262.ecma-international.org/15.0/#sec-names-and-keywords ECMAScript identifier} rules.
- * Transforms form a pipeline applied right-to-left (functional order). An empty path computes aggregates
- * over the input.
- *
- * ```
- * name                         # simple property
- * user.profile.email           # nested property
- * total=sum:items.price        # named computed sum
- * round:avg:scores             # pipeline: inner applied first
- * count:                       # empty path (aggregate over root)
+ * ```text
+ * expression  = ( name '=' )? transform* path?
+ * name        = identifier
+ * transform   = identifier ':'
+ * path        = identifier ( '.' identifier )*
  * ```
  *
- * ## Values
+ * Identifiers follow {@link Identifier} rules (ECMAScript names)
+ * - Transforms form a pipeline applied right-to-left (functional composition order)
+ * - An empty path computes aggregates over the input collection
  *
- * Values are serialized as [JSON](https://www.rfc-editor.org/rfc/rfc8259) primitives. IRIs are serialized
- * as strings. Localized strings ({@link Dictionary}) combine a string value with a
- * {@link https://metreeca.github.io/core/types/language.Tag.html language tag} suffix (e.g., `"text@en"`).
- * String quotes may be omitted, but numeric-looking values like `123` will be parsed as numbers unless
- * quoted (`"123"`).
+ * ```text
+ * name                         // simple property
+ * user.profile.email           // nested property path
+ * total=sum:items.price        // named computed sum
+ * round:avg:scores             // pipeline: inner transform applied first
+ * count:                       // empty path (aggregate over collection)
+ * ```
+ *
+ * **Values** are serialized as [JSON](https://www.rfc-editor.org/rfc/rfc8259) primitives:
+ *
+ * ```text
+ * value       = primitive | localized
+ * primitive   = null | boolean | number | string
+ * localized   = string '@' tag
+ * ```
+ *
+ * - {@link IRI | IRIs} are serialized as strings
+ * - Localized strings ({@link Dictionary}) combine a value with a
+ *   {@link https://metreeca.github.io/core/types/language.Tag.html language tag} suffix (e.g., `"text@en"`)
+ * - For plain strings and IRIs, quotes may be omitted
+ *
+ * > [!WARNING]
+ * >
+ * > Numeric-looking values like `123` are parsed as numbers unless quoted.
  *
  * @module
  */
@@ -533,7 +536,6 @@ export type Option =
 
 type Format =
 	| "json"
-	| "url"
 	| "base64"
 	| "form";
 

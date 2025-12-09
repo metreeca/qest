@@ -2,6 +2,7 @@
 
   "externalSymbolLinkMappings": {
     "@metreeca/core": {
+      "Identifier": "https://metreeca.github.io/core/types/index.Identifier.html",
       "IRI": "https://metreeca.github.io/core/types/resource.IRI.html",
       "Tag": "https://metreeca.github.io/core/types/language.Tag.html",
       "TagRange": "https://metreeca.github.io/core/types/language.TagRange.html"
