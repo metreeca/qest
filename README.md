@@ -48,16 +48,16 @@ npm install @metreeca/qest
 
 ## HTTP Operations
 
-The data models define payload formats for standard REST operations:
+**@metreeca/qest** types define payload semantics and formats for standard REST operations:
 
-| Operation | Method | Model                                                                 | Description                      |
+| Operation | Method | Type                                                                  | Description                      |
 |-----------|--------|-----------------------------------------------------------------------|----------------------------------|
 | Retrieve  | GET    | [Resource](https://metreeca.github.io/qest/types/state.Resource.html) | Resource retrieval               |
 | Query     | GET    | [Query](https://metreeca.github.io/qest/types/query.Query.html)       | Client-driven resource retrieval |
 | Create    | POST   | [Resource](https://metreeca.github.io/qest/types/state.Resource.html) | Resource creation                |
 | Update    | PUT    | [Resource](https://metreeca.github.io/qest/types/state.Resource.html) | Complete resource state update   |
 | Mutate    | PATCH  | [Patch](https://metreeca.github.io/qest/types/state.Patch.html)       | Partial resource state update    |
-| Delete    | DELETE | [IRI](https://www.rfc-editor.org/rfc/rfc3987)                         | Resource deletion                |
+| Delete    | DELETE | [IRI](https://metreeca.github.io/core/types/resource.IRI.html)        | Resource deletion                |
 
 ## Client-Driven Retrieval
 
@@ -76,16 +76,37 @@ capabilities when needed.
 
 ## Data Validation
 
-**@metreeca/qest** doesn't specify any constraints on managed data; however, applications may still enforce their own
-rules (for instance, required properties, expected types) and reject non-conforming data.
+**@metreeca/qest** doesn't specify any constraints on data; however, applications may still enforce their own rules
+(for instance, required properties, expected types) and reject non-conforming data.
 
-[@metreeca/blue](https://github.com/metreeca/blue), for instance, offers a shape-based validation framework that can
+[@metreeca/blue](https://github.com/metreeca/blue) provides an integrated shape-based validation framework that can
 verify [resources](https://metreeca.github.io/qest/types/state.Resource.html),
 [patches](https://metreeca.github.io/qest/types/state.Patch.html),
 and [queries](https://metreeca.github.io/qest/types/query.Query.html) against declarative constraints defining allowed
 properties, value types, cardinalities, ranges, patterns, relationships, and inheritance hierarchies.
 
-## JSON-LD Interoperability
+## Data Storage
+
+**@metreeca/qest** doesn't specify any persistence mechanism; however, applications may store resources in databases,
+file systems, or other backends as needed.
+
+[@metreeca/keep](https://github.com/metreeca/keep) provides an integrated storage layer that can persist
+[resources](https://metreeca.github.io/qest/types/state.Resource.html) and process
+[queries](https://metreeca.github.io/qest/types/query.Query.html) against various backends, using
+[@metreeca/blue](https://github.com/metreeca/blue) shapes to map data models to storage schemas.
+
+## Data Publishing
+
+**@metreeca/qest** doesn't specify any transport or API layer; however, applications may expose resources through REST
+endpoints, or other protocols as needed.
+
+[@metreeca/gate](https://github.com/metreeca/gate) provides an integrated publishing layer that can expose
+[resources](https://metreeca.github.io/qest/types/state.Resource.html) as REST/JSON APIs, using
+[@metreeca/blue](https://github.com/metreeca/blue) shapes to handle
+[queries](https://metreeca.github.io/qest/types/query.Query.html),
+[patches](https://metreeca.github.io/qest/types/state.Patch.html), content negotiation, and HTTP caching.
+
+# JSON-LD Interoperability
 
 **@metreeca/qest** is built on a controlled subset of [JSON-LD](https://www.w3.org/TR/json-ld11/) (JSON for Linked
 Data), a [W3C](https://www.w3.org/) standard that extends JSON with web
