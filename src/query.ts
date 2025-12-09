@@ -15,7 +15,7 @@
  */
 
 /**
- * Client-driven resource model.
+ * Client-driven resource retrieval.
  *
  * Defines the shape of data clients want to retrieve from an API. Clients specify which properties to include
  * and how deeply to expand linked resources. For collections, queries also support filtering, ordering, and
@@ -32,7 +32,9 @@
  *
  * - {@link encodeQuery} / {@link decodeQuery} — Query codecs
  *
- * **Resource Queries**
+ * # Query Patterns
+ *
+ * ## Resource Queries
  *
  * A {@link Query} specifies which properties to retrieve from a single {@link Resource} and how deeply to
  * expand linked resources. No over-fetching of unwanted fields, no under-fetching requiring additional calls:
@@ -50,7 +52,7 @@
  * };
  * ```
  *
- * **Collection Queries**
+ * ## Collection Queries
  *
  * Collection queries are nested inside a managing resource that owns the collection, following REST/JSON best
  * practices. Singleton array projections retrieve filtered, sorted, and paginated results with arbitrarily deep
@@ -75,7 +77,7 @@
  * };
  * ```
  *
- * **Localized Content**
+ * ## Localized Content
  *
  * For multilingual properties, use {@link TagRange} keys to select language tags to retrieve:
  *
@@ -88,7 +90,7 @@
  * };
  * ```
  *
- * **Computed Properties**
+ * ## Computed Properties
  *
  * Queries can define computed properties using {@link Expression | expressions} combining property paths
  * with {@link Transforms}.
@@ -117,7 +119,7 @@
  * };
  * ```
  *
- * **Faceted Search**
+ * ## Faceted Search
  *
  * Aggregates enable faceted search patterns, computing category counts, value ranges, and totals in a single call:
  *
@@ -159,7 +161,9 @@
  * // → { items: [{ count: 284 }] }
  * ```
  *
- * **Query Serialization** supports multiple formats for transmission as URL query strings in GET requests:
+ * # Query Serialization
+ *
+ * Multiple formats are supported for transmission as URL query strings in GET requests:
  *
  * | Mode     | Format                                                                     |
  * |----------|----------------------------------------------------------------------------|
@@ -167,14 +171,19 @@
  * | `base64` | [Base64](https://www.rfc-editor.org/rfc/rfc4648#section-4) encoded JSON    |
  * | `form`   | [Form-encoded](#form-serialization)                                        |
  *
- * **JSON Serialization** directly encodes {@link Query} objects using operator key prefixes.
+ * ## JSON Serialization
  *
- * **Form Serialization** additionally supports `application/x-www-form-urlencoded` encoding via the `form` mode.
- * The format encodes queries as `label=value` pairs where:
+ * Directly encodes {@link Query} objects using operator key prefixes.
+ *
+ * ## Form Serialization
+ *
+ * Supports `application/x-www-form-urlencoded` encoding via the `form` mode. The format encodes queries as
+ * `label=value` pairs where:
  *
  * - Labels use the same prefixed operator syntax as {@link Query} constraint keys
  * - Each pair carries a single value; repeated labels are merged into arrays where accepted
- * - Postfix aliases (`expression=` for `?`, `expression<=` for `<=`, `expression>=` for `>=`) provide natural form syntax
+ * - Postfix aliases (`expression=` for `?`, `expression<=` for `<=`, `expression>=` for `>=`) provide natural form
+ *   syntax
  *
  * ```text
  * category=electronics
@@ -200,11 +209,13 @@
  * > Form queries specify only constraints; wrapping inside the target endpoint's collection property and providing
  * > a default projection is server-managed.
  *
- * **Query Grammar**
+ * # Query Grammar
  *
  * The following grammar elements are shared by both JSON and Form serialization formats.
  *
- * **Expressions** ({@link Expression}) identify properties or computed values combining an optional result name,
+ * ## Expressions
+ *
+ * {@link Expression | Expressions} identify properties or computed values combining an optional result name,
  * a pipeline of {@link Transforms}, and a property path:
  *
  * ```text
@@ -226,7 +237,9 @@
  * count:                       // empty path (aggregate over collection)
  * ```
  *
- * **Values** are serialized as [JSON](https://www.rfc-editor.org/rfc/rfc8259) primitives:
+ * ## Values
+ *
+ * Values are serialized as [JSON](https://www.rfc-editor.org/rfc/rfc8259) primitives:
  *
  * ```text
  * value       = primitive | localized
@@ -516,23 +529,43 @@ export type Option =
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
- * Query serialization format.
+ * Encodes a query as a URL-safe string.
  *
- * @see [Query Serialization](#query-serialization)
+ * Serializes a {@link Query} object into a string representation suitable for transmission as a URL query string in
+ * GET requests. The output format can be selected based on readability, compactness, and compatibility requirements.
+ *
+ * @param query The query object to encode
+ * @param format The output format:
+ *
+ * - `"json"` — [Percent-encoded](https://www.rfc-editor.org/rfc/rfc3986#section-2.1) JSON; human-readable but verbose;
+ *   see [JSON Serialization](#json-serialization)
+ * - `"base64"` — [Base64-encoded](https://www.rfc-editor.org/rfc/rfc4648#section-4) JSON; compact and URL-safe
+ * - `"form"` — [Form-encoded](https://url.spec.whatwg.org/#application/x-www-form-urlencoded) `label=value` pairs;
+ *   most compatible with standard tooling; see [Form Serialization](#form-serialization)
+ *
+ * @returns The encoded query string
+ *
+ * @see {@link decodeQuery}
  */
-export type Format =
-	| "json"
-	| "base64"
-	| "form";
-
-export function encodeQuery(query: Query, format: Format = "json"): string {
+export function encodeQuery(query: Query, format: | "json" | "base64" | "form" = "json"): string {
 
 	throw new Error(";( to be implemented"); // !!!
 
 }
 
 
-export function decodeQuery(query: string, format: Format = "json"): string {
+/**
+ * Decodes a query from a URL-safe string.
+ *
+ * Parses an encoded query string back into a {@link Query} object. The encoding format is auto-detected from the
+ * input string structure.
+ *
+ * @param query The encoded query string
+ * @returns The decoded query object
+ *
+ * @see {@link encodeQuery}
+ */
+export function decodeQuery(query: string): string {
 
 	throw new Error(";( to be implemented"); // !!!
 

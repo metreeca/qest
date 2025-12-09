@@ -40,14 +40,14 @@ npm install @metreeca/qest
 
 **@metreeca/qest** types define payload semantics and formats for standard REST operations:
 
-| Operation | Method | Type                                                                  | Description                      |
-|-----------|--------|-----------------------------------------------------------------------|----------------------------------|
-| Retrieve  | GET    | [Resource](https://metreeca.github.io/qest/types/state.Resource.html) | Resource retrieval               |
-| Query     | GET    | [Query](https://metreeca.github.io/qest/types/query.Query.html)       | Client-driven resource retrieval |
-| Create    | POST   | [Resource](https://metreeca.github.io/qest/types/state.Resource.html) | Resource creation                |
-| Update    | PUT    | [Resource](https://metreeca.github.io/qest/types/state.Resource.html) | Complete resource state update   |
-| Mutate    | PATCH  | [Patch](https://metreeca.github.io/qest/types/state.Patch.html)       | Partial resource state update    |
-| Delete    | DELETE | [IRI](https://metreeca.github.io/core/types/resource.IRI.html)        | Resource deletion                |
+| Method | Type                                                                  | Description                      |
+|--------|-----------------------------------------------------------------------|----------------------------------|
+| GET    | [Resource](https://metreeca.github.io/qest/types/state.Resource.html) | Resource retrieval               |
+| GET    | [Query](https://metreeca.github.io/qest/types/query.Query.html)       | Client-driven resource retrieval |
+| POST   | [Resource](https://metreeca.github.io/qest/types/state.Resource.html) | Resource creation                |
+| PUT    | [Resource](https://metreeca.github.io/qest/types/state.Resource.html) | Complete resource state update   |
+| PATCH  | [Patch](https://metreeca.github.io/qest/types/state.Patch.html)       | Partial resource state update    |
+| DELETE | [IRI](https://metreeca.github.io/core/types/resource.IRI.html)        | Resource deletion                |
 
 ## Resources and Patches
 
@@ -81,12 +81,12 @@ PUT https://data.example.com/products/123
 
 ```js
 ({
-  "name": "Widget",
-  "category": "Electronics",
-  "tags": ["gadget", "premium"],
-  "vendor": "https://data.example.com/vendors/456",
-  "price": 79.99
-  // inStock                     // not included → deleted
+    "name": "Widget",
+    "category": "Electronics",
+    "tags": ["gadget", "premium"],
+    "vendor": "https://data.example.com/vendors/456",
+    "price": 79.99
+    // inStock                     // not included → deleted
 })
 ```
 
@@ -98,9 +98,9 @@ PATCH https://data.example.com/products/123
 
 ```js
 ({
-  "tags": ["gadget", "premium"], // updated
-  "price": 79.99,                // updated
-  "inStock": null                // deleted
+    "tags": ["gadget", "premium"], // updated
+    "price": 79.99,                // updated
+    "inStock": null                // deleted
 })
 ```
 
@@ -121,21 +121,21 @@ where `<query>` is the following URL-encoded JSON:
 
 ```js
 ({
-  "items": [
-    {
-      "id": "",
-      "name": "",
-      "price": 0,
-      "vendor": {
-        "id": "",
-        "name": ""
-      },
-      ">=price": 50,     // filter: price ≥ 50
-      "<=price": 150,    // filter: price ≤ 150
-      "^price": "asc",   // sort: by price ascending
-      "#": 25            // limit: 25 results
-    }
-  ]
+    "items": [
+        {
+            "id": "",
+            "name": "",
+            "price": 0,
+            "vendor": {
+                "id": "",
+                "name": ""
+            },
+            ">=price": 50,     // filter: price ≥ 50
+            "<=price": 150,    // filter: price ≤ 150
+            "^price": "asc",   // sort: by price ascending
+            "#": 25            // limit: 25 results
+        }
+    ]
 })
 ```
 

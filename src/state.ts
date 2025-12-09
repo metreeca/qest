@@ -27,18 +27,22 @@
  * - {@link Patch} — Partial resource updates (HTTP PATCH)
  * - {@link Values} — Property value sets
  * - {@link Value} — Individual property values
+ * - {@link IRI} — Resource identifiers
  * - {@link Literal} — Primitive data values
  * - {@link Dictionary} — Localized text values
  *
- * **Resource State**
+ * # Resource Operations
+ *
+ * ## Retrieving
  *
  * A {@link Resource} is a property map describing the state of a resource:
  *
  * ```typescript
- * const user: Resource = {
- *   id: "https://example.org/users/123",
- *   name: "Alice",
- *   email: "alice@example.org"
+ * const product: Resource = {
+ *   id: "/products/42",
+ *   name: "Widget",
+ *   price: 29.99,
+ *   available: true
  * };
  * ```
  *
@@ -47,18 +51,17 @@
  * represents an anonymous (blank) node—useful for nested structures that don't need their own identity:
  *
  * ```typescript
- * const user: Resource = {
- *   id: "https://example.org/users/123",
- *   name: "Alice",
- *   address: {              // anonymous nested resource state
- *     street: "Via Roma 1",
- *     city: "Rome",
- *     zip: "00100"
+ * const product: Resource = {
+ *   id: "/products/42",
+ *   name: "Widget",
+ *   price: 29.99,
+ *   dimensions: {           // anonymous nested resource state
+ *     width: 10,
+ *     height: 5,
+ *     depth: 3
  *   }
  * };
  * ```
- *
- * **Linking Resources**
  *
  * Resources can link to other resources using IRI references or embedded descriptions. IRI references identify a
  * resource without describing its state, while embedded descriptions include the linked resource's properties:
@@ -66,114 +69,112 @@
  * ```typescript
  * // IRI references: compact form linking to external resources
  *
- * const order: Resource = {
- *   id: "https://shop.example.org/orders/100",
- *   customer: "https://accounts.example.org/users/alice",
- *   items: [
- *     "https://catalog.example.org/products/42",
- *     "https://catalog.example.org/products/99"
- *   ]
+ * const product: Resource = {
+ *   id: "/products/42",
+ *   name: "Widget",
+ *   price: 29.99,
+ *   vendor: "/vendors/acme",
+ *   categories: ["/categories/electronics", "/categories/home"]
  * };
  *
  * // Embedded descriptions: expanded form with linked resource properties
  *
- * const order: Resource = {
- *   id: "https://shop.example.org/orders/100",
- *   customer: {
- *     id: "https://accounts.example.org/users/alice",
- *     name: "Alice",
- *     email: "alice@example.org"
+ * const product: Resource = {
+ *   id: "/products/42",
+ *   name: "Widget",
+ *   price: 29.99,
+ *   vendor: {
+ *     id: "/vendors/acme",
+ *     name: "Acme Corp"
  *   },
- *   items: [
- *     {
- *       id: "https://catalog.example.org/products/42",
- *       name: "Widget",
- *       price: 29.99
- *     },
- *     {
- *       id: "https://catalog.example.org/products/99",
- *       name: "Gadget",
- *       price: 49.99
- *     }
+ *   categories: [
+ *     { id: "/categories/electronics", name: "Electronics" },
+ *     { id: "/categories/home", name: "Home" }
  *   ]
  * };
  * ```
  *
- * **Creating and Replacing Resources**
+ * ## Creating
  *
- * A {@link Resource} serves as payload for HTTP POST (create) and PUT (replace) operations.
+ * A {@link Resource} serves as payload for HTTP POST operations:
  *
  * ```typescript
- * const state: Resource = {
- *   name: "Bob",
- *   email: "bob@example.org",
- *   tags: ["featured", "urgent"],
- *   active: true
+ * const product: Resource = {
+ *   name: "Gadget",
+ *   price: 49.99,
+ *   categories: ["electronics", "home"],
+ *   available: true
  * };
  * ```
  *
- * **Important**: For PUT operations, state replacement is total — properties not included in the state are removed
- * from the resource; empty arrays are treated as property deletions, following set semantics where an empty set
- * is equivalent to absence.
- *
- * **Important**: Nested resource states containing properties beyond the resource identifier are only accepted if
- * explicitly declared as embedded in the application-defined data model; non-embedded nested resources with
- * additional properties will be rejected during validation.
+ * > [!IMPORTANT]
+ * > Nested resource states containing properties beyond the resource identifier are only accepted if
+ * > explicitly declared as embedded in the application-defined data model; non-embedded nested resources with
+ * > additional properties will be rejected during validation.
  *
  * ```typescript
  * // Using IRI references (always valid)
  *
- * const state: Resource = {
- *   name: "Annual Report 2024",
- *   author: "https://example.org/users/123",
- *   publisher: "https://example.org/orgs/acme"
+ * const product: Resource = {
+ *   name: "Gadget",
+ *   price: 49.99,
+ *   vendor: "/vendors/acme"
  * };
  *
  * // Using nested states with only the identifier property (always valid)
  *
- * const state: Resource = {
- *   name: "Annual Report 2024",
- *   author: {
- *     id: "https://example.org/users/123"
- *   },
- *   publisher: {
- *     id: "https://example.org/orgs/acme"
+ * const product: Resource = {
+ *   name: "Gadget",
+ *   price: 49.99,
+ *   vendor: {
+ *     id: "/vendors/acme"
  *   }
  * };
  *
  * // Using nested states with additional properties (must be declared as embedded)
  *
- * const state: Resource = {
- *   name: "Annual Report 2024",
- *   author: {
- *     id: "https://example.org/users/123",
- *     name: "Bob"                          // requires 'author' declared as embedded
- *   },
- *   publisher: {
- *     id: "https://example.org/orgs/acme",
- *     name: "Acme Corp"                    // requires 'publisher' declared as embedded
+ * const product: Resource = {
+ *   name: "Gadget",
+ *   price: 49.99,
+ *   vendor: {
+ *     id: "/vendors/acme",
+ *     name: "Acme Corp"           // requires 'vendor' declared as embedded
  *   }
  * };
  * ```
  *
- * **Updating Resources**
+ * ## Updating
+ *
+ * A {@link Resource} also serves as payload for HTTP PUT operations.
+ *
+ * > [!IMPORTANT]
+ * > State replacement is total — properties not included in the state are removed from the resource; empty arrays
+ * > are treated as property deletions, following set semantics where an empty set is equivalent to absence.
+ *
+ * ## Patching
  *
  * A {@link Patch} serves as payload for HTTP PATCH operations. Properties can be set to new {@link Values | values}
  * or deleted using `null`; unlisted properties remain unchanged.
  *
  * ```typescript
  * const patch: Patch = {
- *   name: "Charlie",      // update
- *   email: null,          // delete
- *   active: true,         // update
- *   tags: []              // delete
+ *   price: 39.99,         // update
+ *   description: null,    // delete
+ *   available: true,      // update
+ *   categories: []        // delete
  * };
  * ```
  *
- * **Important**: Empty arrays are treated as property deletions, following set semantics where an empty set
- * is equivalent to absence.
+ * > [!IMPORTANT]
+ * > Empty arrays are treated as property deletions, following set semantics where an empty set
+ * > is equivalent to absence.
  *
- * **Value Types**
+ * ## Deleting
+ *
+ * HTTP DELETE operations remove resources identified by their IRI. No request payload is required — the target
+ * resource is identified solely by the request URL.
+ *
+ * # Value Types
  *
  * Each property in a resource state or patch holds {@link Values}:
  *
@@ -187,16 +188,30 @@
  * - **IRI**: web identifier referencing a resource
  * - **nested state**: embedded resource description (object with property values)
  *
- * **Important**: Arrays follow set semantics — duplicates are ignored, ordering is immaterial, and empty arrays are
- * treated as absent values. This aligns with JSON-LD's multi-valued property model.
+ * > [!IMPORTANT]
+ * > Arrays follow set semantics — duplicates are ignored, ordering is immaterial, and empty arrays are
+ * > treated as absent values. This aligns with JSON-LD's multi-valued property model.
  *
- * **Literals**
+ * ## IRIs
+ *
+ * An {@link IRI} (Internationalized Resource Identifier) is a globally unique string identifying a resource on the
+ * web.
+ * IRIs enable entity linking by referencing resources without embedding their full state. Properties mapped to `@id`
+ * in the application-provided JSON-LD `@context` expect IRI values, establishing relationships between resources across
+ * systems and domains.
+ *
+ * > [!NOTE]
+ * > The choice between absolute, root-relative, or relative IRIs is application-specific, but root-relative IRIs
+ * > (e.g., `/users/123`) are preferred for readability and portability. JSON-LD `@base` declarations can resolve
+ * > relative references to absolute IRIs during processing.
+ *
+ * ## Literals
  *
  * A {@link Literal} maps directly to JSON primitives (`boolean`, `number`, `string`). Dates, times, and other
  * structured values are represented as strings in standard formats (e.g., ISO 8601). Application-level `@context`
  * objects can declare datatype coercion rules for JSON-LD processing.
  *
- * **Localized Text**
+ * ## Localized Text
  *
  * For multilingual content, use a {@link Dictionary} — an object mapping language tags to localized strings.
  * Language tags follow [RFC 5646](https://www.rfc-editor.org/rfc/rfc5646.html) (e.g., `en`, `de-CH`, `zh-Hans`):
@@ -218,8 +233,10 @@
  * };
  * ```
  *
- * **Important**: A dictionary must be either single-valued (one string per tag) or multi-valued (string arrays per
- * tag) throughout; mixing cardinalities within the same dictionary is not supported.
+ * > [!IMPORTANT]
+ *
+ * > A dictionary must be either single-valued (one string per tag) or multi-valued (string arrays per
+ * > tag) throughout; mixing cardinalities within the same dictionary is not supported.
  *
  * @see {@link https://www.w3.org/TR/json-ld11/ JSON-LD 1.1}
  * @see {@link https://datatracker.ietf.org/doc/html/rfc9110#section-9.3.1 RFC 9110 - HTTP GET Method}
