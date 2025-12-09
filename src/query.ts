@@ -553,7 +553,6 @@ export function encodeQuery(query: Query, format: | "json" | "base64" | "form" =
 
 }
 
-
 /**
  * Decodes a query from a URL-safe string.
  *
@@ -565,7 +564,7 @@ export function encodeQuery(query: Query, format: | "json" | "base64" | "form" =
  *
  * @see {@link encodeQuery}
  */
-export function decodeQuery(query: string): string {
+export function decodeQuery(query: string): Query {
 
 	throw new Error(";( to be implemented"); // !!!
 
@@ -574,15 +573,27 @@ export function decodeQuery(query: string): string {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+/**
+ * Creates a typed transform registry from transform definitions.
+ *
+ * Validates each transform definition and builds a type-safe record mapping transform names to their definitions.
+ * Used internally to construct the {@link Transforms} registry.
+ *
+ * @typeParam T The tuple type of transform definitions preserving literal name types
+ *
+ * @param transforms The array of transform definitions to register
+ *
+ * @returns A record mapping each transform name to its definition
+ */
 function transforms<const T extends readonly {
 
-	/** Transform name */
+	/** Transform name. */
 	name: string,
 
-	/** Whether the transform operates on collections (`true`) or individual values (`false`) */
+	/** Whether the transform operates on collections (`true`) or individual values (`false`). */
 	aggregate?: boolean,
 
-	/** Result type of the transform; when omitted, the transform preserves the input type */
+	/** Result type of the transform; when omitted, the transform preserves the input type. */
 	datatype?: "boolean" | "number" | "string"
 
 }[]>(transforms: T): Record<T[number]["name"], T[number]> {
