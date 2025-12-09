@@ -26,39 +26,42 @@
  * be linked together into a graph. Unlike isolated JSON documents, linked resources form a web of interconnected data
  * where relationships can be traversed across system boundaries.
  *
- * **Resources**
+ * **Resource State**
  *
- * A {@link Resource} can appear in two forms:
- *
- * - **reference**: just an IRI string pointing to a resource defined elsewhere
- * - **description**: an object with properties that describe the resource
+ * A {@link Resource} is a property map describing the state of a resource:
  *
  * ```typescript
- * // reference: points to a resource without describing it
- *
- * const userRef: Resource = "https://example.org/users/123";
- *
- * // description: provides properties about the resource
- *
- * const userDesc: Resource = {
+ * const user: Resource = {
  *   id: "https://example.org/users/123",
  *   name: "Alice",
  *   email: "alice@example.org"
  * };
  * ```
  *
- * The `id` property corresponds to `@id` in JSON-LD and identifies the resource globally. A description without an
+ * The `id` property corresponds to `@id` in JSON-LD and identifies the resource globally. A state without an
  * `id` represents an anonymous (blank) node—useful for nested structures that don't need their own identity:
  *
  * ```typescript
  * const user: Resource = {
  *   id: "https://example.org/users/123",
  *   name: "Alice",
- *   address: {              // anonymous nested resource
+ *   address: {              // anonymous nested resource state
  *     street: "Via Roma 1",
  *     city: "Rome",
  *     zip: "00100"
  *   }
+ * };
+ * ```
+ *
+ * **Resource Reference**
+ *
+ * An {@link IRI} string identifies a resource without describing its state. References appear only within
+ * resource states as {@link Value | values}, linking to related resources:
+ *
+ * ```typescript
+ * const order: Resource = {
+ *   id: "https://example.org/orders/100",
+ *   customer: "https://example.org/users/123"  // IRI reference to related resource
  * };
  * ```
  *
@@ -200,21 +203,17 @@
  */
 
 import { Identifier } from "@metreeca/core";
-import { IRI, Tag } from "@metreeca/core/network";
+import {  Tag } from "@metreeca/core/language";
+import { IRI } from "@metreeca/core/resource";
 
 
 /**
- * Linked data resource.
+ * Linked data resource state.
  *
- * Represents resources in JSON-LD documents, supporting both compact references and detailed descriptions.
- * Use {@link IRI} form for simple references, or property map form to include resource data inline.
- *
- * - **reference**: an {@link IRI} string identifying a resource
- * - **description**: a property map where each property holds {@link Values}; may include an `id` property
- *   mapped to `@id` for resource identification
+ * A property map describing the state of a resource. Each property holds {@link Values} and may include an `id`
+ * property mapped to `@id` for resource identification. Descriptions without `id` represent anonymous (blank) nodes.
  */
 export type Resource =
-	| IRI
 	| { readonly [property in Identifier]: Values }
 
 /**
@@ -233,11 +232,15 @@ export type Values =
 /**
  * Model value.
  *
- * Represents property values in resources, supporting both primitive data ({@link Literal}) and
- * nested resource references/descriptions ({@link Resource}).
+ * Represents property values in resource state descriptions:
+ *
+ * - {@link Literal}: primitive data (boolean, number, string)
+ * - {@link IRI}: reference to a resource
+ * - {@link Resource}: nested resource state
  */
 export type Value =
 	| Literal
+	| IRI
 	| Resource
 
 /**
