@@ -1,7 +1,5 @@
 {
-  "plugin": [
-    "typedoc-github-theme"
-  ],
+
   "externalSymbolLinkMappings": {
     "@metreeca/core": {
       "IRI": "https://metreeca.github.io/core/types/resource.IRI.html",
