@@ -17,11 +17,8 @@
 /**
  * Client-driven resource retrieval.
  *
- * Defines the shape of data clients want to retrieve from an API. Clients specify which properties to include
- * and how deeply to expand linked resources. For collections, queries also support filtering, ordering, and
- * pagination. This enables efficient single-call retrieval of exactly the data needed.
- *
- * This module provides types for defining queries:
+ * Defines types for specifying what data to retrieve in REST/JSON APIs, including property selection, linked
+ * resource expansion, and—for collections—filtering, ordering, and pagination:
  *
  * - {@link Query} — Resource retrieval query
  * - {@link Model} — Property value specification

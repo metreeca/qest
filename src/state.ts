@@ -17,11 +17,8 @@
 /**
  * Resource state model.
  *
- * Defines the data structures exchanged between clients and servers in REST/JSON APIs. Resources represent
- * complete entity states for retrieval and updates; patches describe partial modifications. Both use native
- * JSON types with optional localized text support.
- *
- * This module provides types for describing resource states and updates:
+ * Defines types for describing resource states and partial updates in REST/JSON APIs, using native JSON types
+ * with localized text support:
  *
  * - {@link Resource} — Complete resource state (HTTP GET/PUT)
  * - {@link Patch} — Partial resource updates (HTTP PATCH)
@@ -37,74 +34,82 @@
  *
  * A {@link Resource} is a property map describing the state of a resource:
  *
- * ```typescript
- * const product: Resource = {
- *   id: "/products/42",
- *   name: "Widget",
- *   price: 29.99,
- *   available: true
- * };
+ * ```http request
+ * GET https://example.com/products/42
+ * ```
+ *
+ * ```json
+ * {
+ *   "id": "/products/42",
+ *   "name": "Widget",
+ *   "price": 29.99,
+ *   "available": true
+ * }
  * ```
  *
  * Resources may include an IRI property mapped to `@id` in the application-defined JSON-LD `@context`, identifying the
  * resource globally. This property is usually named `id`, but the mapping is arbitrary. A state without such a property
  * represents an anonymous (blank) node—useful for nested structures that don't need their own identity:
  *
- * ```typescript
- * const product: Resource = {
- *   id: "/products/42",
- *   name: "Widget",
- *   price: 29.99,
- *   dimensions: {           // anonymous nested resource state
- *     width: 10,
- *     height: 5,
- *     depth: 3
+ * ```json
+ * {
+ *   "id": "/products/42",
+ *   "name": "Widget",
+ *   "price": 29.99,
+ *   "dimensions": {
+ *     "width": 10,
+ *     "height": 5,
+ *     "depth": 3
  *   }
- * };
+ * }
  * ```
  *
  * Resources can link to other resources using IRI references or embedded descriptions. IRI references identify a
  * resource without describing its state, while embedded descriptions include the linked resource's properties:
  *
- * ```typescript
+ * ```js
  * // IRI references: compact form linking to external resources
  *
- * const product: Resource = {
- *   id: "/products/42",
- *   name: "Widget",
- *   price: 29.99,
- *   vendor: "/vendors/acme",
- *   categories: ["/categories/electronics", "/categories/home"]
- * };
+ * ({
+ *   "id": "/products/42",
+ *   "name": "Widget",
+ *   "price": 29.99,
+ *   "vendor": "/vendors/acme",
+ *   "categories": ["/categories/electronics", "/categories/home"]
+ * })
  *
  * // Embedded descriptions: expanded form with linked resource properties
  *
- * const product: Resource = {
- *   id: "/products/42",
- *   name: "Widget",
- *   price: 29.99,
- *   vendor: {
- *     id: "/vendors/acme",
- *     name: "Acme Corp"
+ * ({
+ *   "id": "/products/42",
+ *   "name": "Widget",
+ *   "price": 29.99,
+ *   "vendor": {
+ *     "id": "/vendors/acme",
+ *     "name": "Acme Corp"
  *   },
- *   categories: [
- *     { id: "/categories/electronics", name: "Electronics" },
- *     { id: "/categories/home", name: "Home" }
+ *   "categories": [
+ *     { "id": "/categories/electronics", "name": "Electronics" },
+ *     { "id": "/categories/home", "name": "Home" }
  *   ]
- * };
+ * })
  * ```
  *
  * ## Creating
  *
  * A {@link Resource} serves as payload for HTTP POST operations:
  *
- * ```typescript
- * const product: Resource = {
- *   name: "Gadget",
- *   price: 49.99,
- *   categories: ["electronics", "home"],
- *   available: true
- * };
+ * ```http request
+ * POST https://example.com/products/
+ * ```
+ *
+ * ```json
+ * {
+ *   "name": "Gadget",
+ *   "price": 49.99,
+ *   "categories": ["electronics", "home"],
+ *   "available": true
+ * }
  * ```
  *
  * > [!IMPORTANT]
@@ -112,40 +117,53 @@
  * > explicitly declared as embedded in the application-defined data model; non-embedded nested resources with
  * > additional properties will be rejected during validation.
  *
- * ```typescript
+ * ```js
  * // Using IRI references (always valid)
  *
- * const product: Resource = {
- *   name: "Gadget",
- *   price: 49.99,
- *   vendor: "/vendors/acme"
- * };
+ * ({
+ *   "name": "Gadget",
+ *   "price": 49.99,
+ *   "vendor": "/vendors/acme"
+ * })
  *
  * // Using nested states with only the identifier property (always valid)
  *
- * const product: Resource = {
- *   name: "Gadget",
- *   price: 49.99,
- *   vendor: {
- *     id: "/vendors/acme"
+ * ({
+ *   "name": "Gadget",
+ *   "price": 49.99,
+ *   "vendor": {
+ *     "id": "/vendors/acme"
  *   }
- * };
+ * })
  *
  * // Using nested states with additional properties (must be declared as embedded)
  *
- * const product: Resource = {
- *   name: "Gadget",
- *   price: 49.99,
- *   vendor: {
- *     id: "/vendors/acme",
- *     name: "Acme Corp"           // requires 'vendor' declared as embedded
+ * ({
+ *   "name": "Gadget",
+ *   "price": 49.99,
+ *   "vendor": {         // requires 'vendor' declared as embedded
+ *     "id": "/vendors/acme",
+ *     "name": "Acme Corp"
  *   }
- * };
+ * })
  * ```
  *
  * ## Updating
  *
- * A {@link Resource} also serves as payload for HTTP PUT operations.
+ * A {@link Resource} also serves as payload for HTTP PUT operations:
+ *
+ * ```http request
+ * PUT https://example.com/products/42
+ * ```
+ *
+ * ```js
+ * ({
+ *   "name": "Widget",
+ *   "price": 79.99,
+ *   "categories": ["electronics", "premium"]
+ *   // available       // not included → deleted
+ * })
+ * ```
  *
  * > [!IMPORTANT]
  * > State replacement is total — properties not included in the state are removed from the resource; empty arrays
@@ -154,15 +172,19 @@
  * ## Patching
  *
  * A {@link Patch} serves as payload for HTTP PATCH operations. Properties can be set to new {@link Values | values}
- * or deleted using `null`; unlisted properties remain unchanged.
+ * or deleted using `null`; unlisted properties remain unchanged:
  *
- * ```typescript
- * const patch: Patch = {
- *   price: 39.99,         // update
- *   description: null,    // delete
- *   available: true,      // update
- *   categories: []        // delete
- * };
+ * ```http request
+ * PATCH https://example.com/products/42
+ * ```
+ *
+ * ```js
+ * ({
+ *   "price": 39.99,         // update
+ *   "description": null,    // delete
+ *   "available": true,      // update
+ *   "categories": []        // delete
+ * })
  * ```
  *
  * > [!IMPORTANT]
@@ -171,8 +193,11 @@
  *
  * ## Deleting
  *
- * HTTP DELETE operations remove resources identified by their IRI. No request payload is required — the target
- * resource is identified solely by the request URL.
+ * HTTP DELETE operations remove the resource at the request URL (no payload is required):
+ *
+ * ```http request
+ * DELETE https://example.com/products/42
+ * ```
  *
  * # Value Types
  *
@@ -216,21 +241,21 @@
  * For multilingual content, use a {@link Dictionary} — an object mapping language tags to localized strings.
  * Language tags follow [RFC 5646](https://www.rfc-editor.org/rfc/rfc5646.html) (e.g., `en`, `de-CH`, `zh-Hans`):
  *
- * ```typescript
+ * ```js
  * // single value per language
  *
- * const name: Dictionary = {
- *   en: "Universal Widget",
- *   fr: "Widget Universel",
- *   de: "Universelles Widget"
- * };
+ * ({
+ *   "en": "Universal Widget",
+ *   "fr": "Widget Universel",
+ *   "de": "Universelles Widget"
+ * })
  *
  * // multiple values per language
  *
- * const keywords: Dictionary = {
- *   en: ["tool", "gadget", "utility"],
- *   fr: ["outil", "gadget"]
- * };
+ * ({
+ *   "en": ["tool", "gadget", "utility"],
+ *   "fr": ["outil", "gadget"]
+ * })
  * ```
  *
  * > [!IMPORTANT]
