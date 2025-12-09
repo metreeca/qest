@@ -223,6 +223,10 @@ Pair
   / DisjunctivePair
   / ConjunctivePair
   / FocusPair
+  / LtePrefixPair
+  / GtePrefixPair
+  / LtPair
+  / GtPair
   / LtePair
   / GtePair
   / EqualityPair
@@ -247,6 +251,18 @@ ConjunctivePair
 
 FocusPair
   = "$" expr:QueryPath "=" value:Value { return ["$" + expr, parseValue(value)]; }
+
+LtPair
+  = "<" expr:QueryPath "=" value:Value { return ["<" + expr, parseValue(value)]; }
+
+GtPair
+  = ">" expr:QueryPath "=" value:Value { return [">" + expr, parseValue(value)]; }
+
+LtePrefixPair
+  = "<=" expr:QueryPath "=" value:Value { return ["<=" + expr, parseValue(value)]; }
+
+GtePrefixPair
+  = ">=" expr:QueryPath "=" value:Value { return [">=" + expr, parseValue(value)]; }
 
 LtePair
   = expr:QueryPath "<=" value:Value { return ["<=" + expr, parseValue(value)]; }

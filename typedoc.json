@@ -1,5 +1,8 @@
 {
 
+  "highlightLanguages": [
+    "http"
+  ],
   "externalSymbolLinkMappings": {
     "@metreeca/core": {
       "Identifier": "https://metreeca.github.io/core/types/index.Identifier.html",

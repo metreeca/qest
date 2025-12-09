@@ -170,31 +170,11 @@
  * **JSON Serialization** directly encodes {@link Query} objects using operator key prefixes.
  *
  * **Form Serialization** additionally supports `application/x-www-form-urlencoded` encoding via the `form` mode.
- * The format serializes queries as `label=value` pairs with operator prefixes or suffixes:
+ * The format encodes queries as `label=value` pairs where:
  *
- * ```
- * query   = pair ( '&' pair )*
- * pair    = label '=' value
- * label   = prefix expression | expression postfix | '@' | '#'
- * prefix  = '~' | '?' | '!' | '$' | '^'
- * postfix = '<=' | '>='
- * literal = primitive
- * option  = primitive
- * order   = 'asc' | 'ascending' | 'desc' | 'descending' | number
- * ```
- *
- * | Syntax                | Value                              | Description                                       |
- * |-----------------------|------------------------------------|---------------------------------------------------|
- * | `expression=option`   | [value](#values)                   | Disjunctive; alias for `?expression=option`       |
- * | `expression<=literal` | [value](#values)                   | Less than or equal                                |
- * | `expression>=literal` | [value](#values)                   | Greater than or equal                             |
- * | `~expression=string`  | string                             | Stemmed word search                               |
- * | `?expression=option`  | [value](#values)                   | Disjunctive; multiple instances combined with OR  |
- * | `!expression=option`  | [value](#values)                   | Conjunctive; multiple instances combined with AND |
- * | `$expression=option`  | [value](#values)                   | Focus ordering                                    |
- * | `^expression=order`   | `asc`/`ascending`/`desc`/`descending`/number | Sort ordering                        |
- * | `@=number`            | number                             | Offset                                            |
- * | `#=number`            | number                             | Limit                                             |
+ * - Labels use the same prefixed operator syntax as {@link Query} constraint keys
+ * - Each pair carries a single value; repeated labels are merged into arrays where accepted
+ * - Postfix aliases (`expression=` for `?`, `expression<=` for `<=`, `expression>=` for `>=`) provide natural form syntax
  *
  * ```text
  * category=electronics
@@ -535,7 +515,12 @@ export type Option =
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-type Format =
+/**
+ * Query serialization format.
+ *
+ * @see [Query Serialization](#query-serialization)
+ */
+export type Format =
 	| "json"
 	| "base64"
 	| "form";
