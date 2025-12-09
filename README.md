@@ -42,13 +42,11 @@ npm install @metreeca/qest
 
 # Usage
 
-| Module                                                                     | Description                    |
-|----------------------------------------------------------------------------|--------------------------------|
-| [@metreeca/qest](https://metreeca.github.io/qest/modules/index.html)       | Core linked data model         |
-| [@metreeca/qest/query](https://metreeca.github.io/qest/modules/query.html) | Client-driven retrieval model  |
-| [@metreeca/qest/state](https://metreeca.github.io/qest/modules/state.html) | Complete resource update model |
-| [@metreeca/qest/patch](https://metreeca.github.io/qest/modules/patch.html) | Partial resource update model  |
-| [@metreeca/qest/codec](https://metreeca.github.io/qest/modules/codec.html) | Model serialization codecs     |
+| Module                                                                     | Description                   |
+|----------------------------------------------------------------------------|-------------------------------|
+| [@metreeca/qest](https://metreeca.github.io/qest/modules/index.html)       | Core linked data model        |
+| [@metreeca/qest/query](https://metreeca.github.io/qest/modules/query.html) | Client-driven retrieval model |
+| [@metreeca/qest/codec](https://metreeca.github.io/qest/modules/codec.html) | Model serialization codecs    |
 
 ## Client-Driven Retrieval
 
@@ -65,10 +63,10 @@ client-driven retrieval when needed.
 rules (for instance, required properties, expected types) and reject non-conforming data.
 
 [@metreeca/blue](https://github.com/metreeca/blue), for instance, offers a shape-based validation framework that can
-verify [models](https://metreeca.github.io/qest/modules/model.html),
-[states](https://metreeca.github.io/qest/modules/state.html),
-and [patches](https://metreeca.github.io/qest/modules/patch.html) against declarative constraints defining allowed
-properties, value types, cardinalities, ranges, patterns, relationships, and inheritance hierarchies.
+verify [resources](https://metreeca.github.io/qest/types/index.Resource.html),
+[patches](https://metreeca.github.io/qest/types/index.Patch.html),
+and [queries](https://metreeca.github.io/qest/types/query.Query.html) against declarative constraints
+defining allowed properties, value types, cardinalities, ranges, patterns, relationships, and inheritance hierarchies.
 
 ## JSON-LD Interoperability
 

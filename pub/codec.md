@@ -1,34 +1,34 @@
 ---
 title: Serialization
-summary: Serialization formats for Query, State, and Patch objects
+summary: Serialization formats for Query, Resource, and Patch objects
 description: |
   Standard serialization formats for @metreeca/qest model objects.
 ---
 
 This document defines the standard serialization formats for **@metreeca/qest** model objects:
 
-- [**JSON formats**](#model-serialization) for all model types (Query, State, Patch)
+- [**JSON formats**](#model-serialization) for all model types (Query, Resource, Patch)
 - [**Transport formats**](#query-serialization) for Query objects (percent-encoded, base64, form-encoded)
 - [**Grammar rules**](#query-grammar) for expressions, paths, identifiers, and values
 
 > [!IMPORTANT]
 >
 > This document specifies **serialization formats only** and assumes familiarity with the
-> [Query](../modules/query.html), [State](../modules/state.html), and [Patch](../modules/patch.html) data models.
+> [Query](../modules/query.html) and [core](../modules/index.html) data models.
 > See the [codec](../modules/codec.html) module for encoding and decoding functions.
 
 # Model Serialization
 
 All model objects support JSON serialization with type-specific mode labels; Query objects additionally support transport-optimized encoding formats:
 
-| Model                          | Mode     | Format                                                       | Auto-Detection                                       |
-| ------------------------------ | -------- | ------------------------------------------------------------ | ---------------------------------------------------- |
-| [Query](../modules/query.html) | `query`  | [JSON](#query-json-serialization)                            | Starts with `{`                                      |
-|                                | `url`    | [Percent-Encoded](https://www.rfc-editor.org/rfc/rfc3986#section-2.1) JSON | Contains `%XX` sequences                             |
-|                                | `base64` | [Base64](https://www.rfc-editor.org/rfc/rfc4648#section-4) encoded JSON | Only `[A-Za-z0-9+/=]`, length ×4                     |
-|                                | `form`   | [Form-encoded](#query-form-serialization)                    | Requires default [projection](../modules/query.html) |
-| [State](../modules/state.html) | `state`  | [JSON](#query-json-serialization)                            | -                                                    |
-| [Patch](../modules/patch.html) | `patch`  | [JSON](#query-json-serialization)                            | -                                                    |
+| Model                             | Mode       | Format                                                                    | Auto-Detection                                       |
+|-----------------------------------|------------|---------------------------------------------------------------------------|------------------------------------------------------|
+| [Query](../modules/query.html)    | `query`    | [JSON](#query-json-serialization)                                         | Starts with `{`                                      |
+|                                   | `url`      | [Percent-Encoded](https://www.rfc-editor.org/rfc/rfc3986#section-2.1) JSON | Contains `%XX` sequences                             |
+|                                   | `base64`   | [Base64](https://www.rfc-editor.org/rfc/rfc4648#section-4) encoded JSON   | Only `[A-Za-z0-9+/=]`, length ×4                     |
+|                                   | `form`     | [Form-encoded](#query-form-serialization)                                 | Requires default [projection](../modules/query.html) |
+| [Resource](../modules/index.html) | `resource` | [JSON](#query-json-serialization)                                         | -                                                    |
+| [Patch](../modules/index.html)    | `patch`    | [JSON](#query-json-serialization)                                         | -                                                    |
 
 # Query Serialization
 

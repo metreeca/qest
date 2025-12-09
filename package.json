@@ -30,8 +30,6 @@
   "exports": {
     ".": "./dist/index.js",
     "./query": "./dist/query.js",
-    "./state": "./dist/state.js",
-    "./patch": "./dist/patch.js",
     "./codec": "./dist/codec.js"
   },
   "files": [

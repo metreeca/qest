@@ -28,7 +28,10 @@
  *
  * **Resource State**
  *
- * A {@link Resource} is a property map describing the state of a resource:
+ * A {@link Resource} is a property map describing the state of a resource. The same type serves two roles:
+ *
+ * - **Retrieval** (HTTP GET): represents the current state returned by the server
+ * - **Complete update** (HTTP PUT): specifies the complete new state to replace the current one
  *
  * ```typescript
  * const user: Resource = {
@@ -196,14 +199,177 @@
  * };
  * ```
  *
+ * **Complete Updates**
+ *
+ * A {@link Resource} can serve as a complete update specification for HTTP PUT operations. Properties are set to
+ * new {@link Values | values}; unlisted properties are removed:
+ *
+ * ```typescript
+ * const state: Resource = {
+ *   name: "Bob",
+ *   email: "bob@example.org",
+ *   tags: ["featured", "urgent"],
+ *   active: true
+ * };
+ * ```
+ *
+ * **Important**: Unlike partial updates ({@link Patch}), complete state replacement is total — properties not
+ * included in the state are removed from the resource.
+ *
+ * **Important**: Empty arrays are treated as property deletions, following set semantics where an empty set
+ * is equivalent to absence.
+ *
+ * *Linked Resources*
+ *
+ * References to linked resources can use either IRI strings or nested states, following the same
+ * {@link Resource} model as in regular resource data.
+ *
+ * **Important**:
+ *
+ * - Nested resource states containing properties beyond the resource identifier are only accepted if
+ *   explicitly declared as embedded in the application-defined data model
+ * - The resource identifier (usually named `id`) holds the resource's unique IRI and is mapped to `@id`
+ *   in the application-defined JSON-LD `@context`
+ * - Non-embedded nested resources with additional properties will be rejected during validation
+ *
+ * ```typescript
+ * // Using IRI references (always valid)
+ *
+ * const state: Resource = {
+ *   name: "Annual Report 2024",
+ *   author: "https://example.org/users/123",
+ *   publisher: "https://example.org/orgs/acme"
+ * };
+ *
+ * // Using nested states with only the identifier property (always valid)
+ *
+ * const state: Resource = {
+ *   name: "Annual Report 2024",
+ *   author: {
+ *     id: "https://example.org/users/123"
+ *   },
+ *   publisher: {
+ *     id: "https://example.org/orgs/acme"
+ *   }
+ * };
+ *
+ * // Using nested states with additional properties (must be declared as embedded)
+ *
+ * const state: Resource = {
+ *   name: "Annual Report 2024",
+ *   author: {
+ *     id: "https://example.org/users/123",
+ *     name: "Bob"                          // requires 'author' declared as embedded
+ *   },
+ *   publisher: {
+ *     id: "https://example.org/orgs/acme",
+ *     name: "Acme Corp"                    // requires 'publisher' declared as embedded
+ *   }
+ * };
+ * ```
+ *
+ * **Partial Updates**
+ *
+ * A {@link Patch} specifies partial updates to a resource state. Properties can be set to new {@link Values | values}
+ * or deleted using `null`; unlisted properties remain unchanged. This enables efficient incremental updates,
+ * for instance using HTTP PATCH operations.
+ *
+ * *Updating Properties*
+ *
+ * Set properties to new values by including them in the patch:
+ *
+ * ```typescript
+ * const patch: Patch = {
+ *   name: "Bob",                    // update single value
+ *   tags: ["featured", "urgent"],   // update array
+ *   email: "bob@example.org"        // update another value
+ * };
+ * ```
+ *
+ * *Deleting Properties*
+ *
+ * Remove properties by setting them to `null` or an empty array:
+ *
+ * ```typescript
+ * const patch: Patch = {
+ *   deprecated: null,     // delete using null
+ *   tags: []              // delete using empty array (equivalent to null)
+ * };
+ * ```
+ *
+ * **Important**: Empty arrays are treated as property deletions, following set semantics where an empty set
+ * is equivalent to absence.
+ *
+ * *Combined Updates*
+ *
+ * Patches can mix updates and deletions:
+ *
+ * ```typescript
+ * const patch: Patch = {
+ *   name: "Charlie",      // update
+ *   email: null,          // delete
+ *   active: true,         // update
+ *   tags: []              // delete
+ * };
+ * ```
+ *
+ * *Linked Resources*
+ *
+ * References to linked resources can use either IRI strings or nested states, following the same
+ * {@link Resource} model as in regular resource data.
+ *
+ * **Important**:
+ *
+ * - Nested resource states containing properties beyond the resource identifier are only accepted if
+ *   explicitly declared as embedded in the application-defined data model
+ * - The resource identifier (usually named `id`) holds the resource's unique IRI and is mapped to `@id`
+ *   in the application-defined JSON-LD `@context`
+ * - Non-embedded nested resources with additional properties will be rejected during validation
+ *
+ * ```typescript
+ * // Using IRI references (always valid)
+ *
+ * const patch: Patch = {
+ *   author: "https://example.org/users/123",
+ *   publisher: "https://example.org/orgs/acme"
+ * };
+ *
+ * // Using nested states with only the identifier property (always valid)
+ *
+ * const patch: Patch = {
+ *   author: {
+ *     id: "https://example.org/users/123"
+ *   },
+ *   publisher: {
+ *     id: "https://example.org/orgs/acme"
+ *   }
+ * };
+ *
+ * // Using nested states with additional properties (must be declared as embedded)
+ *
+ * const patch: Patch = {
+ *   author: {
+ *     id: "https://example.org/users/123",
+ *     name: "Bob"                          // requires 'author' declared as embedded
+ *   },
+ *   publisher: {
+ *     id: "https://example.org/orgs/acme",
+ *     name: "Acme Corp"                    // requires 'publisher' declared as embedded
+ *   }
+ * };
+ * ```
+ *
  * @see {@link https://www.w3.org/TR/json-ld11/ JSON-LD 1.1}
  * @see {@link https://www.rfc-editor.org/rfc/rfc5646.html RFC 5646 - Tags for Identifying Languages}
+ * @see {@link https://datatracker.ietf.org/doc/html/rfc9110#section-9.3.1 RFC 9110 - HTTP GET Method}
+ * @see {@link https://datatracker.ietf.org/doc/html/rfc9110#section-9.3.4 RFC 9110 - HTTP PUT Method}
+ * @see {@link https://datatracker.ietf.org/doc/html/rfc5789 RFC 5789 - HTTP PATCH Method}
  *
  * @module index
  */
 
 import { Identifier } from "@metreeca/core";
-import {  Tag } from "@metreeca/core/language";
+import { Tag } from "@metreeca/core/language";
 import { IRI } from "@metreeca/core/resource";
 
 
@@ -212,9 +378,26 @@ import { IRI } from "@metreeca/core/resource";
  *
  * A property map describing the state of a resource. Each property holds {@link Values} and may include an `id`
  * property mapped to `@id` for resource identification. Descriptions without `id` represent anonymous (blank) nodes.
+ *
+ * Used for both retrieving resource state (HTTP GET) and complete state replacement (HTTP PUT).
+ *
+ * @see {@link https://datatracker.ietf.org/doc/html/rfc9110#section-9.3.1 RFC 9110 - HTTP GET Method}
+ * @see {@link https://datatracker.ietf.org/doc/html/rfc9110#section-9.3.4 RFC 9110 - HTTP PUT Method}
  */
 export type Resource =
 	| { readonly [property in Identifier]: Values }
+
+/**
+ * Partial resource state update.
+ *
+ * A property map specifying incremental changes to a {@link Resource} state. Each property maps to {@link Values}
+ * to set or `null` to delete; unlisted properties remain unchanged. Empty arrays are equivalent to `null`.
+ *
+ * @see {@link https://datatracker.ietf.org/doc/html/rfc5789 RFC 5789 - HTTP PATCH Method}
+ */
+export type Patch =
+	| { readonly [property in Identifier]: null | Values }
+
 
 /**
  * Model value set.
