@@ -1,6 +1,6 @@
 {
   "name": "@metreeca/qest",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "description": "Minimalist foundations for client-driven, queryable REST/JSON APIs",
   "keywords": [
     "typescript",
@@ -49,7 +49,7 @@
     "proof": "npx typedoc && (npx typedoc --watch & npx five-server docs --open)"
   },
   "dependencies": {
-    "@metreeca/core": "^0.9.15"
+    "@metreeca/core": "^0.9.16"
   },
   "devDependencies": {
     "five-server": "^0.4.5",
