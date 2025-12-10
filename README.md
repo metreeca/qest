@@ -208,7 +208,7 @@ those same types into a complete model-driven stack:
 |-----------------------------|------------------------------------------------------------|
 | **@metreeca/qest**          | Data types for client-driven, queryable REST/JSON APIs     |
 | @metreeca/blue *(upcoming)* | Shape-based validation for resources, patches, and queries |
-| @metreeca/keep *(upcoming)* | Shape-driven storage across various backends               |
+| @metreeca/keep *(upcoming)* | Shape-driven storage framework with pluggable adapters     |
 | @metreeca/gate *(upcoming)* | Shape-driven REST/JSON API publishing                      |
 
 # JSON-LD Interoperability

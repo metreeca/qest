@@ -26,7 +26,8 @@
  * - {@link Value} — Individual property values
  * - {@link IRI} — Resource identifiers
  * - {@link Literal} — Primitive data values
- * - {@link Dictionary} — Localized text values
+ * - {@link Local} — Language-tagged text map (single-valued)
+ * - {@link Locals} — Language-tagged text map (multi-valued)
  *
  * Provides utilities for converting between serialized and structured representations:
  *
@@ -209,7 +210,8 @@
  * Each property in a resource state or patch holds {@link Values}:
  *
  * - a single {@link Value}
- * - a {@link Dictionary} of localized textual values
+ * - a {@link Local} single-valued language-tagged text map
+ * - a {@link Locals} multi-valued language-tagged text map
  * - an array representing a set of values
  *
  * A {@link Value} can be:
@@ -243,8 +245,8 @@
  *
  * ## Localized Text
  *
- * For multilingual content, use a {@link Dictionary} — an object mapping language tags to localized strings.
- * Language tags follow [RFC 5646](https://www.rfc-editor.org/rfc/rfc5646.html) (e.g., `en`, `de-CH`, `zh-Hans`):
+ * For multilingual content, use {@link Local} or {@link Locals} language-tagged text maps.
+ * Tags follow [RFC 5646](https://www.rfc-editor.org/rfc/rfc5646.html) (e.g., `en`, `de-CH`, `zh-Hans`):
  *
  * ```js
  * // single value per language
@@ -264,9 +266,8 @@
  * ```
  *
  * > [!IMPORTANT]
- *
- * > A dictionary must be either single-valued (one string per tag) or multi-valued (string arrays per
- * > tag) throughout; mixing cardinalities within the same dictionary is not supported.
+ * > The `@none` key for non-localized values is not supported; for mixed content use `string | Local`
+ * > or `readonly string[] | Locals` union types, or the `zxx` tag.
  *
  * @see {@link https://www.w3.org/TR/json-ld11/ JSON-LD 1.1}
  * @see {@link https://datatracker.ietf.org/doc/html/rfc9110#section-9.3.1 RFC 9110 - HTTP GET Method}
@@ -311,13 +312,14 @@ export type Patch =
 /**
  * Model value set.
  *
- * A single {@link Value}, a {@link Dictionary} language map, or an array of values.
+ * A single {@link Value}, a {@link Local} or {@link Locals} language map, or an array of values.
  *
  * Arrays represent sets of values: duplicate values are ignored and ordering is immaterial. Empty arrays are ignored.
  */
 export type Values =
 	| Value
-	| Dictionary
+	| Local
+	| Locals
 	| readonly Value[]
 
 /**
@@ -347,24 +349,38 @@ export type Literal =
 	| string
 
 /**
- * Language-tagged map for internationalized text values.
+ * Single-valued language-tagged map for internationalized text.
  *
- * Maps language {@link Tag | tags} to localized text, supporting two cardinality patterns:
- *
- * - **single-valued**: one text value per language
- * - **multi-valued**: multiple text values per language
+ * Maps language {@link Tag | tags} to a single localized text value per language.
  *
  * @remarks
  *
- * The `@none` key for non-localized values is not supported; for mixed content use `string | Dictionary`
- * union types or the `zxx` tag.
+ * - The `@none` key for non-localized values is not supported; for mixed content use `string | Local`
+ *   union types or the `zxx` tag
+ * - Language maps are conceptually equivalent to an array of language-tagged strings, which idiomatic JSON
+ *   doesn't directly support
  *
  * @see {@link https://www.rfc-editor.org/rfc/rfc5646.html RFC 5646 - Tags for Identifying Languages}
  * @see {@link https://iso639-3.sil.org/code/zxx ISO 639-3 zxx - No Linguistic Content}
  */
-export type Dictionary =
-	| { readonly [tag: Tag]: string }
-	| { readonly [tag: Tag]: readonly string[] }
+export type Local = { readonly [tag: Tag]: string }
+
+/**
+ * Multi-valued language-tagged map for internationalized text.
+ *
+ * Maps language {@link Tag | tags} to multiple localized text values per language.
+ *
+ * @remarks
+ *
+ * - The `@none` key for non-localized values is not supported; for mixed content use `readonly string[] | Locals`
+ *   union types or the `zxx` tag
+ * - Language maps are conceptually equivalent to an array of language-tagged strings, which idiomatic JSON
+ *   doesn't directly support
+ *
+ * @see {@link https://www.rfc-editor.org/rfc/rfc5646.html RFC 5646 - Tags for Identifying Languages}
+ * @see {@link https://iso639-3.sil.org/code/zxx ISO 639-3 zxx - No Linguistic Content}
+ */
+export type Locals = { readonly [tag: Tag]: readonly string[] }
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

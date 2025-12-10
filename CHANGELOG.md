@@ -7,6 +7,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unpublished](https://github.com/metreeca/qest/compare/v0.9.1...HEAD)
 
+### Changed
+
+- Rename `Text`/`Texts` types to `Local`/`Locals` for language-tagged text maps
+
 ## [0.9.1](https://github.com/metreeca/qest/releases/tag/v0.9.1) - 2025-12-10
 
 ### Added
@@ -15,4 +19,3 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - State types for JSON-LD compatible resource representations
 - Query string codecs supporting JSON and form-encoded formats
 - Criterion key codecs for encoding/decoding query operators
-- Base64url encoding utilities per RFC 4648 §5

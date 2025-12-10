@@ -253,7 +253,7 @@
  * ```
  *
  * - {@link IRI | IRIs} are serialized as strings
- * - Localized strings ({@link Dictionary}) combine a value with a
+ * - Localized strings in {@link Local} or {@link Locals} maps combine a value with a
  *   {@link https://metreeca.github.io/core/types/language.Tag.html language tag} suffix (e.g., `"text"@en`)
  * - The encoder always produces double-quoted strings; the decoder accepts unquoted strings as a shorthand
  *
@@ -270,7 +270,7 @@ import { TagRange } from "@metreeca/core/language";
 import { IRI } from "@metreeca/core/resource";
 import { decodeBase64, encodeBase64 } from "./base64.js";
 import * as QueryParser from "./query.pegjs.js";
-import { Dictionary, Literal, Resource } from "./state.js";
+import { Literal, Local, Locals, Resource } from "./state.js";
 
 
 /**
@@ -352,10 +352,10 @@ export const Transforms = transforms([
  *
  * - {@link Literal} — Plain literal
  * - {@link Query} — Nested resource
- * - `{ readonly [range: TagRange]: string }` — Single-valued {@link Dictionary}; {@link TagRange} key selects
- *   language tags to retrieve; `string` is a placeholder
- * - `{ readonly [range: TagRange]: [string] }` — Multi-valued {@link Dictionary}; {@link TagRange} key selects
- *   language tags to retrieve; array marks multi-valued
+ * - `{ readonly [range: TagRange]: string }` — Single-valued {@link Local} language-tagged text map; {@link TagRange}
+ * key selects language tags to retrieve; `string` is a placeholder
+ * - `{ readonly [range: TagRange]: [string] }` — Multi-valued {@link Locals} language-tagged text map; {@link TagRange}
+ * key selects language tags to retrieve; array marks multi-valued
  * - `readonly [Query]` — Nested resource collection; singleton {@link Query} element provides filtering,
  *   ordering, and paginating criteria for members
  * - `[]` — Nothing (ignored during processing)
@@ -460,10 +460,10 @@ export type Query = Partial<{
  * Defines the shape and type of property values in {@link Query} objects:
  *
  * - {@link Literal} — Plain literal value
- * - `{ readonly [range: Range]: string }` — Single-valued {@link Dictionary}; {@link TagRange} keys select
- *   matching language tags to retrieve; `string` is an immaterial scalar placeholder
- * - `{ readonly [range: Range]: [string] }` — Multi-valued {@link Dictionary}; {@link TagRange} keys select
- *   matching language tags to retrieve; `[string]` is an immaterial array placeholder
+ * - `{ readonly [range: TagRange]: string }` — Single-valued {@link Local} language-tagged text map; {@link TagRange}
+ *   key selects language tags to retrieve; `string` is a placeholder
+ * - `{ readonly [range: TagRange]: [string] }` — Multi-valued {@link Locals} language-tagged text map; {@link TagRange}
+ *   key selects language tags to retrieve; array marks multi-valued
  * - {@link IRI} — Resource reference
  * - {@link Query} — Nested resource
  * - `readonly [Query]` — Nested resource collection; singleton {@link Query} element provides query for retrieved
@@ -510,12 +510,14 @@ export type Expression =
  * Represents possible values for query matching (`?` and `!` operators) and focus ordering (`*` operator):
  *
  * - {@link Option} — Single option value
- * - {@link Dictionary} — Language-tagged option values
+ * - {@link Local} — Single-valued language-tagged text map
+ * - {@link Locals} — Multi-valued language-tagged text map
  * - `readonly Option[]` — Array of option values
  */
 export type Options =
 	| Option
-	| Dictionary
+	| Local
+	| Locals
 	| readonly Option[];
 
 /**
