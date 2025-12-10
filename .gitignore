@@ -5,6 +5,8 @@
 /docs/
 /node_modules/
 
+/src/codec.pegjs.*
+
 @*
 ~*
 *~
