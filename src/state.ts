@@ -28,6 +28,11 @@
  * - {@link Literal} — Primitive data values
  * - {@link Dictionary} — Localized text values
  *
+ * Provides utilities for converting between serialized and structured representations:
+ *
+ * - {@link encodeResource} / {@link decodeResource} — codecs for {@link Resource} states
+ * - {@link encodePatch} / {@link decodePatch} — codecs for {@link Patch} updates
+ *
  * # Resource Operations
  *
  * ## Retrieving
@@ -308,8 +313,7 @@ export type Patch =
  *
  * A single {@link Value}, a {@link Dictionary} language map, or an array of values.
  *
- * Arrays represent sets of values: duplicate values are ignored and ordering is immaterial.
- * Empty arrays are ignored.
+ * Arrays represent sets of values: duplicate values are ignored and ordering is immaterial. Empty arrays are ignored.
  */
 export type Values =
 	| Value
@@ -322,7 +326,7 @@ export type Values =
  * Represents property values in resource state descriptions:
  *
  * - {@link Literal}: primitive data (boolean, number, string)
- * - IRI: reference to a resource
+ * - {@link IRI}: reference to a resource
  * - nested resource state
  */
 export type Value =
@@ -361,3 +365,62 @@ export type Literal =
 export type Dictionary =
 	| { readonly [tag: Tag]: string }
 	| { readonly [tag: Tag]: readonly string[] }
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * Encodes a resource state as a JSON string.
+ *
+ * @param resource The resource state to encode
+ *
+ * @returns The JSON string
+ *
+ * @see {@link decodeResource}
+ */
+export function encodeResource(resource: Resource): string {
+	return JSON.stringify(resource);
+}
+
+/**
+ * Decodes a resource state from a JSON string.
+ *
+ * @param resource The encoded resource string
+ *
+ * @returns The decoded resource state
+ *
+ * @throws Error if the input is not valid JSON
+ *
+ * @see {@link encodeResource}
+ */
+export function decodeResource(resource: string): Resource {
+	return JSON.parse(resource) as Resource;
+}
+
+/**
+ * Encodes a patch as a JSON string.
+ *
+ * @param patch The patch to encode
+ *
+ * @returns The JSON string
+ *
+ * @see {@link decodePatch}
+ */
+export function encodePatch(patch: Patch): string {
+	return JSON.stringify(patch);
+}
+
+/**
+ * Decodes a patch from a JSON string.
+ *
+ * @param patch The encoded patch string
+ *
+ * @returns The decoded patch
+ *
+ * @throws Error if the input is not valid JSON
+ *
+ * @see {@link encodePatch}
+ */
+export function decodePatch(patch: string): Patch {
+	return JSON.parse(patch) as Patch;
+}

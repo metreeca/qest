@@ -263,6 +263,7 @@
  *
  * @module
  */
+
 import { Identifier, isIdentifier } from "@metreeca/core";
 import { isArray, isBoolean, isObject, isString } from "@metreeca/core/json";
 import { TagRange } from "@metreeca/core/language";
