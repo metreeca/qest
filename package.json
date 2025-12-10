@@ -44,7 +44,7 @@
     "setup": "npm install && npm audit fix",
     "peggy": "npx peggy --dts --format es --output src/query.pegjs.js --allowed-start-rules '*' src/query.pegjs",
     "build": "rm -rf dist docs && npm run peggy && tsc -p tsconfig.build.json && typedoc",
-    "check": "npx vitest run",
+    "check": "npx vitest --typecheck run",
     "watch": "npx tsc --watch",
     "proof": "npx typedoc && (npx typedoc --watch & npx five-server docs --open)"
   },
