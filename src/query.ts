@@ -351,11 +351,13 @@ export const Transforms = transforms([
  * {@link Model} values specifying what to retrieve:
  *
  * - {@link Literal} — Plain literal
- * - {@link Query} — Nested resource
  * - `{ readonly [range: TagRange]: string }` — Single-valued {@link Local} language-tagged text map; {@link TagRange}
- * key selects language tags to retrieve; `string` is a placeholder
+ *   key selects language tags to retrieve; `string` is a placeholder
  * - `{ readonly [range: TagRange]: [string] }` — Multi-valued {@link Locals} language-tagged text map; {@link TagRange}
- * key selects language tags to retrieve; array marks multi-valued
+ *   key selects language tags to retrieve; array marks multi-valued
+ * - {@link IRI} — Resource reference
+ * - `readonly [IRI]` — Resource reference collection
+ * - {@link Query} — Nested resource
  * - `readonly [Query]` — Nested resource collection; singleton {@link Query} element provides filtering,
  *   ordering, and paginating criteria for members
  * - `[]` — Nothing (ignored during processing)
@@ -465,6 +467,7 @@ export type Query = Partial<{
  * - `{ readonly [range: TagRange]: [string] }` — Multi-valued {@link Locals} language-tagged text map; {@link TagRange}
  *   key selects language tags to retrieve; array marks multi-valued
  * - {@link IRI} — Resource reference
+ * - `readonly [IRI]` — Resource reference collection
  * - {@link Query} — Nested resource
  * - `readonly [Query]` — Nested resource collection; singleton {@link Query} element provides query for retrieved
  *   resources and filtering, ordering, and paginating criteria
@@ -474,8 +477,9 @@ export type Query = Partial<{
 export type Model =
 	| Literal
 	| { readonly [range: TagRange]: string }
-	| { readonly [range: TagRange]: [string] }
+	| { readonly [range: TagRange]: readonly [string] }
 	| IRI
+	| readonly [IRI]
 	| Query
 	| readonly [Query];
 
