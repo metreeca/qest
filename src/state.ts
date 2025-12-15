@@ -24,6 +24,7 @@
  * - {@link Patch} — Partial resource updates (HTTP PATCH)
  * - {@link Values} — Property value sets
  * - {@link Value} — Individual property values
+ * - {@link Reference} — IRI resource references
  * - {@link IRI} — Resource identifiers
  * - {@link Literal} — Primitive data values
  * - {@link Local} — Language-tagged text map (single-valued)
@@ -217,8 +218,8 @@
  * A {@link Value} can be:
  *
  * - **{@link Literal}**: primitive data (`boolean`, `number`, `string`)
- * - **IRI**: web identifier referencing a resource
- * - **nested state**: embedded resource description (object with property values)
+ * - **{@link Reference}**: IRI identifying a linked resource
+ * - **{@link Resource}**: nested resource state
  *
  * > [!IMPORTANT]
  * > Arrays follow set semantics — duplicates are ignored, ordering is immaterial, and empty arrays are
@@ -280,7 +281,9 @@
 
 import { Identifier } from "@metreeca/core";
 import { Tag } from "@metreeca/core/language";
+import { immutable } from "@metreeca/core/nested";
 import { IRI } from "@metreeca/core/resource";
+import { assertPatch, assertResource, assertString } from "./$/state.typia.js";
 
 
 /**
@@ -328,14 +331,28 @@ export type Values =
  * Represents property values in resource state descriptions:
  *
  * - {@link Literal}: primitive data (boolean, number, string)
- * - {@link IRI}: reference to a resource
- * - nested resource state
+ * - {@link Reference}: IRI reference to a resource
+ * - {@link Resource}: nested resource state
  */
 export type Value =
 	| Literal
-	| IRI
+	| Reference
 	| Resource
 
+/**
+ * Resource reference.
+ *
+ * An {@link IRI} identifying a linked resource without embedding its state. Contrast with {@link Resource},
+ * which includes the linked resource's properties inline.
+ *
+ * > [!WARNING]
+ * > This is a type alias for documentation purposes only. Branding was considered but not adopted due to
+ * > interoperability issues with tools relying on static code analysis.
+ *
+ * @see {@link https://www.w3.org/TR/json-ld11/#node-identifiers JSON-LD 1.1 - Node Identifiers}
+ */
+export type Reference =
+	| IRI
 
 /**
  * Literal value.
@@ -392,9 +409,14 @@ export type Locals = { readonly [tag: Tag]: readonly string[] }
  *
  * @returns The JSON string
  *
+ * @throws TypeGuardError If `resource` is not a valid {@link Resource}
+ *
  * @see {@link decodeResource}
  */
 export function encodeResource(resource: Resource): string {
+
+	assertResource(resource);
+
 	return JSON.stringify(resource);
 }
 
@@ -405,12 +427,16 @@ export function encodeResource(resource: Resource): string {
  *
  * @returns The decoded resource state
  *
- * @throws Error if the input is not valid JSON
+ * @throws TypeGuardError If `resource` is not a string or not a valid {@link Resource}
+ * @throws Error If `resource` is not valid JSON
  *
  * @see {@link encodeResource}
  */
 export function decodeResource(resource: string): Resource {
-	return JSON.parse(resource) as Resource;
+
+	assertString(resource);
+
+	return immutable(assertResource(JSON.parse(resource)));
 }
 
 /**
@@ -420,9 +446,14 @@ export function decodeResource(resource: string): Resource {
  *
  * @returns The JSON string
  *
+ * @throws TypeGuardError If `patch` is not a valid {@link Patch}
+ *
  * @see {@link decodePatch}
  */
 export function encodePatch(patch: Patch): string {
+
+	assertPatch(patch);
+
 	return JSON.stringify(patch);
 }
 
@@ -433,10 +464,14 @@ export function encodePatch(patch: Patch): string {
  *
  * @returns The decoded patch
  *
- * @throws Error if the input is not valid JSON
+ * @throws TypeGuardError If `patch` is not a string or not a valid {@link Patch}
+ * @throws Error If `patch` is not valid JSON
  *
  * @see {@link encodePatch}
  */
 export function decodePatch(patch: string): Patch {
-	return JSON.parse(patch) as Patch;
+
+	assertString(patch);
+
+	return immutable(assertPatch(JSON.parse(patch)));
 }

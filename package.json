@@ -40,9 +40,10 @@
     "node": ">=22.0.0"
   },
   "scripts": {
-    "clean": "rm -rf dist docs node_modules src/query.pegjs.*",
+    "clean": "rm -rf dist docs node_modules 'src/$'",
     "setup": "npm install && npm audit fix",
-    "peggy": "npx peggy --dts --format es --output src/query.pegjs.js --allowed-start-rules '*' src/query.pegjs",
+    "typia": "npx typia generate --project tsconfig.json --output 'src/$' --input 'src/$typia'",
+    "peggy": "npx peggy --dts --format es --allowed-start-rules '*' --output 'src/$/query.pegjs.js' 'src/$peggy/query.pegjs'",
     "build": "rm -rf dist docs && npm run peggy && tsc -p tsconfig.build.json && typedoc",
     "check": "npx vitest --typecheck run",
     "watch": "npx tsc --watch",
@@ -54,6 +55,7 @@
   "devDependencies": {
     "five-server": "^0.4.5",
     "peggy": "^4.1.3",
+    "typia": "^10.1.0",
     "typedoc": "^0.28.14",
     "typescript": "^5.9.3",
     "vitest": "^4.0.14"

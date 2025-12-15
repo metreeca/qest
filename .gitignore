@@ -4,8 +4,7 @@
 /dist/
 /docs/
 /node_modules/
-
-/src/codec.pegjs.*
+/src/$/
 
 @*
 ~*

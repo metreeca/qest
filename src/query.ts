@@ -21,7 +21,6 @@
  * resource expansion, and—for collections—filtering, ordering, and pagination:
  *
  * - {@link Query} — Resource retrieval query
- * - {@link Model} — Property value specification
  * - {@link Expression} — Computed expression for transforms and paths
  * - {@link Transforms} — Standard value transformations
  *
@@ -252,7 +251,7 @@
  * localized   = string '@' tag
  * ```
  *
- * - {@link IRI | IRIs} are serialized as strings
+ * - {@link IRI}s are serialized as strings
  * - Localized strings in {@link Local} or {@link Locals} maps combine a value with a
  *   {@link https://metreeca.github.io/core/types/language.Tag.html language tag} suffix (e.g., `"text"@en`)
  * - The encoder always produces double-quoted strings; the decoder accepts unquoted strings as a shorthand
@@ -265,12 +264,15 @@
  */
 
 import { Identifier, isIdentifier } from "@metreeca/core";
-import { isArray, isBoolean, isObject, isString } from "@metreeca/core/json";
+import { isArray, isObject, isString } from "@metreeca/core/json";
 import { TagRange } from "@metreeca/core/language";
-import { IRI } from "@metreeca/core/resource";
+import { immutable } from "@metreeca/core/nested";
+import { error } from "@metreeca/core/report";
+import type { IRI } from "@metreeca/core/resource";
+import * as QueryParser from "./$/query.pegjs.js";
+import { assertCriterion, assertQuery, assertString, assertTransforms } from "./$/query.typia.js";
 import { decodeBase64, encodeBase64 } from "./base64.js";
-import * as QueryParser from "./query.pegjs.js";
-import { Literal, Local, Locals, Resource } from "./state.js";
+import { Literal, Local, Locals, Reference, Resource } from "./state.js";
 
 
 /**
@@ -320,10 +322,10 @@ export const Transforms = transforms([
 	/** Absolute value */
 	{ name: "abs", aggregate: false, datatype: "number" },
 
-	/** Floor to largest integer less than or equal to value */
+	/** Floor to the largest integer less than or equal to value */
 	{ name: "floor", aggregate: false, datatype: "number" },
 
-	/** Ceiling to smallest integer greater than or equal to value */
+	/** Ceiling to the smallest integer greater than or equal to value */
 	{ name: "ceil", aggregate: false, datatype: "number" },
 
 	/** Round to nearest integer */
@@ -347,99 +349,89 @@ export const Transforms = transforms([
 /**
  * Resource retrieval query.
  *
- * Defines the shape and content of a {@link Resource} object to be retrieved. Properties are mapped to
- * {@link Model} values specifying what to retrieve:
+ * Defines the data envelope of a {@link Resource} object to be retrieved, combining:
  *
- * - {@link Literal} — Plain literal
- * - `{ readonly [range: TagRange]: string }` — Single-valued {@link Local} language-tagged text map; {@link TagRange}
- *   key selects language tags to retrieve; `string` is a placeholder
- * - `{ readonly [range: TagRange]: [string] }` — Multi-valued {@link Locals} language-tagged text map; {@link TagRange}
- *   key selects language tags to retrieve; array marks multi-valued
- * - {@link IRI} — Resource reference
- * - `readonly [IRI]` — Resource reference collection
- * - {@link Query} — Nested resource
- * - `readonly [Query]` — Nested resource collection; singleton {@link Query} element provides filtering,
- *   ordering, and paginating criteria for members
- * - `[]` — Nothing (ignored during processing)
+ * - {@link Projection} — Properties and models to retrieve
+ * - {@link Filtering} — Selection criteria for collections
+ * - {@link Ordering} — Sorting criteria for collections
+ * - {@link Paging} — Pagination criteria for collections
  *
- * Queries may also define *computed* properties, whose value is computed from an {@link Expression}; in this case,
- * the projection defines the expected type of the computed value.
- *
- * Scalar values in projections serve as type placeholders; their actual value is immaterial, but
- * their type must match the (possibly computed) property definition.
- *
- * This model enables efficient single-call retrieval of exactly the data needed, without over or
- * under-fetching.
- *
- * **Important:** The query is rejected with an error if it references undefined properties or if it
- * provides projections or constraints of mismatched types for defined properties.
- *
- * **Filtering and Ordering Constraints**
- *
- * Queries support constraints for filtering, ordering, and paginating resource collections. Filtering and
- * ordering constraints select the collection subset to retrieve; each constraint is applied to the value
- * computed by an {@link Expression} from a candidate member resource. Pagination constraints are applied
- * to the filtered and ordered result set.
- *
- * The following constraints are supported:
- *
- * - **less than** — `"<expression": Literal`
- *
- *   Includes resources where at least one expression value is less than the literal.
- *
- * - **less than or equal** — `"<=expression": Literal`
- *
- *   Includes resources where at least one expression value is less than or equal to the literal.
- *
- * - **greater than** — `">expression": Literal`
- *
- *   Includes resources where at least one expression value is greater than the literal.
- *
- * - **greater than or equal** — `">=expression": Literal`
- *
- *   Includes resources where at least one expression value is greater than or equal to the literal.
- *
- * - **stemmed word search** — `"~expression": string`
- *
- *   Includes resources where at least one expression value contains all word stems from the search string,
- *   in the given order.
- *
- * - **disjunctive matching** — `"?expression": Options`
- *
- *   Includes resources where at least one expression value equals at least one of the specified {@link Options};
- *   applies to both single and multi-valued properties; `null` matches resources where the property is undefined.
- *
- * - **conjunctive matching** — `"!expression": Options`
- *
- *   Includes resources whose expression values include all specified {@link Options};
- *   applies to multi-valued properties.
- *
- * - **focus ordering** — `"*expression": Options`
- *
- *   Orders results prioritizing resources whose expression value appears in the specified {@link Options};
- *   matching resources appear before non-matching ones; overrides regular sorting criteria.
- *
- * - **sort ordering** — `"^expression": number`
- *
- *   Orders results by expression value; the sign of the priority gives ordering direction (positive for ascending,
- *   negative for descending); the absolute value gives 1-based ordering precedence (1 is highest priority);
- *   zero is ignored; `"asc"`/`"ascending"` and `"desc"`/`"descending"` are shorthands for `±1`.
- *
- * - **offset** — `"@": number`
- *
- *   Skips the first `number` resources from the filtered and ordered result set; zero is ignored.
- *
- * - **limit** — `"#": number`
- *
- *   Returns at most `number` resources from the result set after applying offset; zero is ignored.
+ * > [!WARNING]
+ * > Query processors must reject queries with an error if they reference undefined properties or provide projections
+ * > or constraints of mismatched types for defined properties.
  */
-export type Query = Partial<{
+export type Query =
+	& Projection
+	& Filtering
+	& Ordering
+	& Paging;
 
-	readonly [property: Identifier | `${Identifier}=${Expression}`]: Model
+/**
+ * Projection criteria of {@link Query}.
+ *
+ * Maps property names to their expected models for retrieval:
+ *
+ * - {@link Literal} — Plain literal value
+ * - `{ readonly [range: TagRange]: string }` — Single-valued {@link Local} language-tagged text map
+ * - `{ readonly [range: TagRange]: [string] }` — Multi-valued {@link Locals} language-tagged text map
+ * - {@link Reference} — Resource reference
+ * - `readonly [Reference]` — Resource reference collection
+ * - {@link Query} — Nested resource
+ * - `readonly [Query]` — Nested resource collection
+ *
+ * Projections may define *computed* properties using the `property=expression` syntax, where the value is computed
+ * from an {@link Expression}; in this case, the model defines the expected type of the computed value.
+ *
+ * Scalar values in projections serve as type placeholders; their actual value is immaterial, but their type must
+ * match the (possibly computed) property definition.
+ *
+ * @see [RFC 4647 - Matching of Language Tags](https://www.rfc-editor.org/rfc/rfc4647.html)
+ */
+export type Projection = {
+
+	readonly [property: Identifier | `${Identifier}=${Expression}`]:
+		| Literal
+		| { readonly [range: TagRange]: string }
+		| { readonly [range: TagRange]: readonly [string] }
+		| Reference
+		| readonly [Reference]
+		| Query
+		| readonly [Query]
+
+};
+
+/**
+ * Filtering criteria of {@link Query}.
+ *
+ * Defines comparison and matching operators for collections. Each criterion is applied to the value computed by an
+ * {@link Expression} from a candidate member resource:
+ *
+ * - **less than** — `"<expression": Literal` — Includes resources where at least one expression value is less than
+ *   the literal
+ *
+ * - **greater than** — `">expression": Literal` — Includes resources where at least one expression value is greater
+ *   than the literal
+ *
+ * - **less than or equal** — `"<=expression": Literal` — Includes resources where at least one expression value is
+ *   less than or equal to the literal
+ *
+ * - **greater than or equal** — `">=expression": Literal` — Includes resources where at least one expression value is
+ *   greater than or equal to the literal
+ *
+ * - **stemmed word search** — `"~expression": string` — Includes resources where at least one expression value
+ *   contains all word stems from the search string, in the given order
+ *
+ * - **disjunctive matching** — `"?expression": Options` — Includes resources where at least one expression value
+ *   equals at least one of the specified {@link Options}; applies to both single and multi-valued properties;
+ *   `null` matches resources where the property is undefined
+ *
+ * - **conjunctive matching** — `"!expression": Options` — Includes resources whose expression values include all
+ *   specified {@link Options}; applies to multi-valued properties
+ */
+export type Filtering = Partial<{
 
 	readonly [lt: `<${Expression}`]: Literal
 	readonly [gt: `>${Expression}`]: Literal
-
 	readonly [lte: `<=${Expression}`]: Literal
 	readonly [gte: `>=${Expression}`]: Literal
 
@@ -448,40 +440,47 @@ export type Query = Partial<{
 	readonly [any: `?${Expression}`]: Options
 	readonly [all: `!${Expression}`]: Options
 
+}>;
+
+/**
+ * Ordering criteria of {@link Query}.
+ *
+ * Defines focus and sort ordering for collections:
+ *
+ * - **focus ordering** — `"*expression": Options` — Orders results prioritizing resources whose expression value
+ *   appears in the specified {@link Options}; matching resources appear before non-matching ones; overrides regular
+ *   sorting criteria
+ *
+ * - **sort ordering** — `"^expression": number` — Orders results by expression value; the sign of the priority gives
+ *   ordering direction (positive for ascending, negative for descending); the absolute value gives 1-based ordering
+ *   precedence (1 is highest priority); zero is ignored; `"asc"`/`"ascending"` and `"desc"`/`"descending"` are
+ *   shorthands for `±1`
+ */
+export type Ordering = Partial<{
+
 	readonly [focus: `*${Expression}`]: Options
 	readonly [order: `^${Expression}`]: "asc" | "desc" | "ascending" | "descending" | number
+
+}>;
+
+/**
+ * Pagination criteria of {@link Query}.
+ *
+ * Defines offset and limit for collections:
+ *
+ * - **offset** — `"@": number` — Skips the first `number` resources from the filtered and ordered result set;
+ *   zero is ignored
+ *
+ * - **limit** — `"#": number` — Returns at most `number` resources from the result set after applying offset;
+ *   zero is ignored
+ */
+export type Paging = Partial<{
 
 	readonly "@": number
 	readonly "#": number
 
 }>;
 
-/**
- * Property value specification for retrieval queries.
- *
- * Defines the shape and type of property values in {@link Query} objects:
- *
- * - {@link Literal} — Plain literal value
- * - `{ readonly [range: TagRange]: string }` — Single-valued {@link Local} language-tagged text map; {@link TagRange}
- *   key selects language tags to retrieve; `string` is a placeholder
- * - `{ readonly [range: TagRange]: [string] }` — Multi-valued {@link Locals} language-tagged text map; {@link TagRange}
- *   key selects language tags to retrieve; array marks multi-valued
- * - {@link IRI} — Resource reference
- * - `readonly [IRI]` — Resource reference collection
- * - {@link Query} — Nested resource
- * - `readonly [Query]` — Nested resource collection; singleton {@link Query} element provides query for retrieved
- *   resources and filtering, ordering, and paginating criteria
- *
- * @see [RFC 4647 - Matching of Language Tags](https://www.rfc-editor.org/rfc/rfc4647.html)
- */
-export type Model =
-	| Literal
-	| { readonly [range: TagRange]: string }
-	| { readonly [range: TagRange]: readonly [string] }
-	| IRI
-	| readonly [IRI]
-	| Query
-	| readonly [Query];
 
 /**
  * Computed expression for deriving values from resource properties.
@@ -501,12 +500,17 @@ export type Model =
  * **Important:** Expressions are rejected with an error if they reference undefined properties
  * or undefined transforms.
  *
+ * > [!WARNING]
+ * > This is a type alias for documentation purposes only; expression syntax is validated at runtime
+ * > by query processors.
+ *
  * @remarks
  *
  * Compliant processors support all standard {@link Transforms}.
  */
 export type Expression =
-	| string & { readonly __brand: unique symbol };
+	string;
+
 
 /**
  * Option values for {@link Query} matching and ordering operators.
@@ -531,12 +535,12 @@ export type Options =
  *
  * - `null` — Undefined property value
  * - {@link Literal} — Literal value
- * - {@link IRI} — Resource reference
+ * - {@link Reference} — Resource reference
  */
 export type Option =
 	| null
 	| Literal
-	| IRI;
+	| Reference;
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -586,6 +590,47 @@ export type Operator =
 	| "#";
 
 
+/**
+ * Registry of named transform definitions.
+ *
+ * Maps transform names to their {@link Transform} definitions for query processing.
+ */
+export type Transforms = {
+
+	readonly [name: Identifier]: Transform;
+
+}
+
+/**
+ * Transform definition for query processing.
+ */
+export type Transform = {
+
+	/**
+	 * Transform name (must be a valid ECMAScript identifier).
+	 *
+	 * @remarks Covers Latin Extended-A only; full Unicode ID_Start/ID_Continue requires `u` flag.
+	 *
+	 * @see https://www.unicode.org/reports/tr31/ - UAX #31: Unicode Identifiers and Syntax
+	 * @see https://github.com/samchon/typia/issues/1699 - Feature request for regex flags support
+	 *
+	 * @pattern ^[_$A-Za-z\xC0-\xD6\xD8-\xF6\xF8-\u017F][_$A-Za-z0-9\xC0-\xD6\xD8-\xF6\xF8-\u017F]*$
+	 */
+	name: string;
+
+	/**
+	 * Whether the transform operates on collections (`true`) or individual values (`false`).
+	 */
+	aggregate?: boolean;
+
+	/**
+	 * Result type of the transform; when omitted, the transform preserves the input type.
+	 */
+	datatype?: "boolean" | "number" | "string";
+
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
@@ -617,15 +662,20 @@ export type Operator =
  *
  * @returns The encoded query string
  *
+ * @throws TypeGuardError If `query` is not a valid {@link Query} or `format` is not a string
+ * @throws TypeError If `format` is not a supported encoding
+ *
  * @see {@link decodeQuery}
  */
 export function encodeQuery(query: Query, format: "json" | "base64" | "form" = "json"): string {
 
-	const json = JSON.stringify(query);
+	assertQuery(query);
+	assertString(format);
 
-	return format === "json" ? encodeURIComponent(json)
-		: format === "base64" ? encodeBase64(json)
-			: encodeFormQuery(query);
+	return format === "json" ? encodeURIComponent(JSON.stringify(query))
+		: format === "base64" ? encodeBase64(JSON.stringify(query))
+			: format === "form" ? encodeFormQuery(query)
+				: error(new TypeError(`unsupported format <${format}>`));
 
 
 	function encodeFormQuery(query: Query): string {
@@ -694,34 +744,39 @@ export function encodeQuery(query: Query, format: "json" | "base64" | "form" = "
  *
  * @returns The decoded query object
  *
+ * @throws TypeGuardError If `query` is not a string or not a valid {@link Query}
+ * @throws Error If `query` is malformed or unparseable
+ *
  * @see {@link encodeQuery}
  */
 export function decodeQuery(query: string): Query {
+
+	assertString(query);
 
 	try {
 
 		if ( query === "" ) {
 
-			return {} as Query;
+			return immutable(assertQuery({} as Query));
 
 		} else if ( query.startsWith("%7B") || query.startsWith("{") ) {
 
 			// JSON format (starts with %7B which is encoded '{')
 
-			return JSON.parse(decodeURIComponent(query)) as Query;
+			return immutable(assertQuery(JSON.parse(decodeURIComponent(query))));
 
 		} else if ( /^e[A-Za-z0-9+/_-]*=*$/.test(query) ) {
 
 			// Base64 format - JSON objects encode to base64 starting with 'e'
 
-			return JSON.parse(decodeBase64(query)) as Query;
+			return immutable(assertQuery(JSON.parse(decodeBase64(query))));
 
 		} else {
 
 			// Form format (application/x-www-form-urlencoded) parsed via Peggy grammar
 			// Decode keys separately while preserving encoded values for the parser's value handling
 
-			return QueryParser.parse(decodeFormKeys(query), { startRule: "Query" }) as Query;
+			return immutable(assertQuery(QueryParser.parse(decodeFormKeys(query), { startRule: "Query" })));
 
 		}
 
@@ -759,9 +814,13 @@ export function decodeQuery(query: string): Query {
  * @param criterion The criterion to encode
  * @returns The encoded key string
  *
+ * @throws TypeGuardError If `criterion` is not a valid {@link Criterion}
+ *
  * @see {@link decodeCriterion}
  */
 export function encodeCriterion(criterion: Criterion): string {
+
+	assertCriterion(criterion);
 
 	const { target, pipe, path } = criterion;
 
@@ -785,13 +844,18 @@ export function encodeCriterion(criterion: Criterion): string {
  * @param key The query key string to decode
  * @returns The parsed criterion
  *
+ * @throws TypeGuardError If `key` is not a string
+ * @throws Error If `key` is malformed or unparseable
+ *
  * @see {@link encodeCriterion}
  */
 export function decodeCriterion(key: string): Criterion {
 
+	assertString(key);
+
 	try {
 
-		return QueryParser.parse(key, { startRule: "Criterion" }) as Criterion;
+		return immutable(QueryParser.parse(key, { startRule: "Criterion" }) as Criterion);
 
 	} catch ( cause ) {
 		throw new Error(`invalid criterion <${key}>`, { cause });
@@ -808,45 +872,16 @@ export function decodeCriterion(key: string): Criterion {
  * Validates each transform definition and builds a type-safe record mapping transform names to their definitions.
  * Used internally to construct the {@link Transforms} registry.
  *
+ * @internal
+ *
  * @typeParam T The tuple type of transform definitions preserving literal name types
  *
  * @param transforms The array of transform definitions to register
  *
  * @returns A record mapping each transform name to its definition
  */
-function transforms<const T extends readonly {
+function transforms<const T extends readonly Transform[]>(transforms: T): Transforms {
 
-	/** Transform name. */
-	name: string,
-
-	/** Whether the transform operates on collections (`true`) or individual values (`false`). */
-	aggregate?: boolean,
-
-	/** Result type of the transform; when omitted, the transform preserves the input type. */
-	datatype?: "boolean" | "number" | "string"
-
-}[]>(transforms: T): Record<T[number]["name"], T[number]> {
-
-	return Object.fromEntries(transforms.map(t => {
-
-		if ( !isIdentifier(t.name) ) {
-			throw new TypeError(`invalid transform name <${t.name}>`);
-		}
-
-		if ( t.aggregate !== undefined && !isBoolean(t.aggregate) ) {
-			throw new TypeError(`invalid transform aggregate <${t.aggregate}>`);
-		}
-
-		if ( t.datatype !== undefined && !["boolean", "number", "string"].includes(t.datatype) ) {
-			throw new TypeError(`invalid transform datatype <${t.datatype}>`);
-		}
-
-		return [t.name, {
-			name: t.name,
-			aggregate: t.aggregate,
-			datatype: t.datatype
-		}];
-
-	})) as unknown as Record<T[number]["name"], T[number]>;
+	return Object.fromEntries(assertTransforms(transforms).map(t => [t.name, t])) as Transforms
 
 }
