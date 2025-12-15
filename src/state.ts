@@ -340,6 +340,17 @@ export type Value =
 	| Resource
 
 /**
+ * Literal value.
+ *
+ * JSON primitives used as property values in resources. Corresponds to JSON-LD's primitive value types
+ * for boolean, numeric, and string data.
+ */
+export type Literal =
+	| boolean
+	| number
+	| string
+
+/**
  * Resource reference.
  *
  * An {@link IRI} identifying a linked resource without embedding its state. Contrast with {@link Resource},
@@ -353,17 +364,6 @@ export type Value =
  */
 export type Reference =
 	| IRI
-
-/**
- * Literal value.
- *
- * JSON primitives used as property values in resources. Corresponds to JSON-LD's primitive value types
- * for boolean, numeric, and string data.
- */
-export type Literal =
-	| boolean
-	| number
-	| string
 
 /**
  * Single-valued language-tagged map for internationalized text.
@@ -380,7 +380,8 @@ export type Literal =
  * @see {@link https://www.rfc-editor.org/rfc/rfc5646.html RFC 5646 - Tags for Identifying Languages}
  * @see {@link https://iso639-3.sil.org/code/zxx ISO 639-3 zxx - No Linguistic Content}
  */
-export type Local = { readonly [tag: Tag]: string }
+export type Local =
+	| { readonly [tag: Tag]: string }
 
 /**
  * Multi-valued language-tagged map for internationalized text.
@@ -397,7 +398,8 @@ export type Local = { readonly [tag: Tag]: string }
  * @see {@link https://www.rfc-editor.org/rfc/rfc5646.html RFC 5646 - Tags for Identifying Languages}
  * @see {@link https://iso639-3.sil.org/code/zxx ISO 639-3 zxx - No Linguistic Content}
  */
-export type Locals = { readonly [tag: Tag]: readonly string[] }
+export type Locals =
+	| { readonly [tag: Tag]: readonly string[] }
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

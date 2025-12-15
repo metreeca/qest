@@ -35,8 +35,10 @@ npm install @metreeca/qest
 >
 > This section introduces essential concepts; for complete coverage, see the API reference:
 >
-> - [@metreeca/qest/state](https://metreeca.github.io/qest/modules/state.html) — Resource state model
-> - [@metreeca/qest/query](https://metreeca.github.io/qest/modules/query.html) — Client-driven retrieval model
+> | Module | Description |
+> | --- | --- |
+> | [@metreeca/qest/state](https://metreeca.github.io/qest/modules/state.html) | Resource state model |
+> | [@metreeca/qest/query](https://metreeca.github.io/qest/modules/query.html) | Client-driven resource retrieval |
 
 **@metreeca/qest** types define payload semantics and formats for standard REST operations:
 
