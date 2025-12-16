@@ -353,8 +353,8 @@ export type Literal =
 /**
  * Resource reference.
  *
- * An {@link IRI} identifying a linked resource without embedding its state. Contrast with {@link Resource},
- * which includes the linked resource's properties inline.
+ * An absolute or root-relative {@link IRI} identifying a linked resource without embedding its state. Contrast
+ * with {@link Resource}, which includes the linked resource's properties inline.
  *
  * > [!WARNING]
  * > This is a type alias for documentation purposes only. Branding was considered but not adopted due to
