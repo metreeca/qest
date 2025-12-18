@@ -27,6 +27,85 @@ function asPatch(p: object): Patch { return p as Patch; }
 
 describe("encodeResource()", () => {
 
+	describe("base option", () => {
+
+		it("should accept default base", async () => {
+			const resource = asResource({ id: "/products/42" });
+
+			expect(() => encodeResource(resource)).not.toThrow();
+		});
+
+		it("should accept absolute IRI base", async () => {
+			const resource = asResource({ id: "https://example.com/products/42" });
+
+			expect(() => encodeResource(resource, { base: "https://example.com/" })).not.toThrow();
+		});
+
+		it("should reject relative IRI base", async () => {
+			const resource = asResource({ id: "/products/42" });
+
+			expect(() => encodeResource(resource, { base: "/relative/path" })).toThrow(RangeError);
+		});
+
+		it("should internalize absolute IRI to root-relative", async () => {
+			const resource = asResource({ id: "https://example.com/products/42" });
+
+			expect(encodeResource(resource, { base: "https://example.com/" }))
+				.toBe(JSON.stringify({ id: "/products/42" }));
+		});
+
+		it("should preserve absolute IRI with different origin", async () => {
+			const resource = asResource({ id: "https://other.com/products/42" });
+
+			expect(encodeResource(resource, { base: "https://example.com/" }))
+				.toBe(JSON.stringify({ id: "https://other.com/products/42" }));
+		});
+
+		it("should preserve root-relative IRI", async () => {
+			const resource = asResource({ id: "/products/42" });
+
+			expect(encodeResource(resource, { base: "https://example.com/" }))
+				.toBe(JSON.stringify({ id: "/products/42" }));
+		});
+
+		it("should preserve non-root-relative IRIs and other strings", async () => {
+			const resource = asResource({
+				relative: "../products/42",
+				plain: "Widget",
+				nested: { name: "Acme Corp", path: "vendors/acme" }
+			});
+
+			expect(encodeResource(resource, { base: "https://example.com/" }))
+				.toBe(JSON.stringify({
+					relative: "../products/42",
+					plain: "Widget",
+					nested: { name: "Acme Corp", path: "vendors/acme" }
+				}));
+		});
+
+		it("should internalize IRIs recursively in nested structures", async () => {
+			const resource = asResource({
+				id: "https://example.com/products/42",
+				vendor: {
+					id: "https://example.com/vendors/acme",
+					name: "Acme Corp"
+				},
+				categories: ["https://example.com/categories/electronics", "https://example.com/categories/home"]
+			});
+
+			expect(encodeResource(resource, { base: "https://example.com/" }))
+				.toBe(JSON.stringify({
+					id: "/products/42",
+					vendor: {
+						id: "/vendors/acme",
+						name: "Acme Corp"
+					},
+					categories: ["/categories/electronics", "/categories/home"]
+				}));
+		});
+
+	});
+
 	it("should encode empty resource", async () => {
 		const resource = asResource({});
 
@@ -80,6 +159,78 @@ describe("encodeResource()", () => {
 });
 
 describe("decodeResource()", () => {
+
+	describe("base option", () => {
+
+		it("should accept default base", async () => {
+			const json = JSON.stringify({ id: "/products/42" });
+
+			expect(() => decodeResource(json)).not.toThrow();
+		});
+
+		it("should accept absolute IRI base", async () => {
+			const json = JSON.stringify({ id: "/products/42" });
+
+			expect(() => decodeResource(json, { base: "https://example.com/" })).not.toThrow();
+		});
+
+		it("should reject relative IRI base", async () => {
+			const json = JSON.stringify({ id: "/products/42" });
+
+			expect(() => decodeResource(json, { base: "/relative/path" })).toThrow(RangeError);
+		});
+
+		it("should resolve root-relative IRI to absolute", async () => {
+			const json = JSON.stringify({ id: "/products/42" });
+
+			expect(decodeResource(json, { base: "https://example.com/" }))
+				.toEqual({ id: "https://example.com/products/42" });
+		});
+
+		it("should preserve absolute IRI", async () => {
+			const json = JSON.stringify({ id: "https://other.com/products/42" });
+
+			expect(decodeResource(json, { base: "https://example.com/" }))
+				.toEqual({ id: "https://other.com/products/42" });
+		});
+
+		it("should preserve non-root-relative IRIs and other strings", async () => {
+			const json = JSON.stringify({
+				relative: "../products/42",
+				plain: "Widget",
+				nested: { name: "Acme Corp", path: "vendors/acme" }
+			});
+
+			expect(decodeResource(json, { base: "https://example.com/" }))
+				.toEqual({
+					relative: "../products/42",
+					plain: "Widget",
+					nested: { name: "Acme Corp", path: "vendors/acme" }
+				});
+		});
+
+		it("should resolve IRIs recursively in nested structures", async () => {
+			const json = JSON.stringify({
+				id: "/products/42",
+				vendor: {
+					id: "/vendors/acme",
+					name: "Acme Corp"
+				},
+				categories: ["/categories/electronics", "/categories/home"]
+			});
+
+			expect(decodeResource(json, { base: "https://example.com/" }))
+				.toEqual({
+					id: "https://example.com/products/42",
+					vendor: {
+						id: "https://example.com/vendors/acme",
+						name: "Acme Corp"
+					},
+					categories: ["https://example.com/categories/electronics", "https://example.com/categories/home"]
+				});
+		});
+
+	});
 
 	it("should decode empty resource", async () => {
 		const resource = asResource({});

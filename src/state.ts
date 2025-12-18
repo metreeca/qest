@@ -282,9 +282,14 @@
 import { Identifier } from "@metreeca/core";
 import { Tag } from "@metreeca/core/language";
 import { immutable } from "@metreeca/core/nested";
-import { IRI } from "@metreeca/core/resource";
+import { asIRI, internalize, IRI, isIRI, resolve } from "@metreeca/core/resource";
 import { assertPatch, assertResource, assertString } from "./$/state.typia.js";
 
+
+const DefaultBase = asIRI("app:/");
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
  * Linked data resource state.
@@ -407,39 +412,90 @@ export type Locals =
 /**
  * Encodes a resource state as a JSON string.
  *
+ * Converts absolute IRIs (matching `isIRI(value, "absolute")`) to root-relative IRIs using `internalize()`,
+ * recursively throughout the resource structure.
+ *
  * @param resource The resource state to encode
+ * @param options Encoding options
+ * @param options.base Base IRI for internalizing absolute references (must be absolute; defaults to `app:/`)
  *
- * @returns The JSON string
+ * @returns The JSON string with internalized IRIs
  *
+ * @throws RangeError If `base` is not an absolute IRI
  * @throws TypeGuardError If `resource` is not a valid {@link Resource}
  *
  * @see {@link decodeResource}
  */
-export function encodeResource(resource: Resource): string {
+export function encodeResource(resource: Resource, {
 
-	assertResource(resource);
+	base = DefaultBase
 
-	return JSON.stringify(resource);
+}: {
+
+	readonly base?: IRI
+
+} = {}): string {
+
+	const $resource = assertResource(resource);
+	const $base = asIRI(base, "absolute");
+
+	return JSON.stringify($resource, (_key, value) =>
+		isIRI(value, "absolute")
+			? internalize($base, value)
+			: value
+	);
 }
 
 /**
  * Decodes a resource state from a JSON string.
  *
+ * Resolves root-relative IRIs (matching `isIRI(value, "internal")`) to absolute IRIs using `resolve()`,
+ * recursively throughout the resource structure.
+ *
  * @param resource The encoded resource string
+ * @param options Decoding options
+ * @param options.base Base IRI for resolving root-relative references (must be absolute; defaults to `app:/`)
  *
- * @returns The decoded resource state
+ * @returns The decoded resource state with resolved IRIs
  *
+ * @throws RangeError If `base` is not an absolute IRI
  * @throws TypeGuardError If `resource` is not a string or not a valid {@link Resource}
- * @throws Error If `resource` is not valid JSON
+ * @throws SyntaxError If `resource` is not valid JSON
  *
  * @see {@link encodeResource}
  */
-export function decodeResource(resource: string): Resource {
+export function decodeResource(resource: string, {
 
-	assertString(resource);
+	base = DefaultBase
 
-	return immutable(assertResource(JSON.parse(resource)));
+}: {
+
+	readonly base?: IRI
+
+} = {}): Resource {
+
+	const $resource = assertString(resource);
+	const $base = asIRI(base, "absolute");
+
+	function resolveValue(_key: string, value: unknown): unknown {
+
+		if ( isIRI(value, "internal") ) {
+
+			try {
+				return resolve($base, value);
+			} catch {
+				return value;
+			}
+
+		} else {
+			return value;
+		}
+
+	}
+
+	return immutable(assertResource(JSON.parse(resource, resolveValue)));
 }
+
 
 /**
  * Encodes a patch as a JSON string.
