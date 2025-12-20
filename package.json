@@ -44,7 +44,7 @@
     "setup": "npm install && npm audit fix",
     "typia": "npx typia generate --project tsconfig.json --output 'src/$' --input 'src/$typia'",
     "peggy": "npx peggy --dts --format es --allowed-start-rules '*' --output 'src/$/query.pegjs.js' 'src/$peggy/query.pegjs'",
-    "build": "rm -rf dist docs && npm run peggy && tsc -p tsconfig.build.json && typedoc",
+    "build": "rm -rf dist docs && npm run typia && npm run peggy && tsc -p tsconfig.build.json && typedoc",
     "check": "npx vitest --typecheck run",
     "watch": "npx tsc --watch",
     "proof": "npx typedoc && (npx typedoc --watch & npx five-server docs --open)"

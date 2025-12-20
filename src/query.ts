@@ -560,14 +560,19 @@ export type Option =
  */
 export type Criterion = {
 
-	/** Property name for projections or constraint {@link Operator}. */
+	/**
+	 * Property name for projections or constraint {@link Operator}.
+	 */
 	readonly target: Identifier | Operator;
 
-
-	/** Transform pipeline applied to the value, in application order. */
+	/**
+	 * Transform pipeline applied to the value, in application order.
+	 */
 	readonly pipe: readonly Identifier[];
 
-	/** Dot-separated property path to the target value. */
+	/**
+	 * Dot-separated property path to the target value.
+	 */
 	readonly path: readonly Identifier[];
 
 }

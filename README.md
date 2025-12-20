@@ -213,39 +213,40 @@ those same types into a complete model-driven stack:
 | @metreeca/keep *(upcoming)* | Shape-driven storage framework with pluggable adapters     |
 | @metreeca/gate *(upcoming)* | Shape-driven REST/JSON API publishing                      |
 
-# JSON-LD Interoperability
+# JSON-LD Foundations
 
-**@metreeca/qest** is built on a controlled subset of [JSON-LD](https://www.w3.org/TR/json-ld11/) (JSON for Linked
-Data), a [W3C](https://www.w3.org/) standard that extends JSON with web
-identifiers ([IRIs](https://www.rfc-editor.org/rfc/rfc3987)). This enables property names and values to reference shared
-vocabularies, giving data a precise, machine-readable meaning that survives when combined with data from other sources —
-a capability at the heart of the [Web Data Activity](https://www.w3.org/2013/data/) (Semantic Web) and modern knowledge
-graphs.
+[JSON-LD](https://www.w3.org/TR/json-ld11/) (JSON for Linked Data) is a [W3C](https://www.w3.org/) standard for publishing
+linked data on the web. It extends JSON with web identifiers ([IRIs](https://www.rfc-editor.org/rfc/rfc3987)) to link
+resources across systems and domains, and to give property names precise, machine-readable meaning by mapping them to
+shared vocabularies — a capability at the heart of the [Web Data Activity](https://www.w3.org/2013/data/) (Semantic Web)
+and modern knowledge graphs.
 
-The subset is designed to feel like plain idiomatic JSON, letting JavaScript developers work with linked data using
-familiar REST/JSON patterns without mastering JSON-LD technicalities, while retaining full compatibility with standard
-JSON-LD processors.
+**@metreeca/qest** defines a controlled JSON-LD subset designed to feel like plain idiomatic JSON, letting JavaScript
+developers work with linked data using familiar REST/JSON patterns without mastering JSON-LD technicalities, while
+retaining full compatibility with standard JSON-LD processors.
 
-The JSON-LD subset is defined by the following constraints:
+This controlled subset is specified by:
 
-- only the [compacted document form](https://www.w3.org/TR/json-ld11/#compacted-document-form) is supported, using short
-  property names and nested objects just like regular JSON
+- [compacted documents](https://www.w3.org/TR/json-ld11/#compacted-document-form) with short property names and nested
+  objects, just like regular JSON
 
-- property names ([JSON-LD terms](https://www.w3.org/TR/json-ld11/#terms)) are restricted
-  to [ECMAScript identifiers](https://262.ecma-international.org/15.0/#sec-names-and-keywords), enabling property access
-  with dot notation; this excludes [JSON-LD keywords](https://www.w3.org/TR/json-ld11/#keywords) (`@id`, `@type`,
-  etc.), [blank node identifiers](https://www.w3.org/TR/json-ld11/#identifying-blank-nodes) (`_:`), and arbitrary
-  property names; mapping from property names to IRIs and keywords may still be managed by an application-provided [
-  `@context`](https://www.w3.org/TR/json-ld11/#the-context) object
+- [ECMAScript identifiers](https://262.ecma-international.org/15.0/#sec-names-and-keywords) as property names
+  ([terms](https://www.w3.org/TR/json-ld11/#terms)), enabling dot notation access;
+  [JSON-LD keywords](https://www.w3.org/TR/json-ld11/#keywords) (`@id`, `@type`, etc.) and
+  [blank node identifiers](https://www.w3.org/TR/json-ld11/#identifying-blank-nodes) are not allowed and must be mapped
+  to identifiers via an application-provided [`@context`](https://www.w3.org/TR/json-ld11/#the-context) (for instance,
+  `"id": "@id"`); `@context` must also maps property names to IRIs for semantic interoperability
 
-- values are native JSON primitives (`boolean`, `number`, `string`) without support
-  for [typed literals](https://www.w3.org/TR/json-ld11/#typed-values) with arbitrary datatypes; property-specific
-  datatype coercion may still be handled by an application-provided `@context` object
+- native JSON primitives (`boolean`, `number`, `string`) as values;
+  [typed literals](https://www.w3.org/TR/json-ld11/#typed-values) with arbitrary datatypes are not allowed and must be
+  represented as strings with [datatype coercion](https://www.w3.org/TR/json-ld11/#type-coercion) declared in `@context`
 
-- JSON-LD [`@language` containers](https://www.w3.org/TR/json-ld11/#language-indexing), don't support [
-  `@none`](https://www.w3.org/TR/json-ld11/#dfn-none) keys for plain literals; for mixed non-localized/localized content
-  use `string | Dictionary` union types or [`zxx`](https://iso639-3.sil.org/code/zxx)
-  tags
+- [language maps](https://www.w3.org/TR/json-ld11/#language-indexing) for localised text;
+  [`@none`](https://www.w3.org/TR/json-ld11/#dfn-none) keys for non-localised values in language maps are not allowed and must be handled
+  using `string | Local` union types or the [`zxx`](https://iso639-3.sil.org/code/zxx) language tag
+
+- [IRI references](https://www.w3.org/TR/json-ld11/#node-identifiers) for linking resources across systems and domains;
+  applications may opt to restrict references to absolute or root-relative IRIs
 
 # Support
 
