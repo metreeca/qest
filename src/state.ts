@@ -286,9 +286,6 @@ import { asIRI, internalize, IRI, isIRI, resolve } from "@metreeca/core/resource
 import { assertPatch, assertResource, assertString } from "./$/state.typia.js";
 
 
-const DefaultBase = asIRI("app:/");
-
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
@@ -407,58 +404,87 @@ export type Locals =
 	| { readonly [tag: Tag]: readonly string[] }
 
 
+/**
+ * Options for resource encoding and decoding.
+ *
+ * @see {@link encodeResource}
+ * @see {@link decodeResource}
+ */
+export type CodecOpts = {
+
+	/**
+	 * Base IRI for IRI resolution (must be absolute and hierarchical).
+	 *
+	 * - **Encoding**: Converts absolute IRIs to internal (root-relative) form
+	 * - **Decoding**: Resolves internal IRIs to absolute form
+	 *
+	 * If omitted, no IRI rewriting is performed.
+	 */
+	readonly base?: IRI
+
+};
+
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
  * Encodes a resource state as a JSON string.
  *
- * Converts absolute IRIs (matching `isIRI(value, "absolute")`) to root-relative IRIs using `internalize()`,
- * recursively throughout the resource structure.
+ * If `base` is provided, converts absolute IRIs (matching `isIRI(value, "absolute")`) to root-relative IRIs
+ * using `internalize()`, recursively throughout the resource structure. Otherwise, performs plain JSON serialization.
  *
  * @param resource The resource state to encode
  * @param options Encoding options
- * @param options.base Base IRI for internalizing absolute references (must be absolute; defaults to `app:/`)
+ * @param options.base Base IRI for internalizing absolute references (must be absolute and hierarchical);
+ *   if omitted, no IRI rewriting is performed
  *
- * @returns The JSON string with internalized IRIs
+ * @returns The JSON string, with internalized IRIs if `base` is provided
  *
- * @throws RangeError If `base` is not an absolute IRI
+ * @throws RangeError If `base` is provided but not an absolute hierarchical IRI
  * @throws TypeGuardError If `resource` is not a valid {@link Resource}
  *
  * @see {@link decodeResource}
  */
 export function encodeResource(resource: Resource, {
 
-	base = DefaultBase
+	base
 
-}: {
-
-	readonly base?: IRI
-
-} = {}): string {
+}: CodecOpts = {}): string {
 
 	const $resource = assertResource(resource);
-	const $base = asIRI(base, "absolute");
 
-	return JSON.stringify($resource, (_key, value) =>
-		isIRI(value, "absolute")
-			? internalize($base, value)
-			: value
-	);
+	if ( base === undefined ) {
+
+		return JSON.stringify($resource);
+
+	} else {
+
+		const $base = asIRI(base, "hierarchical");
+
+		return JSON.stringify($resource, (_key, value) =>
+			isIRI(value, "absolute")
+				? internalize($base, value)
+				: value
+		);
+
+	}
+
 }
 
 /**
  * Decodes a resource state from a JSON string.
  *
- * Resolves root-relative IRIs (matching `isIRI(value, "internal")`) to absolute IRIs using `resolve()`,
- * recursively throughout the resource structure.
+ * If `base` is provided, resolves internal IRIs (matching `isIRI(value, "internal")`) to absolute IRIs
+ * using `resolve()`, recursively throughout the resource structure. Otherwise, performs plain JSON parsing.
  *
  * @param resource The encoded resource string
  * @param options Decoding options
- * @param options.base Base IRI for resolving root-relative references (must be absolute; defaults to `app:/`)
+ * @param options.base Base IRI for resolving internal references (must be absolute and hierarchical);
+ *   if omitted, no IRI rewriting is performed
  *
- * @returns The decoded resource state with resolved IRIs
+ * @returns The decoded resource state, with resolved IRIs if `base` is provided
  *
- * @throws RangeError If `base` is not an absolute IRI
+ * @throws RangeError If `base` is provided but not an absolute hierarchical IRI
  * @throws TypeGuardError If `resource` is not a string or not a valid {@link Resource}
  * @throws SyntaxError If `resource` is not valid JSON
  *
@@ -466,70 +492,115 @@ export function encodeResource(resource: Resource, {
  */
 export function decodeResource(resource: string, {
 
-	base = DefaultBase
+	base
 
-}: {
-
-	readonly base?: IRI
-
-} = {}): Resource {
+}: CodecOpts = {}): Resource {
 
 	const $resource = assertString(resource);
-	const $base = asIRI(base, "absolute");
 
-	function resolveValue(_key: string, value: unknown): unknown {
+	if ( base === undefined ) {
 
-		if ( isIRI(value, "internal") ) {
+		return immutable(assertResource(JSON.parse($resource)));
 
-			try {
-				return resolve($base, value);
-			} catch {
-				return value;
-			}
+	} else {
 
-		} else {
-			return value;
-		}
+		const $base = asIRI(base, "hierarchical");
+
+		return immutable(assertResource(JSON.parse($resource, (_key, value) =>
+			isIRI(value, "internal")
+				? resolve($base, value)
+				: value
+		)));
 
 	}
-
-	return immutable(assertResource(JSON.parse(resource, resolveValue)));
 }
 
 
 /**
  * Encodes a patch as a JSON string.
  *
+ * If `base` is provided, converts absolute IRIs (matching `isIRI(value, "absolute")`) to root-relative IRIs
+ * using `internalize()`, recursively throughout the patch structure. Otherwise, performs plain JSON serialization.
+ *
  * @param patch The patch to encode
+ * @param options Encoding options
+ * @param options.base Base IRI for internalizing absolute references (must be absolute and hierarchical);
+ *   if omitted, no IRI rewriting is performed
  *
- * @returns The JSON string
+ * @returns The JSON string, with internalized IRIs if `base` is provided
  *
+ * @throws RangeError If `base` is provided but not an absolute hierarchical IRI
  * @throws TypeGuardError If `patch` is not a valid {@link Patch}
  *
  * @see {@link decodePatch}
  */
-export function encodePatch(patch: Patch): string {
+export function encodePatch(patch: Patch, {
 
-	assertPatch(patch);
+	base
 
-	return JSON.stringify(patch);
+}: CodecOpts = {}): string {
+
+	const $patch = assertPatch(patch);
+
+	if ( base === undefined ) {
+
+		return JSON.stringify($patch);
+
+	} else {
+
+		const $base = asIRI(base, "hierarchical");
+
+		return JSON.stringify($patch, (_key, value) =>
+			isIRI(value, "absolute")
+				? internalize($base, value)
+				: value
+		);
+
+	}
+
 }
 
 /**
  * Decodes a patch from a JSON string.
  *
+ * If `base` is provided, resolves internal IRIs (matching `isIRI(value, "internal")`) to absolute IRIs
+ * using `resolve()`, recursively throughout the patch structure. Otherwise, performs plain JSON parsing.
+ *
  * @param patch The encoded patch string
+ * @param options Decoding options
+ * @param options.base Base IRI for resolving internal references (must be absolute and hierarchical);
+ *   if omitted, no IRI rewriting is performed
  *
- * @returns The decoded patch
+ * @returns The decoded patch, with resolved IRIs if `base` is provided
  *
+ * @throws RangeError If `base` is provided but not an absolute hierarchical IRI
  * @throws TypeGuardError If `patch` is not a string or not a valid {@link Patch}
- * @throws Error If `patch` is not valid JSON
+ * @throws SyntaxError If `patch` is not valid JSON
  *
  * @see {@link encodePatch}
  */
-export function decodePatch(patch: string): Patch {
+export function decodePatch(patch: string, {
 
-	assertString(patch);
+	base
 
-	return immutable(assertPatch(JSON.parse(patch)));
+}: CodecOpts = {}): Patch {
+
+	const $patch = assertString(patch);
+
+	if ( base === undefined ) {
+
+		return immutable(assertPatch(JSON.parse($patch)));
+
+	} else {
+
+		const $base = asIRI(base, "hierarchical");
+
+		return immutable(assertPatch(JSON.parse($patch, (_key, value) =>
+			isIRI(value, "internal")
+				? resolve($base, value)
+				: value
+		)));
+
+	}
+
 }

@@ -29,13 +29,7 @@ describe("encodeResource()", () => {
 
 	describe("base option", () => {
 
-		it("should accept default base", async () => {
-			const resource = asResource({ id: "/products/42" });
-
-			expect(() => encodeResource(resource)).not.toThrow();
-		});
-
-		it("should accept absolute IRI base", async () => {
+		it("should accept absolute hierarchical IRI base", async () => {
 			const resource = asResource({ id: "https://example.com/products/42" });
 
 			expect(() => encodeResource(resource, { base: "https://example.com/" })).not.toThrow();
@@ -45,6 +39,12 @@ describe("encodeResource()", () => {
 			const resource = asResource({ id: "/products/42" });
 
 			expect(() => encodeResource(resource, { base: "/relative/path" })).toThrow(RangeError);
+		});
+
+		it("should reject opaque IRI base", async () => {
+			const resource = asResource({ id: "/products/42" });
+
+			expect(() => encodeResource(resource, { base: "app:/" })).toThrow(RangeError);
 		});
 
 		it("should internalize absolute IRI to root-relative", async () => {
@@ -162,13 +162,7 @@ describe("decodeResource()", () => {
 
 	describe("base option", () => {
 
-		it("should accept default base", async () => {
-			const json = JSON.stringify({ id: "/products/42" });
-
-			expect(() => decodeResource(json)).not.toThrow();
-		});
-
-		it("should accept absolute IRI base", async () => {
+		it("should accept absolute hierarchical IRI base", async () => {
 			const json = JSON.stringify({ id: "/products/42" });
 
 			expect(() => decodeResource(json, { base: "https://example.com/" })).not.toThrow();
@@ -178,6 +172,12 @@ describe("decodeResource()", () => {
 			const json = JSON.stringify({ id: "/products/42" });
 
 			expect(() => decodeResource(json, { base: "/relative/path" })).toThrow(RangeError);
+		});
+
+		it("should reject opaque IRI base", async () => {
+			const json = JSON.stringify({ id: "/products/42" });
+
+			expect(() => decodeResource(json, { base: "app:/" })).toThrow(RangeError);
 		});
 
 		it("should resolve root-relative IRI to absolute", async () => {
@@ -280,6 +280,61 @@ describe("decodeResource()", () => {
 
 describe("encodePatch()", () => {
 
+	describe("base option", () => {
+
+		it("should accept absolute hierarchical IRI base", async () => {
+			const patch = asPatch({ vendor: "https://example.com/vendors/acme" });
+
+			expect(() => encodePatch(patch, { base: "https://example.com/" })).not.toThrow();
+		});
+
+		it("should reject relative IRI base", async () => {
+			const patch = asPatch({ vendor: "/vendors/acme" });
+
+			expect(() => encodePatch(patch, { base: "/relative/path" })).toThrow(RangeError);
+		});
+
+		it("should reject opaque IRI base", async () => {
+			const patch = asPatch({ vendor: "/vendors/acme" });
+
+			expect(() => encodePatch(patch, { base: "app:/" })).toThrow(RangeError);
+		});
+
+		it("should internalize absolute IRI to root-relative", async () => {
+			const patch = asPatch({ vendor: "https://example.com/vendors/acme" });
+
+			expect(encodePatch(patch, { base: "https://example.com/" }))
+				.toBe(JSON.stringify({ vendor: "/vendors/acme" }));
+		});
+
+		it("should preserve absolute IRI with different origin", async () => {
+			const patch = asPatch({ vendor: "https://other.com/vendors/acme" });
+
+			expect(encodePatch(patch, { base: "https://example.com/" }))
+				.toBe(JSON.stringify({ vendor: "https://other.com/vendors/acme" }));
+		});
+
+		it("should internalize IRIs recursively in nested structures", async () => {
+			const patch = asPatch({
+				vendor: {
+					id: "https://example.com/vendors/acme",
+					name: "Acme Corp"
+				},
+				categories: ["https://example.com/categories/electronics"]
+			});
+
+			expect(encodePatch(patch, { base: "https://example.com/" }))
+				.toBe(JSON.stringify({
+					vendor: {
+						id: "/vendors/acme",
+						name: "Acme Corp"
+					},
+					categories: ["/categories/electronics"]
+				}));
+		});
+
+	});
+
 	it("should encode empty patch", async () => {
 		const patch = asPatch({});
 
@@ -316,6 +371,76 @@ describe("encodePatch()", () => {
 });
 
 describe("decodePatch()", () => {
+
+	describe("base option", () => {
+
+		it("should accept absolute hierarchical IRI base", async () => {
+			const json = JSON.stringify({ vendor: "/vendors/acme" });
+
+			expect(() => decodePatch(json, { base: "https://example.com/" })).not.toThrow();
+		});
+
+		it("should reject relative IRI base", async () => {
+			const json = JSON.stringify({ vendor: "/vendors/acme" });
+
+			expect(() => decodePatch(json, { base: "/relative/path" })).toThrow(RangeError);
+		});
+
+		it("should reject opaque IRI base", async () => {
+			const json = JSON.stringify({ vendor: "/vendors/acme" });
+
+			expect(() => decodePatch(json, { base: "app:/" })).toThrow(RangeError);
+		});
+
+		it("should resolve root-relative IRI to absolute", async () => {
+			const json = JSON.stringify({ vendor: "/vendors/acme" });
+
+			expect(decodePatch(json, { base: "https://example.com/" }))
+				.toEqual({ vendor: "https://example.com/vendors/acme" });
+		});
+
+		it("should preserve absolute IRI", async () => {
+			const json = JSON.stringify({ vendor: "https://other.com/vendors/acme" });
+
+			expect(decodePatch(json, { base: "https://example.com/" }))
+				.toEqual({ vendor: "https://other.com/vendors/acme" });
+		});
+
+		it("should preserve non-root-relative IRIs and other strings", async () => {
+			const json = JSON.stringify({
+				relative: "../vendors/acme",
+				plain: "Acme Corp",
+				nested: { name: "Widget", path: "products/42" }
+			});
+
+			expect(decodePatch(json, { base: "https://example.com/" }))
+				.toEqual({
+					relative: "../vendors/acme",
+					plain: "Acme Corp",
+					nested: { name: "Widget", path: "products/42" }
+				});
+		});
+
+		it("should resolve IRIs recursively in nested structures", async () => {
+			const json = JSON.stringify({
+				vendor: {
+					id: "/vendors/acme",
+					name: "Acme Corp"
+				},
+				categories: ["/categories/electronics"]
+			});
+
+			expect(decodePatch(json, { base: "https://example.com/" }))
+				.toEqual({
+					vendor: {
+						id: "https://example.com/vendors/acme",
+						name: "Acme Corp"
+					},
+					categories: ["https://example.com/categories/electronics"]
+				});
+		});
+
+	});
 
 	it("should decode empty patch", async () => {
 		const patch = asPatch({});

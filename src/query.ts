@@ -269,10 +269,11 @@ import { TagRange } from "@metreeca/core/language";
 import { immutable } from "@metreeca/core/nested";
 import { error } from "@metreeca/core/report";
 import type { IRI } from "@metreeca/core/resource";
+import { asIRI, internalize, isIRI, resolve } from "@metreeca/core/resource";
 import * as QueryParser from "./$/query.pegjs.js";
 import { assertCriterion, assertQuery, assertString, assertTransforms } from "./$/query.typia.js";
 import { decodeBase64, encodeBase64 } from "./base64.js";
-import { Literal, Local, Locals, Reference, Resource } from "./state.js";
+import { CodecOpts, Literal, Local, Locals, Reference, Resource } from "./state.js";
 
 
 /**
@@ -639,14 +640,21 @@ export type Transform = {
  * Serializes a {@link Query} object into a string representation suitable for transmission as a URL query string in
  * GET requests. The output format can be selected based on readability, compactness, and compatibility requirements.
  *
- * @param query The query object to encode
- * @param format The output format:
+ * If `base` is provided, converts absolute IRIs (matching `isIRI(value, "absolute")`) to root-relative IRIs
+ * using `internalize()`, recursively throughout the query structure. Otherwise, performs plain serialization.
  *
- * - `"json"` — [Percent-encoded](https://www.rfc-editor.org/rfc/rfc3986#section-2.1) JSON; human-readable but verbose;
- *   see [JSON Serialization](#json-serialization)
+ * @param query The query object to encode
+ * @param options Encoding options
+ * @param options.mode The output format:
+ *
+ * - `"json"` (default) — [Percent-encoded](https://www.rfc-editor.org/rfc/rfc3986#section-2.1) JSON; human-readable
+ *   but verbose; see [JSON Serialization](#json-serialization)
  * - `"base64"` — [Base64-encoded](https://www.rfc-editor.org/rfc/rfc4648#section-4) JSON; compact and URL-safe
  * - `"form"` — [Form-encoded](https://url.spec.whatwg.org/#application/x-www-form-urlencoded) `key=value` pairs;
  *   most compatible with standard tooling; see [Form Serialization](#form-serialization)
+ *
+ * @param options.base Base IRI for internalizing absolute references (must be absolute and hierarchical);
+ *   if omitted, no IRI rewriting is performed
  *
  * @remarks
  *
@@ -660,23 +668,37 @@ export type Transform = {
  * This ensures consistent, predictable output. The decoder accepts both canonical and shorthand forms (e.g., postfix
  * operators like `price>=100`, unquoted strings like `name=widget`).
  *
- * @returns The encoded query string
+ * @returns The encoded query string, with internalized IRIs if `base` is provided
  *
- * @throws TypeGuardError If `query` is not a valid {@link Query} or `format` is not a string
- * @throws TypeError If `format` is not a supported encoding
+ * @throws RangeError If `base` is provided but not an absolute hierarchical IRI
+ * @throws TypeGuardError If `query` is not a valid {@link Query} or `mode` is not a string
+ * @throws TypeError If `mode` is not a supported encoding
  *
  * @see {@link decodeQuery}
  */
-export function encodeQuery(query: Query, format: "json" | "base64" | "form" = "json"): string {
+export function encodeQuery(query: Query, {
 
-	assertQuery(query);
-	assertString(format);
+	base,
+	mode = "json"
 
-	return format === "json" ? encodeURIComponent(JSON.stringify(query))
-		: format === "base64" ? encodeBase64(JSON.stringify(query))
-			: format === "form" ? encodeFormQuery(query)
-				: error(new TypeError(`unsupported format <${format}>`));
+}: CodecOpts & { readonly mode?: "json" | "base64" | "form" } = {}): string {
 
+	const $mode = assertString(mode);
+	const $base = base !== undefined ? asIRI(base, "hierarchical") : undefined;
+	const $query = internalizeIRIs($base, assertQuery(query));
+
+
+	return $mode === "json" ? encodeURIComponent(JSON.stringify($query))
+		: $mode === "base64" ? encodeBase64(JSON.stringify($query))
+			: $mode === "form" ? encodeFormQuery($query)
+				: error(new TypeError(`unsupported mode <${$mode}>`));
+
+
+	function internalizeIRIs(base: string | undefined, q: Query): Query {
+		return base === undefined ? q : JSON.parse(JSON.stringify(q), (_key, value) =>
+			isIRI(value, "absolute") ? internalize(base, value) : value
+		);
+	}
 
 	function encodeFormQuery(query: Query): string {
 
@@ -699,7 +721,7 @@ export function encodeQuery(query: Query, format: "json" | "base64" | "form" = "
 
 	function encodeFormDictionary(encodedKey: string, dict: Record<string, unknown>): string[] {
 
-		// Dictionary (localized content): expand to tagged strings
+		// Dictionary (localised content): expand to tagged strings
 
 		return Object.entries(dict).flatMap(([tag, tagValue]) => isArray(tagValue)
 			? tagValue.map(v => `${encodedKey}=${encodeFormValue(v)}%40${tag}`)
@@ -729,7 +751,13 @@ export function encodeQuery(query: Query, format: "json" | "base64" | "form" = "
  * Parses an encoded query string back into a {@link Query} object. The encoding format is auto-detected from the
  * input string structure.
  *
+ * If `base` is provided, resolves internal IRIs (matching `isIRI(value, "internal")`) to absolute IRIs
+ * using `resolve()`, recursively throughout the query structure. Otherwise, performs plain parsing.
+ *
  * @param query The encoded query string
+ * @param options Decoding options
+ * @param options.base Base IRI for resolving internal references (must be absolute and hierarchical);
+ *   if omitted, no IRI rewriting is performed
  *
  * @remarks
  *
@@ -742,48 +770,67 @@ export function encodeQuery(query: Query, format: "json" | "base64" | "form" = "
  *
  * Tagged strings always require the canonical `"value"@tag` format.
  *
- * @returns The decoded query object
+ * @returns The decoded query object, with resolved IRIs if `base` is provided
  *
+ * @throws RangeError If `base` is provided but not an absolute hierarchical IRI
  * @throws TypeGuardError If `query` is not a string or not a valid {@link Query}
  * @throws Error If `query` is malformed or unparseable
  *
  * @see {@link encodeQuery}
  */
-export function decodeQuery(query: string): Query {
+export function decodeQuery(query: string, {
 
-	assertString(query);
+	base
+
+}: CodecOpts = {}): Query {
+
+	const $query = assertString(query);
+	const $base = base !== undefined ? asIRI(base, "hierarchical") : undefined;
+
 
 	try {
 
-		if ( query === "" ) {
+		if ( $query === "" ) {
 
 			return immutable(assertQuery({} as Query));
 
-		} else if ( query.startsWith("%7B") || query.startsWith("{") ) {
+		} else if ( $query.startsWith("%7B") || $query.startsWith("{") ) {
 
 			// JSON format (starts with %7B which is encoded '{')
 
-			return immutable(assertQuery(JSON.parse(decodeURIComponent(query))));
+			return immutable(assertQuery(parseJSON($base, decodeURIComponent($query))));
 
-		} else if ( /^e[A-Za-z0-9+/_-]*=*$/.test(query) ) {
+		} else if ( /^e[A-Za-z0-9+/_-]*=*$/.test($query) ) {
 
-			// Base64 format - JSON objects encode to base64 starting with 'e'
+			// base64 format - JSON objects encode to base64 starting with 'e'
 
-			return immutable(assertQuery(JSON.parse(decodeBase64(query))));
+			return immutable(assertQuery(parseJSON($base, decodeBase64($query))));
 
 		} else {
 
-			// Form format (application/x-www-form-urlencoded) parsed via Peggy grammar
-			// Decode keys separately while preserving encoded values for the parser's value handling
+			// form format (application/x-www-form-urlencoded) parsed via Peggy grammar
+			// decode keys separately while preserving encoded values for the parser's value handling
 
-			return immutable(assertQuery(QueryParser.parse(decodeFormKeys(query), { startRule: "Query" })));
+			return immutable(assertQuery(resolveIRIs($base, QueryParser.parse(decodeFormKeys($query), { startRule: "Query" }))));
 
 		}
 
 	} catch ( cause ) {
-		throw new Error(`invalid query: ${query}`, { cause });
+		throw new Error(`invalid query <${$query}>`, { cause });
 	}
 
+
+	function parseJSON(base: string | undefined, json: string): Query {
+		return base === undefined ? JSON.parse(json) : JSON.parse(json, (_key, value) =>
+			isIRI(value, "internal") ? resolve(base, value) : value
+		);
+	}
+
+	function resolveIRIs(base: string | undefined, parsed: Query): Query {
+		return base === undefined ? parsed : JSON.parse(JSON.stringify(parsed), (_key, value) =>
+			isIRI(value, "internal") ? resolve(base, value) : value
+		);
+	}
 
 	function decodeFormKeys(query: string): string {
 
@@ -882,6 +929,6 @@ export function decodeCriterion(key: string): Criterion {
  */
 function transforms<const T extends readonly Transform[]>(transforms: T): Transforms {
 
-	return Object.fromEntries(assertTransforms(transforms).map(t => [t.name, t])) as Transforms
+	return Object.fromEntries(assertTransforms(transforms).map(t => [t.name, t])) as Transforms;
 
 }
