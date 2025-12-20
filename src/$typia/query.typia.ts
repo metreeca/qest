@@ -1,43 +1,30 @@
 import typia from "typia";
-import { Criterion, Query, Transform } from "../query.js";
-
+import { Criterion, Option, Query, Transform } from "../query.js";
+import { Literal, Local, Locals } from "../state.js";
 
 /**
- * Helper type for Typia validation that explicitly represents all valid Query value types.
+ * Flattened Query type for Typia validation.
  *
- * The original Query type uses complex intersection of Projection, Filtering, Ordering, and Paging
- * with template literal index signatures. Typia doesn't correctly handle intersections where
- * index signature key patterns overlap (since Identifier = string matches all keys).
- *
- * This helper type flattens the union of all possible value types into a single index signature
- * that Typia can validate correctly.
+ * Typia doesn't handle Query's intersection (Projection & Filtering & Ordering & Paging) correctly
+ * because Projection's index signature (Identifier = string) overlaps all keys, causing Typia to
+ * ignore Filtering's Options type. This flattened version makes all value types explicit.
  */
-type QueryHelper = {
-
-	// Paging: explicit keys
+type QueryFlat = {
 	readonly "@"?: number;
 	readonly "#"?: number;
-
-	// All other keys: union of all possible value types
 	readonly [key: string]:
-		// From Projection
-		| boolean | number | string                           // Literal
-		| { readonly [tag: string]: string }                  // Local
-		| { readonly [tag: string]: readonly string[] }       // Locals
-		| readonly QueryHelper[]                              // Query collection (any length, not 1-tuple)
-		| readonly string[]                                   // Reference collection (any length, not 1-tuple)
-		| QueryHelper                                         // Nested Query
-		// From Filtering Options
-		| null                                                // Option null
-		| readonly (null | boolean | number | string)[]       // Option array
+		| Literal | Local | Locals                  // Projection scalars
+		| QueryFlat | readonly QueryFlat[]          // Projection nested
+		| readonly string[]                         // Reference collection
+		| Option | readonly Option[]                // Filtering options
+		| number | string                           // Ordering
 		| undefined;
-
 };
 
-const assertQueryHelper=typia.createAssertEquals<QueryHelper>();
+const assertQueryFlat=typia.createAssertEquals<QueryFlat>();
 
 export const assertCriterion=typia.createAssertEquals<Criterion>();
-export const assertQuery=(query: Query): Query => assertQueryHelper(query) as unknown as Query;
+export const assertQuery=(q: Query): Query => assertQueryFlat(q) as unknown as Query;
 export const assertString=typia.createAssertEquals<string>();
 export const assertTransform=typia.createAssertEquals<Transform>();
 export const assertTransforms=typia.createAssertEquals<readonly Transform[]>();
