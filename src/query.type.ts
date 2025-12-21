@@ -14,66 +14,42 @@
  * limitations under the License.
  */
 
-/**
- * Runtime validators for query types.
- *
- * @module
- */
-
 import { isIdentifier } from "@metreeca/core";
 import { error } from "@metreeca/core/error";
 import { isArray, isBoolean, isNull, isNumber, isObject, isString } from "@metreeca/core/json";
 import { isTagRange } from "@metreeca/core/language";
+import { isIRI } from "@metreeca/core/resource";
+import { BindingSource, ExpressionSource } from "./index.js";
 import type { Criterion, Query, Transform } from "./query.js";
 
 export { asString } from "./state.type.js";
 
 
+const BindingPattern = new RegExp(`^${BindingSource}$`, "u");
+const ExpressionPattern = new RegExp(`^${ExpressionSource}$`, "u");
+
+
 const CriterionKeys = new Set(["target", "pipe", "path"]);
-
 const TransformKeys = new Set(["name", "aggregate", "datatype"]);
-
 const DatatypeValues = new Set(["boolean", "number", "string"]);
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/**
- * Validates that a value is a {@link Query}.
- *
- * @param value The value to validate
- * @returns The validated Query
- * @throws TypeError If the value is not a valid Query
- */
 export function asQuery(value: unknown): Query {
-	return !isObject(value) ? error(new TypeError("expected object"))
-		: !isQueryObject(value) ? error(new TypeError("invalid query"))
-			: value as unknown as Query;
+	return !isQuery(value) ? error(new TypeError("invalid query"))
+		: value as unknown as Query;
 }
 
-/**
- * Validates that a value is a {@link Criterion}.
- *
- * @param value The value to validate
- * @returns The validated Criterion
- * @throws TypeError If the value is not a valid Criterion
- */
 export function asCriterion(value: unknown): Criterion {
 	return !isObject(value) ? error(new TypeError("expected object"))
 		: !isString(value.target) ? error(new TypeError("expected string target"))
-			: !(isArray(value.pipe) && value.pipe.every(isString)) ? error(new TypeError("expected string array pipe"))
-				: !(isArray(value.path) && value.path.every(isString)) ? error(new TypeError("expected string array path"))
+			: !isArray(value.pipe, isString) ? error(new TypeError("expected string array pipe"))
+				: !isArray(value.path, isString) ? error(new TypeError("expected string array path"))
 					: !Object.keys(value).every(key => CriterionKeys.has(key)) ? error(new TypeError("unexpected properties"))
 						: value as unknown as Criterion;
 }
 
-/**
- * Validates that a value is a {@link Transform}.
- *
- * @param value The value to validate
- * @returns The validated Transform
- * @throws TypeError If the value is not a valid Transform
- */
 export function asTransform(value: unknown): Transform {
 	return !isObject(value) ? error(new TypeError("expected object"))
 		: !isIdentifier(value.name) ? error(new TypeError("expected identifier name"))
@@ -85,13 +61,6 @@ export function asTransform(value: unknown): Transform {
 						: value as unknown as Transform;
 }
 
-/**
- * Validates that a value is an array of {@link Transform}.
- *
- * @param value The value to validate
- * @returns The validated Transform array
- * @throws TypeError If the value is not a valid Transform array
- */
 export function asTransforms(value: unknown): readonly Transform[] {
 	return !isArray(value) ? error(new TypeError("expected array"))
 		: value.map(asTransform);
@@ -100,59 +69,170 @@ export function asTransforms(value: unknown): readonly Transform[] {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-function isQueryObject(obj: Record<string, unknown>): boolean {
-	return Object.entries(obj).every(([key, value]) => isQueryEntry(key, value));
+// Query = Projection & Filtering & Ordering & Paging
+
+function isQuery(value: unknown): boolean {
+	return isObject(value, isQueryEntry);
 }
 
-function isQueryEntry(key: string, value: unknown): boolean {
-	return key === "@" || key === "#"
-		? value === undefined || isNumber(value) || error(new TypeError(`expected number for '${key}'`))
-		: isQueryValue(value) || error(new TypeError(`invalid value for '${key}'`));
+function isQueryEntry([key, value]: [unknown, unknown]): boolean {
+	return isProjectionEntry(key as string, value)
+		|| isFilteringEntry(key as string, value)
+		|| isOrderingEntry(key as string, value)
+		|| isPagingEntry(key as string, value);
 }
 
-function isQueryValue(value: unknown): boolean {
-	return value === undefined
-		|| isNull(value)
-		|| isBoolean(value)
+
+// Projection
+
+function isProjectionEntry(key: string, value: unknown): boolean {
+	return isProjectionKey(key) && isProjectionValue(value);
+}
+
+function isProjectionKey(key: string): boolean {
+	return isIdentifier(key) || BindingPattern.test(key);
+}
+
+function isProjectionValue(value: unknown): boolean {
+	return isLiteral(value)
+		|| isLocalModel(value)
+		|| isLocalsModel(value)
+		|| isReference(value)
+		|| isReferenceCollection(value)
+		|| isQuery(value)
+		|| isQueryCollection(value);
+}
+
+function isLocalModel(value: unknown): boolean {
+	return isObject(value, ([k, v]) => isTagRange(k) && isString(v));
+}
+
+function isLocalsModel(value: unknown): boolean {
+	return isObject(value, ([k, v]) => isTagRange(k) && isArray(v, isString) && v.length === 1);
+}
+
+function isReference(value: unknown): boolean {
+	return isIRI(value, "internal");
+}
+
+function isReferenceCollection(value: unknown): boolean {
+	return isArray(value, isString) && value.length === 1;
+}
+
+function isQueryCollection(value: unknown): boolean {
+	return isArray(value, isQuery) && value.length === 1;
+}
+
+function isLiteral(value: unknown): boolean {
+	return isBoolean(value)
 		|| isNumber(value)
-		|| isString(value)
-		|| (isArray(value) && isQueryArrayValue(value))
-		|| (isObject(value) && isQueryObjectValue(value));
+		|| isString(value);
 }
 
-function isQueryObjectValue(obj: Record<string, unknown>): boolean {
-	return isLocalModel(obj) || isLocalsModel(obj) || isQueryObject(obj);
+
+// Filtering
+
+function isFilteringEntry(key: string, value: unknown): boolean {
+	return (isLteKey(key) && isLiteral(value))
+		|| (isGteKey(key) && isLiteral(value))
+		|| (isLtKey(key) && isLiteral(value))
+		|| (isGtKey(key) && isLiteral(value))
+		|| (isLikeKey(key) && isString(value))
+		|| (isAnyKey(key) && isOptions(value))
+		|| (isAllKey(key) && isOptions(value));
 }
 
-function isLocalModel(obj: Record<string, unknown>): boolean {
-
-	const keys = Object.keys(obj);
-	const values = Object.values(obj);
-
-	return keys.length > 0
-		&& keys.every(isTagRange)
-		&& values.every(isString);
-
+function isLtKey(key: string): boolean {
+	return key.startsWith("<") && isExpression(key.slice(1));
 }
 
-function isLocalsModel(obj: Record<string, unknown>): boolean {
-
-	const keys = Object.keys(obj);
-	const values = Object.values(obj);
-
-	return keys.length > 0
-		&& keys.every(isTagRange)
-		&& values.every(v => isArray(v) && v.length === 1 && isString(v[0]));
-
+function isGtKey(key: string): boolean {
+	return key.startsWith(">") && isExpression(key.slice(1));
 }
 
-function isQueryArrayValue(arr: readonly unknown[]): boolean {
-	return arr.length === 0
-		|| arr.every(isString)
-		|| arr.every(isOption)
-		|| arr.every(item => isObject(item) && isQueryObject(item as Record<string, unknown>));
+function isLteKey(key: string): boolean {
+	return key.startsWith("<=") && isExpression(key.slice(2));
 }
+
+function isGteKey(key: string): boolean {
+	return key.startsWith(">=") && isExpression(key.slice(2));
+}
+
+function isLikeKey(key: string): boolean {
+	return key.startsWith("~") && isExpression(key.slice(1));
+}
+
+function isAnyKey(key: string): boolean {
+	return key.startsWith("?") && isExpression(key.slice(1));
+}
+
+function isAllKey(key: string): boolean {
+	return key.startsWith("!") && isExpression(key.slice(1));
+}
+
+
+// Ordering
+
+function isOrderingEntry(key: string, value: unknown): boolean {
+	return (isFocusKey(key) && isOptions(value))
+		|| (isOrderKey(key) && isOrderValue(value));
+}
+
+function isFocusKey(key: string): boolean {
+	return key.startsWith("*") && isExpression(key.slice(1));
+}
+
+function isOrderKey(key: string): boolean {
+	return key.startsWith("^") && isExpression(key.slice(1));
+}
+
+function isOrderValue(value: unknown): boolean {
+	return isNumber(value)
+		|| value === "asc" || value === "desc"
+		|| value === "ascending" || value === "descending";
+}
+
+
+// Paging
+
+function isPagingEntry(key: string, value: unknown): boolean {
+	return (key === "@" || key === "#")
+		&& (value === undefined || isNumber(value));
+}
+
+
+// Expression
+
+function isExpression(expr: string): boolean {
+	return expr.length > 0 && ExpressionPattern.test(expr);
+}
+
+
+// Options
+
+function isOptions(value: unknown): boolean {
+	return isOption(value)
+		|| isLocal(value)
+		|| isLocals(value)
+		|| isOptionArray(value);
+}
+
+function isLocal(value: unknown): boolean {
+	return isObject(value, ([k, v]) => isTagRange(k) && isString(v));
+}
+
+function isLocals(value: unknown): boolean {
+	return isObject(value, ([k, v]) => isTagRange(k) && isArray(v, isString));
+}
+
+function isOptionArray(value: unknown): boolean {
+	return isArray(value, isOption);
+}
+
+
+// Option
 
 function isOption(value: unknown): boolean {
-	return isNull(value) || isBoolean(value) || isNumber(value) || isString(value);
+	return isNull(value)
+		|| isLiteral(value);
 }

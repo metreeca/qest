@@ -264,16 +264,42 @@
  */
 
 import { Identifier, isIdentifier } from "@metreeca/core";
+import { error } from "@metreeca/core/error";
 import { isArray, isObject, isString } from "@metreeca/core/json";
 import { TagRange } from "@metreeca/core/language";
 import { immutable } from "@metreeca/core/nested";
-import { error } from "@metreeca/core/error";
 import type { IRI } from "@metreeca/core/resource";
 import { asIRI, internalize, isIRI, resolve } from "@metreeca/core/resource";
 import * as QueryParser from "./$/query.pegjs.js";
-import { asCriterion, asQuery, asString, asTransforms } from "./query.type.js";
 import { decodeBase64, encodeBase64 } from "./base64.js";
+import { BindingSource, ExpressionSource } from "./index.js";
+import { asCriterion, asQuery, asString, asTransforms } from "./query.type.js";
 import { CodecOpts, Literal, Local, Locals, Reference, Resource } from "./state.js";
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * Regular expression for validating {@link Binding} syntax.
+ *
+ * Matches the pattern `name=expression` where:
+ *
+ * - `name` is a required {@link Identifier}
+ * - `expression` follows the {@link ExpressionPattern} syntax
+ */
+export const BindingPattern = new RegExp(`^${BindingSource}$`, "u");
+
+/**
+ * Regular expression for validating {@link Expression} syntax.
+ *
+ * Matches the pattern `[transform:]*[path]` where:
+ *
+ * - `transform` is an {@link Identifier} followed by `:`
+ * - `path` is a dot-separated list of {@link Identifier | Identifiers}
+ *
+ * Both parts are optional; empty strings are valid expressions.
+ */
+export const ExpressionPattern = new RegExp(`^${ExpressionSource}$`, "u");
 
 
 /**
@@ -390,7 +416,7 @@ export type Query =
  */
 export type Projection = {
 
-	readonly [property: Identifier | `${Identifier}=${Expression}`]:
+	readonly [property: Identifier | Binding]:
 		| Literal
 		| { readonly [range: TagRange]: string }
 		| { readonly [range: TagRange]: readonly [string] }
@@ -482,6 +508,24 @@ export type Paging = Partial<{
 
 }>;
 
+
+/**
+ * Binding assigning a name to a computed {@link Expression} in {@link Projection} fields.
+ *
+ * Uses the `name=expression` syntax to define custom property names for computed values
+ * derived from paths or transformations.
+ *
+ * @example
+ *
+ * ```typescript
+ * const query: Query = {
+ *   "vendorName=vendor.name": "",     // path binding
+ *   "releaseYear=year:releaseDate": 0 // transform binding
+ * };
+ * ```
+ */
+export type Binding =
+	`${Identifier}=${Expression}`;
 
 /**
  * Computed expression for deriving values from resource properties.
@@ -634,6 +678,36 @@ export type Transform = {
 	 */
 	datatype?: "boolean" | "number" | "string";
 
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * Type guard for {@link Binding} values.
+ *
+ * Validates that a value is a string matching the `name=expression` syntax,
+ * where `name` is a valid {@link Identifier} and `expression` is a valid {@link Expression}.
+ *
+ * @param value The value to check
+ *
+ * @returns `true` if the value is a valid binding string
+ */
+export function isBinding(value: unknown): value is Binding {
+	return isString(value) && BindingPattern.test(value);
+}
+
+/**
+ * Type guard for {@link Expression} values.
+ *
+ * Validates that a value is a string matching the expression syntax `[transform:]*[path]`.
+ * Empty strings are valid (both transform and path are optional).
+ *
+ * @param value The value to check
+ * @returns `true` if the value is a valid expression string
+ */
+export function isExpression(value: unknown): value is Expression {
+	return isString(value) && ExpressionPattern.test(value);
 }
 
 

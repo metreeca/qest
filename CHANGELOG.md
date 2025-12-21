@@ -7,6 +7,12 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unpublished](https://github.com/metreeca/qest/compare/v0.9.1...HEAD)
 
+### Added
+
+- Add `Binding` type for named computed expressions in projections
+- Add `isBinding()` and `isExpression()` type guards
+- Add `BindingPattern` and `ExpressionPattern` regex constants
+
 ### Changed
 
 - Rename `Text`/`Texts` types to `Local`/`Locals` for language-tagged text maps
@@ -15,6 +21,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Add `Tag` validation for `Local`/`Locals` language maps in resource validators
 - Add `TagRange` validation for language-tagged projection keys in query validators
+- Add `Identifier | Binding` key validation for projection entries in query validators
 
 ## [0.9.1](https://github.com/metreeca/qest/releases/tag/v0.9.1) - 2025-12-10
 

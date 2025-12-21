@@ -16,7 +16,16 @@
 
 import { describe, expect, it } from "vitest";
 import { decodeBase64 } from "./base64.js";
-import { Criterion, decodeCriterion, decodeQuery, encodeCriterion, encodeQuery, Query } from "./query.js";
+import {
+	Criterion,
+	decodeCriterion,
+	decodeQuery,
+	encodeCriterion,
+	encodeQuery,
+	isBinding,
+	isExpression,
+	Query
+} from "./query.js";
 
 
 function asQuery(q: object): Query { return q as Query; }
@@ -175,9 +184,9 @@ describe("encodeQuery()", () => {
 				expect(encoded).toBe(encodeURIComponent(JSON.stringify(query)));
 			});
 
-			it("should encode query with empty array", async () => {
+			it("should encode query with singleton array", async () => {
 				const query = asQuery({
-					items: []
+					items: [{}]
 				});
 				const encoded = encodeQuery(query, { mode: "json" });
 
@@ -916,7 +925,7 @@ describe("encodeQuery()", () => {
 			});
 
 			it("should encode dictionary with multi-value tags", async () => {
-				const query = asQuery({ "?name": { "en": ["Widget", "Gadget"], "fr": "Bidule" } });
+				const query = asQuery({ "?name": { "en": ["Widget", "Gadget"], "fr": ["Bidule"] } });
 				const encoded = encodeQuery(query, { mode: "form" });
 
 				// ?name="Widget"@en&?name="Gadget"@en&?name="Bidule"@fr
@@ -1378,16 +1387,16 @@ describe("decodeQuery()", () => {
 				expect(decoded).toHaveProperty("^price", "descending");
 			});
 
-			it("should decode ascending case-insensitive", async () => {
-				const decoded = decodeQuery("^price=ASC");
+			it("should decode ascending keyword", async () => {
+				const decoded = decodeQuery("^price=asc");
 
-				expect(decoded).toHaveProperty("^price", "ASC");
+				expect(decoded).toHaveProperty("^price", "asc");
 			});
 
-			it("should decode descending case-insensitive", async () => {
-				const decoded = decodeQuery("^price=DESCENDING");
+			it("should decode descending keyword", async () => {
+				const decoded = decodeQuery("^price=descending");
 
-				expect(decoded).toHaveProperty("^price", "DESCENDING");
+				expect(decoded).toHaveProperty("^price", "descending");
 			});
 
 			it("should decode numeric priority encoded", async () => {
@@ -2091,6 +2100,162 @@ describe("decodeCriterion()", () => {
 
 		it("should reject empty string", async () => {
 			expect(() => decodeCriterion("")).toThrow();
+		});
+
+	});
+
+});
+
+
+describe("isExpression()", () => {
+
+	describe("valid expressions", () => {
+
+		it("should accept simple identifier", async () => {
+			expect(isExpression("name")).toBe(true);
+		});
+
+		it("should accept dotted path", async () => {
+			expect(isExpression("vendor.name")).toBe(true);
+		});
+
+		it("should accept deep path", async () => {
+			expect(isExpression("order.items.price")).toBe(true);
+		});
+
+		it("should accept single transform", async () => {
+			expect(isExpression("year:releaseDate")).toBe(true);
+		});
+
+		it("should accept transform pipeline", async () => {
+			expect(isExpression("round:avg:scores")).toBe(true);
+		});
+
+		it("should accept aggregate without path", async () => {
+			expect(isExpression("count:")).toBe(true);
+		});
+
+		it("should accept transform with dotted path", async () => {
+			expect(isExpression("sum:items.price")).toBe(true);
+		});
+
+		it("should accept unicode identifiers", async () => {
+			expect(isExpression("prénom")).toBe(true);
+			expect(isExpression("名前")).toBe(true);
+		});
+
+		it("should accept identifiers with $ and _", async () => {
+			expect(isExpression("$price")).toBe(true);
+			expect(isExpression("_internal")).toBe(true);
+		});
+
+		it("should accept empty string", async () => {
+			expect(isExpression("")).toBe(true);
+		});
+
+	});
+
+	describe("invalid expressions", () => {
+
+		it("should reject non-string values", async () => {
+			expect(isExpression(null)).toBe(false);
+			expect(isExpression(undefined)).toBe(false);
+			expect(isExpression(123)).toBe(false);
+			expect(isExpression({})).toBe(false);
+		});
+
+		it("should reject leading dot", async () => {
+			expect(isExpression(".name")).toBe(false);
+		});
+
+		it("should reject trailing dot", async () => {
+			expect(isExpression("name.")).toBe(false);
+		});
+
+		it("should reject double dots", async () => {
+			expect(isExpression("vendor..name")).toBe(false);
+		});
+
+		it("should reject leading colon", async () => {
+			expect(isExpression(":name")).toBe(false);
+		});
+
+		it("should reject invalid characters", async () => {
+			expect(isExpression("name@field")).toBe(false);
+			expect(isExpression("name#field")).toBe(false);
+		});
+
+	});
+
+});
+
+
+describe("isBinding()", () => {
+
+	describe("valid bindings", () => {
+
+		it("should accept simple binding", async () => {
+			expect(isBinding("name=value")).toBe(true);
+		});
+
+		it("should accept binding with dotted path", async () => {
+			expect(isBinding("vendorName=vendor.name")).toBe(true);
+		});
+
+		it("should accept binding with transform", async () => {
+			expect(isBinding("releaseYear=year:releaseDate")).toBe(true);
+		});
+
+		it("should accept binding with aggregate", async () => {
+			expect(isBinding("total=count:")).toBe(true);
+		});
+
+		it("should accept binding with transform pipeline", async () => {
+			expect(isBinding("result=round:avg:scores")).toBe(true);
+		});
+
+		it("should accept binding with empty expression", async () => {
+			expect(isBinding("self=")).toBe(true);
+		});
+
+		it("should accept unicode identifiers", async () => {
+			expect(isBinding("名前=prénom")).toBe(true);
+		});
+
+		it("should accept identifiers with $ and _", async () => {
+			expect(isBinding("$result=_internal")).toBe(true);
+		});
+
+	});
+
+	describe("invalid bindings", () => {
+
+		it("should reject non-string values", async () => {
+			expect(isBinding(null)).toBe(false);
+			expect(isBinding(undefined)).toBe(false);
+			expect(isBinding(123)).toBe(false);
+			expect(isBinding({})).toBe(false);
+		});
+
+		it("should reject empty string", async () => {
+			expect(isBinding("")).toBe(false);
+		});
+
+		it("should reject missing identifier", async () => {
+			expect(isBinding("=value")).toBe(false);
+		});
+
+		it("should reject missing equals sign", async () => {
+			expect(isBinding("name")).toBe(false);
+		});
+
+		it("should reject invalid identifier", async () => {
+			expect(isBinding("123name=value")).toBe(false);
+		});
+
+		it("should reject invalid expression", async () => {
+			expect(isBinding("name=.invalid")).toBe(false);
+			expect(isBinding("name=:invalid")).toBe(false);
 		});
 
 	});
