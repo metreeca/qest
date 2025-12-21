@@ -270,7 +270,7 @@ import { TagRange } from "@metreeca/core/language";
 import { immutable } from "@metreeca/core/nested";
 import type { IRI } from "@metreeca/core/resource";
 import { asIRI, internalize, isIRI, resolve } from "@metreeca/core/resource";
-import * as QueryParser from "./$/query.pegjs.js";
+import * as QueryParser from "./query.pegjs.js";
 import { decodeBase64, encodeBase64 } from "./base64.js";
 import { BindingSource, ExpressionSource } from "./index.js";
 import { asCriterion, asQuery, asString, asTransforms } from "./query.type.js";
@@ -327,45 +327,71 @@ export const ExpressionPattern = new RegExp(`^${ExpressionSource}$`, "u");
  */
 export const Transforms = transforms([
 
-	/** Count of values in collection */
+	/**
+	 * Count of values in collection.
+	 */
 	{ name: "count", aggregate: true, datatype: "number" },
 
-	/** Minimum value in collection */
+	/**
+	 * Minimum value in collection.
+	 */
 	{ name: "min", aggregate: true },
 
-	/** Maximum value in collection */
+	/**
+	 * Maximum value in collection.
+	 */
 	{ name: "max", aggregate: true },
 
-	/** Sum of values in collection */
+	/**
+	 * Sum of values in collection.
+	 */
 	{ name: "sum", aggregate: true, datatype: "number" },
 
-	/** Average of values in collection */
+	/**
+	 * Average of values in collection.
+	 */
 	{ name: "avg", aggregate: true, datatype: "number" },
 
-	/** Arbitrary value from collection */
+	/**
+	 * Arbitrary value from collection.
+	 */
 	{ name: "sample", aggregate: true },
 
 
-	/** Absolute value */
+	/**
+	 * Absolute value.
+	 */
 	{ name: "abs", aggregate: false, datatype: "number" },
 
-	/** Floor to the largest integer less than or equal to value */
+	/**
+	 * Floor to the largest integer less than or equal to value.
+	 */
 	{ name: "floor", aggregate: false, datatype: "number" },
 
-	/** Ceiling to the smallest integer greater than or equal to value */
+	/**
+	 * Ceiling to the smallest integer greater than or equal to value.
+	 */
 	{ name: "ceil", aggregate: false, datatype: "number" },
 
-	/** Round to nearest integer */
+	/**
+	 * Round to nearest integer.
+	 */
 	{ name: "round", aggregate: false, datatype: "number" },
 
 
-	/** Extract year component from calendrical values */
+	/**
+	 * Extract year component from calendrical values.
+	 */
 	{ name: "year", aggregate: false, datatype: "number" },
 
-	/** Extract month component from calendrical values */
+	/**
+	 * Extract month component from calendrical values.
+	 */
 	{ name: "month", aggregate: false, datatype: "number" },
 
-	/** Extract day component from calendrical values */
+	/**
+	 * Extract day component from calendrical values.
+	 */
 	{ name: "day", aggregate: false, datatype: "number" }
 
 ]);
@@ -704,6 +730,7 @@ export function isBinding(value: unknown): value is Binding {
  * Empty strings are valid (both transform and path are optional).
  *
  * @param value The value to check
+ *
  * @returns `true` if the value is a valid expression string
  */
 export function isExpression(value: unknown): value is Expression {
@@ -735,6 +762,12 @@ export function isExpression(value: unknown): value is Expression {
  * @param options.base Base IRI for internalizing absolute references (must be absolute and hierarchical);
  *   if omitted, no IRI rewriting is performed
  *
+ * @returns The encoded query string, with internalized IRIs if `base` is provided
+ *
+ * @throws RangeError If `base` is provided but not an absolute hierarchical IRI
+ * @throws TypeGuardError If `query` is not a valid {@link Query} or `mode` is not a string
+ * @throws TypeError If `mode` is not a supported encoding
+ *
  * @remarks
  *
  * The `"form"` format always encodes to canonical form:
@@ -746,12 +779,6 @@ export function isExpression(value: unknown): value is Expression {
  *
  * This ensures consistent, predictable output. The decoder accepts both canonical and shorthand forms (e.g., postfix
  * operators like `price>=100`, unquoted strings like `name=widget`).
- *
- * @returns The encoded query string, with internalized IRIs if `base` is provided
- *
- * @throws RangeError If `base` is provided but not an absolute hierarchical IRI
- * @throws TypeGuardError If `query` is not a valid {@link Query} or `mode` is not a string
- * @throws TypeError If `mode` is not a supported encoding
  *
  * @see {@link decodeQuery}
  */
@@ -838,6 +865,12 @@ export function encodeQuery(query: Query, {
  * @param options.base Base IRI for resolving internal references (must be absolute and hierarchical);
  *   if omitted, no IRI rewriting is performed
  *
+ * @returns The decoded query object, with resolved IRIs if `base` is provided
+ *
+ * @throws RangeError If `base` is provided but not an absolute hierarchical IRI
+ * @throws TypeGuardError If `query` is not a string or not a valid {@link Query}
+ * @throws Error If `query` is malformed or unparseable
+ *
  * @remarks
  *
  * For `"form"` format, the decoder accepts both canonical and shorthand forms:
@@ -848,12 +881,6 @@ export function encodeQuery(query: Query, {
  * - Unquoted strings (shorthand): `name=widget`
  *
  * Tagged strings always require the canonical `"value"@tag` format.
- *
- * @returns The decoded query object, with resolved IRIs if `base` is provided
- *
- * @throws RangeError If `base` is provided but not an absolute hierarchical IRI
- * @throws TypeGuardError If `query` is not a string or not a valid {@link Query}
- * @throws Error If `query` is malformed or unparseable
  *
  * @see {@link encodeQuery}
  */
@@ -938,6 +965,7 @@ export function decodeQuery(query: string, {
  * Serializes a parsed {@link Criterion} back into its compact string representation suitable for use as a Query key.
  *
  * @param criterion The criterion to encode
+ *
  * @returns The encoded key string
  *
  * @throws TypeGuardError If `criterion` is not a valid {@link Criterion}
@@ -968,6 +996,7 @@ export function encodeCriterion(criterion: Criterion): string {
  * from constraint keys based on the presence of an {@link Operator} prefix.
  *
  * @param key The query key string to decode
+ *
  * @returns The parsed criterion
  *
  * @throws TypeGuardError If `key` is not a string

@@ -14,9 +14,44 @@
  * limitations under the License.
  */
 
+/**
+ * Regex source patterns for query grammar.
+ *
+ * Provides unanchored regex source strings for embedding in Peggy grammars and composite patterns. Derived from
+ * {@link IdentifierPattern} to maintain consistency with the core identifier validation rules.
+ *
+ * @internal
+ *
+ * @module
+ */
+
 import { IdentifierPattern } from "@metreeca/core";
 
 
+/**
+ * Regex source for matching ECMAScript identifiers.
+ *
+ * Unanchored version of {@link IdentifierPattern} (without `^` and `$` anchors) for embedding in composite patterns.
+ *
+ * @internal
+ */
 export const IdentifierSource = IdentifierPattern.source.slice(1, -1); // strip ^ and $
+
+/**
+ * Regex source for matching query expressions.
+ *
+ * Matches the pattern `[transform:]*[path]` where `transform` and `path` steps are identifiers.
+ *
+ * @internal
+ */
 export const ExpressionSource = `(${IdentifierSource}:)*(${IdentifierSource}(\\.${IdentifierSource})*)?`;
+
+/**
+ * Regex source for matching query bindings.
+ *
+ * Matches the pattern `name=expression` where `name` is an identifier and `expression` follows
+ * {@link ExpressionSource} syntax.
+ *
+ * @internal
+ */
 export const BindingSource = `${IdentifierSource}=${ExpressionSource}`;

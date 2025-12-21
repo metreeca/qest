@@ -48,7 +48,10 @@
  * Encodes a string to URL-safe base64.
  *
  * @param plain The string to encode
+ *
  * @returns The URL-safe base64-encoded string
+ *
+ * @see {@link decodeBase64}
  */
 export function encodeBase64(plain: string): string {
 
@@ -68,7 +71,10 @@ export function encodeBase64(plain: string): string {
  * Handles both padded and unpadded input, restoring padding as needed before decoding.
  *
  * @param encoded The URL-safe base64-encoded string
+ *
  * @returns The decoded string
+ *
+ * @see {@link encodeBase64}
  */
 export function decodeBase64(encoded: string): string {
 
