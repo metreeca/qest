@@ -16,19 +16,11 @@ description: Development guidelines and conventions for the @metreeca/qest packa
   - [Parsing Expression Grammar (PEG)](https://en.wikipedia.org/wiki/Parsing_expression_grammar) - Formal grammar type
   - [peggy npm](https://www.npmjs.com/package/peggy) - Package repository
 
-- Runtime Validation:
-  - [Typia](https://typia.io/) - AOT TypeScript runtime validator
-  - [Typia Setup](https://typia.io/docs/setup/) - Installation and configuration
-  - [Typia Validators](https://typia.io/docs/validators/) - Validation functions API
-  - [typia npm](https://www.npmjs.com/package/typia) - Package repository
-
-
 # NPM Scripts
 
 - **`npm run clean`** - Remove build artifacts and dependencies (dist, docs, node_modules)
 - **`npm run setup`** - Install dependencies and apply security fixes
 - **`npm run peggy`** - Generate Peggy parsers (must be used before testing grammar changes)
-- **`npm run typia`** - Generate Typia validators (must be used before testing validator changes)
 - **`npm run build`** - Build TypeScript and generate TypeDoc documentation
 - **`npm run check`** - Run Vitest test suite
 - **`npm run watch`** - Watch and recompile TypeScript on changes
@@ -58,44 +50,35 @@ parser.parse(input, { startRule: "rule1" });
 parser.parse(input, { startRule: "rule2" });
 ```
 
-# Typia Runtime Validation
+# Runtime Validation
 
-Typia generates optimized runtime validators from pure TypeScript types via AOT compilation.
+Validators use the chained ternary pattern for type-safe runtime validation at public API boundaries.
 
-## Usage Pattern
+## Validator Files
 
-Prefer JSDoc comment tags (`@pattern`, `@minimum`, etc.) on interfaces in app code over `tags.*` type helpers.
-Use `*Equals` variants to reject excess properties.
+- `state.type.ts` — validators for Resource and Patch types
+- `query.type.ts` — validators for Query, Criterion, and Transform types
+
+## Pattern
+
+Validators accept `unknown` input and return the validated type, throwing `TypeError` on failure:
 
 ```typescript
-// src/query.ts - interface with JSDoc constraints
-export interface Transform {
-    /** @pattern ^[_$A-Za-z][_$A-Za-z0-9]*$ */
-    name: string;
+export function assertResource(value: unknown): Resource {
+    return !isObject(value) ? error(new TypeError("expected object"))
+        : !isResourceObject(value) ? error(new TypeError("invalid resource"))
+            : value as Resource;
 }
-
-// src/validators/templates/transforms.ts - minimal template
-import typia from "typia";
-import { Transform } from "../../query.js";
-
-export const assertTransform = typia.createAssert<Transform>();       // allows extra fields
-export const assertTransform = typia.createAssertEquals<Transform>(); // rejects extra fields
 ```
-
-Run `npm run typia` to generate `src/validators/transforms.ts` with full validation logic.
 
 ## Validation Functions
 
-| Function             | Returns          | Throws            | Excess Properties |
-|----------------------|------------------|-------------------|-------------------|
-| `is<T>()`            | `boolean`        | No                | Allowed           |
-| `assert<T>()`        | `T`              | `TypeGuardError`  | Allowed           |
-| `validate<T>()`      | `IValidation<T>` | No                | Allowed           |
-| `equals<T>()`        | `boolean`        | No                | Rejected          |
-| `assertEquals<T>()`  | `T`              | `TypeGuardError`  | Rejected          |
-| `validateEquals<T>()`| `IValidation<T>` | No                | Rejected          |
-
-## Limitations
-
-Regex patterns lack `u` flag support for Unicode property escapes (`\p{ID_Start}`, `\p{ID_Continue}`).
-Use explicit ranges or external validators for full Unicode. See [#1699](https://github.com/samchon/typia/issues/1699).
+| Function             | Validates                   |
+|----------------------|-----------------------------|
+| `assertString()`     | String values               |
+| `assertResource()`   | Resource objects            |
+| `assertPatch()`      | Patch objects               |
+| `assertQuery()`      | Query objects               |
+| `assertCriterion()`  | Criterion objects           |
+| `assertTransform()`  | Transform objects           |
+| `assertTransforms()` | Transform arrays            |

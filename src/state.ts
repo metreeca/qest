@@ -283,7 +283,7 @@ import { Identifier } from "@metreeca/core";
 import { Tag } from "@metreeca/core/language";
 import { immutable } from "@metreeca/core/nested";
 import { asIRI, internalize, IRI, isIRI, resolve } from "@metreeca/core/resource";
-import { assertPatch, assertResource, assertString } from "./$/state.typia.js";
+import { asPatch, asResource, asString } from "./state.type.js";
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -451,7 +451,7 @@ export function encodeResource(resource: Resource, {
 
 }: CodecOpts = {}): string {
 
-	const $resource = assertResource(resource);
+	const $resource = asResource(resource);
 
 	if ( base === undefined ) {
 
@@ -496,17 +496,17 @@ export function decodeResource(resource: string, {
 
 }: CodecOpts = {}): Resource {
 
-	const $resource = assertString(resource);
+	const $resource = asString(resource);
 
 	if ( base === undefined ) {
 
-		return immutable(assertResource(JSON.parse($resource)));
+		return immutable(asResource(JSON.parse($resource)));
 
 	} else {
 
 		const $base = asIRI(base, "hierarchical");
 
-		return immutable(assertResource(JSON.parse($resource, (_key, value) =>
+		return immutable(asResource(JSON.parse($resource, (_key, value) =>
 			isIRI(value, "internal")
 				? resolve($base, value)
 				: value
@@ -540,7 +540,7 @@ export function encodePatch(patch: Patch, {
 
 }: CodecOpts = {}): string {
 
-	const $patch = assertPatch(patch);
+	const $patch = asPatch(patch);
 
 	if ( base === undefined ) {
 
@@ -585,17 +585,17 @@ export function decodePatch(patch: string, {
 
 }: CodecOpts = {}): Patch {
 
-	const $patch = assertString(patch);
+	const $patch = asString(patch);
 
 	if ( base === undefined ) {
 
-		return immutable(assertPatch(JSON.parse($patch)));
+		return immutable(asPatch(JSON.parse($patch)));
 
 	} else {
 
 		const $base = asIRI(base, "hierarchical");
 
-		return immutable(assertPatch(JSON.parse($patch, (_key, value) =>
+		return immutable(asPatch(JSON.parse($patch, (_key, value) =>
 			isIRI(value, "internal")
 				? resolve($base, value)
 				: value
