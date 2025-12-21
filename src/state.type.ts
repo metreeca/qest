@@ -20,8 +20,9 @@
  * @module
  */
 
-import { isArray, isBoolean, isNumber, isObject, isString } from "@metreeca/core/json";
 import { error } from "@metreeca/core/error";
+import { isArray, isBoolean, isNumber, isObject, isString } from "@metreeca/core/json";
+import { isTag } from "@metreeca/core/language";
 import type { Patch, Resource } from "./state.js";
 
 
@@ -47,7 +48,7 @@ export function asString(value: unknown): string {
 export function asResource(value: unknown): Resource {
 	return !isObject(value) ? error(new TypeError("expected object"))
 		: !isResourceObject(value) ? error(new TypeError("invalid resource"))
-			: value as Resource;
+			: value as unknown as Resource;
 }
 
 /**
@@ -60,31 +61,20 @@ export function asResource(value: unknown): Resource {
 export function asPatch(value: unknown): Patch {
 	return !isObject(value) ? error(new TypeError("expected object"))
 		: !isPatchObject(value) ? error(new TypeError("invalid patch"))
-			: value as Patch;
+			: value as unknown as Patch;
 }
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/**
- * Checks if an object is a valid Resource.
- */
 function isResourceObject(obj: Record<string, unknown>): boolean {
 	return Object.values(obj).every(isValues);
 }
 
-/**
- * Checks if an object is a valid Patch.
- */
 function isPatchObject(obj: Record<string, unknown>): boolean {
 	return Object.values(obj).every(v => v === null || isValues(v));
 }
 
-/**
- * Checks if a value is a valid Values type.
- *
- * Values = Value | Local | Locals | readonly Value[]
- */
 function isValues(value: unknown): boolean {
 	return isValue(value)
 		|| isLocal(value)
@@ -92,13 +82,6 @@ function isValues(value: unknown): boolean {
 		|| (isArray(value) && value.every(isValue));
 }
 
-/**
- * Checks if a value is a valid Value type.
- *
- * Value = Literal | Reference | Resource
- * Literal = boolean | number | string
- * Reference = string (IRI)
- */
 function isValue(value: unknown): boolean {
 	return isBoolean(value)
 		|| isNumber(value)
@@ -106,24 +89,16 @@ function isValue(value: unknown): boolean {
 		|| (isObject(value) && isResourceObject(value));
 }
 
-/**
- * Checks if a value is a Local (single-valued language map).
- *
- * Local = { readonly [tag: Tag]: string }
- */
 function isLocal(value: unknown): boolean {
 	return isObject(value)
 		&& Object.keys(value).length > 0
+		&& Object.keys(value).every(isTag)
 		&& Object.values(value).every(isString);
 }
 
-/**
- * Checks if a value is a Locals (multi-valued language map).
- *
- * Locals = { readonly [tag: Tag]: readonly string[] }
- */
 function isLocals(value: unknown): boolean {
 	return isObject(value)
 		&& Object.keys(value).length > 0
+		&& Object.keys(value).every(isTag)
 		&& Object.values(value).every(v => isArray(v) && v.every(isString));
 }

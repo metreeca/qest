@@ -49,36 +49,3 @@ parser.parse(input);
 parser.parse(input, { startRule: "rule1" });
 parser.parse(input, { startRule: "rule2" });
 ```
-
-# Runtime Validation
-
-Validators use the chained ternary pattern for type-safe runtime validation at public API boundaries.
-
-## Validator Files
-
-- `state.type.ts` — validators for Resource and Patch types
-- `query.type.ts` — validators for Query, Criterion, and Transform types
-
-## Pattern
-
-Validators accept `unknown` input and return the validated type, throwing `TypeError` on failure:
-
-```typescript
-export function assertResource(value: unknown): Resource {
-    return !isObject(value) ? error(new TypeError("expected object"))
-        : !isResourceObject(value) ? error(new TypeError("invalid resource"))
-            : value as Resource;
-}
-```
-
-## Validation Functions
-
-| Function             | Validates                   |
-|----------------------|-----------------------------|
-| `assertString()`     | String values               |
-| `assertResource()`   | Resource objects            |
-| `assertPatch()`      | Patch objects               |
-| `assertQuery()`      | Query objects               |
-| `assertCriterion()`  | Criterion objects           |
-| `assertTransform()`  | Transform objects           |
-| `assertTransforms()` | Transform arrays            |

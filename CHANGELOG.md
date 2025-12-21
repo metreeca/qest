@@ -11,6 +11,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Rename `Text`/`Texts` types to `Local`/`Locals` for language-tagged text maps
 
+### Fixed
+
+- Add `Tag` validation for `Local`/`Locals` language maps in resource validators
+- Add `TagRange` validation for language-tagged projection keys in query validators
+
 ## [0.9.1](https://github.com/metreeca/qest/releases/tag/v0.9.1) - 2025-12-10
 
 ### Added

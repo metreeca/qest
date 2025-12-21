@@ -21,9 +21,12 @@
  */
 
 import { isIdentifier } from "@metreeca/core";
-import { isArray, isBoolean, isNull, isNumber, isObject, isString } from "@metreeca/core/json";
 import { error } from "@metreeca/core/error";
+import { isArray, isBoolean, isNull, isNumber, isObject, isString } from "@metreeca/core/json";
+import { isTagRange } from "@metreeca/core/language";
 import type { Criterion, Query, Transform } from "./query.js";
+
+export { asString } from "./state.type.js";
 
 
 const CriterionKeys = new Set(["target", "pipe", "path"]);
@@ -34,18 +37,6 @@ const DatatypeValues = new Set(["boolean", "number", "string"]);
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-/**
- * Validates that a value is a string.
- *
- * @param value The value to validate
- * @returns The validated string
- * @throws TypeError If the value is not a string
- */
-export function asString(value: unknown): string {
-	return !isString(value) ? error(new TypeError("expected string"))
-		: value;
-}
 
 /**
  * Validates that a value is a {@link Query}.
@@ -86,8 +77,10 @@ export function asCriterion(value: unknown): Criterion {
 export function asTransform(value: unknown): Transform {
 	return !isObject(value) ? error(new TypeError("expected object"))
 		: !isIdentifier(value.name) ? error(new TypeError("expected identifier name"))
-			: !(value.aggregate === undefined || isBoolean(value.aggregate)) ? error(new TypeError("expected boolean aggregate"))
-				: !(value.datatype === undefined || DatatypeValues.has(value.datatype as string)) ? error(new TypeError("expected datatype"))
+			: !(value.aggregate === undefined || isBoolean(value.aggregate))
+				? error(new TypeError("expected boolean aggregate"))
+				: !(value.datatype === undefined || (isString(value.datatype) && DatatypeValues.has(value.datatype)))
+					? error(new TypeError("expected datatype"))
 					: !Object.keys(value).every(key => TransformKeys.has(key)) ? error(new TypeError("unexpected properties"))
 						: value as unknown as Transform;
 }
@@ -107,25 +100,16 @@ export function asTransforms(value: unknown): readonly Transform[] {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/**
- * Checks if an object is a valid Query.
- */
 function isQueryObject(obj: Record<string, unknown>): boolean {
 	return Object.entries(obj).every(([key, value]) => isQueryEntry(key, value));
 }
 
-/**
- * Checks if a key-value pair is a valid Query entry.
- */
 function isQueryEntry(key: string, value: unknown): boolean {
 	return key === "@" || key === "#"
 		? value === undefined || isNumber(value) || error(new TypeError(`expected number for '${key}'`))
 		: isQueryValue(value) || error(new TypeError(`invalid value for '${key}'`));
 }
 
-/**
- * Checks if a value is a valid Query value type.
- */
 function isQueryValue(value: unknown): boolean {
 	return value === undefined
 		|| isNull(value)
@@ -133,12 +117,35 @@ function isQueryValue(value: unknown): boolean {
 		|| isNumber(value)
 		|| isString(value)
 		|| (isArray(value) && isQueryArrayValue(value))
-		|| (isObject(value) && isQueryObject(value));
+		|| (isObject(value) && isQueryObjectValue(value));
 }
 
-/**
- * Checks if an array is a valid Query array value.
- */
+function isQueryObjectValue(obj: Record<string, unknown>): boolean {
+	return isLocalModel(obj) || isLocalsModel(obj) || isQueryObject(obj);
+}
+
+function isLocalModel(obj: Record<string, unknown>): boolean {
+
+	const keys = Object.keys(obj);
+	const values = Object.values(obj);
+
+	return keys.length > 0
+		&& keys.every(isTagRange)
+		&& values.every(isString);
+
+}
+
+function isLocalsModel(obj: Record<string, unknown>): boolean {
+
+	const keys = Object.keys(obj);
+	const values = Object.values(obj);
+
+	return keys.length > 0
+		&& keys.every(isTagRange)
+		&& values.every(v => isArray(v) && v.length === 1 && isString(v[0]));
+
+}
+
 function isQueryArrayValue(arr: readonly unknown[]): boolean {
 	return arr.length === 0
 		|| arr.every(isString)
@@ -146,9 +153,6 @@ function isQueryArrayValue(arr: readonly unknown[]): boolean {
 		|| arr.every(item => isObject(item) && isQueryObject(item as Record<string, unknown>));
 }
 
-/**
- * Checks if a value is a valid Option.
- */
 function isOption(value: unknown): boolean {
 	return isNull(value) || isBoolean(value) || isNumber(value) || isString(value);
 }
