@@ -40,10 +40,10 @@
     "node": ">=22.0.0"
   },
   "scripts": {
-    "clean": "rm -rf dist docs node_modules src/*.js src/query.pegjs.*",
+    "clean": "rm -rf dist docs node_modules src/*.pegjs.*",
     "setup": "npm install && npm audit fix",
-    "peggy": "npx peggy --dts --format es --allowed-start-rules '*' --output 'src/query.pegjs.js' 'src/query.pegjs'",
-    "build": "rm -rf dist docs && npm run peggy && tsc -p tsconfig.build.json && npx typedoc",
+    "peggy": "npx peggy --dts --format es --allowed-start-rules '*' --output src/query.pegjs.js src/query.pegjs",
+    "build": "rm -rf dist docs && npm run peggy && tsc -p tsconfig.build.json && cp src/*.pegjs.* dist && npx typedoc",
     "check": "npx vitest --typecheck run",
     "watch": "npx tsc --watch",
     "proof": "npx typedoc && (npx typedoc --watch & npx five-server docs --open)"
