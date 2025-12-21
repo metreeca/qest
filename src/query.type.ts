@@ -204,7 +204,7 @@ function isPagingEntry(key: string, value: unknown): boolean {
 // Expression
 
 function isExpression(expr: string): boolean {
-	return expr.length > 0 && ExpressionPattern.test(expr);
+	return ExpressionPattern.test(expr);
 }
 
 
