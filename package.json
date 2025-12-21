@@ -40,9 +40,9 @@
     "node": ">=22.0.0"
   },
   "scripts": {
-    "clean": "rm -rf dist docs node_modules 'src/$'",
+    "clean": "rm -rf dist docs node_modules src/*.js src/query.pegjs.*",
     "setup": "npm install && npm audit fix",
-    "peggy": "npx peggy --dts --format es --allowed-start-rules '*' --output 'src/$/query.pegjs.js' 'src/$peggy/query.pegjs'",
+    "peggy": "npx peggy --dts --format es --allowed-start-rules '*' --output 'src/query.pegjs.js' 'src/query.pegjs'",
     "build": "rm -rf dist docs && npm run peggy && tsc -p tsconfig.build.json && npx typedoc",
     "check": "npx vitest --typecheck run",
     "watch": "npx tsc --watch",

@@ -270,9 +270,9 @@ import { TagRange } from "@metreeca/core/language";
 import { immutable } from "@metreeca/core/nested";
 import type { IRI } from "@metreeca/core/resource";
 import { asIRI, internalize, isIRI, resolve } from "@metreeca/core/resource";
-import * as QueryParser from "./query.pegjs.js";
 import { decodeBase64, encodeBase64 } from "./base64.js";
 import { BindingSource, ExpressionSource } from "./index.js";
+import * as QueryParser from "./query.pegjs.js";
 import { asCriterion, asQuery, asString, asTransforms } from "./query.type.js";
 import { CodecOpts, Literal, Local, Locals, Reference, Resource } from "./state.js";
 
@@ -689,8 +689,6 @@ export type Transform = {
 	 *
 	 * @see https://www.unicode.org/reports/tr31/ - UAX #31: Unicode Identifiers and Syntax
 	 * @see https://github.com/samchon/typia/issues/1699 - Feature request for regex flags support
-	 *
-	 * @pattern ^[_$A-Za-z\xC0-\xD6\xD8-\xF6\xF8-\u017F][_$A-Za-z0-9\xC0-\xD6\xD8-\xF6\xF8-\u017F]*$
 	 */
 	name: string;
 
