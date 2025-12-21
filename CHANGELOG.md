@@ -22,6 +22,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Add `Tag` validation for `Local`/`Locals` language maps in resource validators
 - Add `TagRange` validation for language-tagged projection keys in query validators
 - Add `Identifier | Binding` key validation for projection entries in query validators
+- Add `Identifier` key validation for resource and patch entries in state validators
 
 ## [0.9.1](https://github.com/metreeca/qest/releases/tag/v0.9.1) - 2025-12-10
 

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { isIdentifier } from "@metreeca/core";
 import { error } from "@metreeca/core/error";
 import { isArray, isBoolean, isNumber, isObject, isString } from "@metreeca/core/json";
 import { isTag } from "@metreeca/core/language";
@@ -39,11 +40,11 @@ export function asPatch(value: unknown): Patch {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 function isResource(value: unknown): boolean {
-	return isObject(value, ([_, v]) => isValues(v));
+	return isObject(value, ([k, v]) => isIdentifier(k) && isValues(v));
 }
 
 function isPatch(value: unknown): boolean {
-	return isObject(value, ([_, v]) => v === null || isValues(v));
+	return isObject(value, ([k, v]) => isIdentifier(k) && (v === null || isValues(v)));
 }
 
 function isValues(value: unknown): boolean {
