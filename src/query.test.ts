@@ -17,20 +17,24 @@
 import { describe, expect, it } from "vitest";
 import { decodeBase64 } from "./base64.js";
 import {
+	asBinding,
+	asCriterion,
+	asExpression,
+	asModel,
+	asQuery,
 	Criterion,
 	decodeCriterion,
 	decodeQuery,
 	encodeCriterion,
 	encodeQuery,
 	isBinding,
+	isCriterion,
 	isExpression,
-	Query
+	isModel,
+	isQuery,
+	Query,
+	Transforms
 } from "./query.js";
-
-
-function asQuery(q: object): Query { return q as Query; }
-
-function asCriterion(c: object): Criterion { return c as Criterion; }
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2258,6 +2262,392 @@ describe("isBinding()", () => {
 			expect(isBinding("name=:invalid")).toBe(false);
 		});
 
+	});
+
+});
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+describe("isQuery()", () => {
+
+	describe("valid queries", () => {
+
+		it("should accept empty query", async () => {
+			expect(isQuery({})).toBeTruthy();
+		});
+
+		it("should accept projection entries", async () => {
+			expect(isQuery({ name: "" })).toBeTruthy();
+			expect(isQuery({ price: 0 })).toBeTruthy();
+			expect(isQuery({ available: true })).toBeTruthy();
+		});
+
+		it("should accept nested queries", async () => {
+			expect(isQuery({ vendor: { id: "", name: "" } })).toBeTruthy();
+		});
+
+		it("should accept query collections", async () => {
+			expect(isQuery({ items: [{ id: "", name: "" }] })).toBeTruthy();
+		});
+
+		it("should accept filtering entries", async () => {
+			expect(isQuery({ ">=price": 50 })).toBeTruthy();
+			expect(isQuery({ "<=price": 150 })).toBeTruthy();
+			expect(isQuery({ ">price": 50 })).toBeTruthy();
+			expect(isQuery({ "<price": 150 })).toBeTruthy();
+			expect(isQuery({ "~name": "widget" })).toBeTruthy();
+			expect(isQuery({ "?category": ["a", "b"] })).toBeTruthy();
+			expect(isQuery({ "!tags": ["featured"] })).toBeTruthy();
+		});
+
+		it("should accept ordering entries", async () => {
+			expect(isQuery({ "*category": ["electronics"] })).toBeTruthy();
+			expect(isQuery({ "^price": 1 })).toBeTruthy();
+			expect(isQuery({ "^name": "asc" })).toBeTruthy();
+			expect(isQuery({ "^name": "desc" })).toBeTruthy();
+		});
+
+		it("should accept paging entries", async () => {
+			expect(isQuery({ "@": 10 })).toBeTruthy();
+			expect(isQuery({ "#": 25 })).toBeTruthy();
+		});
+
+		it("should accept binding keys", async () => {
+			expect(isQuery({ "vendorName=vendor.name": "" })).toBeTruthy();
+			expect(isQuery({ "total=count:": 0 })).toBeTruthy();
+		});
+
+		it("should accept local models", async () => {
+			expect(isQuery({ name: { "*": "" } })).toBeTruthy();
+			expect(isQuery({ name: { "en": "", "fr": "" } })).toBeTruthy();
+		});
+
+		it("should accept reference values", async () => {
+			expect(isQuery({ id: "/products/42" })).toBeTruthy();
+		});
+
+	});
+
+	describe("invalid queries", () => {
+
+		it("should reject non-objects", async () => {
+			expect(isQuery(null)).toBeFalsy();
+			expect(isQuery(undefined)).toBeFalsy();
+			expect(isQuery("string")).toBeFalsy();
+			expect(isQuery(123)).toBeFalsy();
+			expect(isQuery([])).toBeFalsy();
+		});
+
+		it("should reject invalid keys", async () => {
+			expect(isQuery({ "123invalid": "" })).toBeFalsy();
+			expect(isQuery({ "": "" })).toBeFalsy();
+		});
+
+		it("should reject invalid values", async () => {
+			expect(isQuery({ name: null })).toBeFalsy();
+			expect(isQuery({ name: undefined })).toBeFalsy();
+		});
+
+	});
+
+});
+
+
+describe("isCriterion()", () => {
+
+	describe("valid criteria", () => {
+
+		it("should accept simple projection criterion", async () => {
+			expect(isCriterion({ target: "name", pipe: [], path: [] })).toBeTruthy();
+		});
+
+		it("should accept criterion with path", async () => {
+			expect(isCriterion({ target: "city", pipe: [], path: ["address"] })).toBeTruthy();
+			expect(isCriterion({ target: "city", pipe: [], path: ["customer", "address"] })).toBeTruthy();
+		});
+
+		it("should accept criterion with pipe", async () => {
+			expect(isCriterion({ target: "releaseYear", pipe: ["year"], path: ["releaseDate"] })).toBeTruthy();
+			expect(isCriterion({ target: "avgPrice", pipe: ["round", "avg"], path: ["price"] })).toBeTruthy();
+		});
+
+		it("should accept filtering criteria", async () => {
+			expect(isCriterion({ target: "<", pipe: [], path: ["price"] })).toBeTruthy();
+			expect(isCriterion({ target: ">=", pipe: [], path: ["price"] })).toBeTruthy();
+			expect(isCriterion({ target: "~", pipe: [], path: ["name"] })).toBeTruthy();
+			expect(isCriterion({ target: "?", pipe: [], path: ["category"] })).toBeTruthy();
+		});
+
+		it("should accept ordering criteria", async () => {
+			expect(isCriterion({ target: "*", pipe: [], path: ["category"] })).toBeTruthy();
+			expect(isCriterion({ target: "^", pipe: [], path: ["price"] })).toBeTruthy();
+		});
+
+		it("should accept paging criteria", async () => {
+			expect(isCriterion({ target: "@", pipe: [], path: [] })).toBeTruthy();
+			expect(isCriterion({ target: "#", pipe: [], path: [] })).toBeTruthy();
+		});
+
+	});
+
+	describe("invalid criteria", () => {
+
+		it("should reject non-objects", async () => {
+			expect(isCriterion(null)).toBeFalsy();
+			expect(isCriterion(undefined)).toBeFalsy();
+			expect(isCriterion("string")).toBeFalsy();
+			expect(isCriterion(123)).toBeFalsy();
+		});
+
+		it("should reject missing target", async () => {
+			expect(isCriterion({ pipe: [], path: [] })).toBeFalsy();
+		});
+
+		it("should reject missing pipe", async () => {
+			expect(isCriterion({ target: "name", path: [] })).toBeFalsy();
+		});
+
+		it("should reject missing path", async () => {
+			expect(isCriterion({ target: "name", pipe: [] })).toBeFalsy();
+		});
+
+		it("should reject non-string target", async () => {
+			expect(isCriterion({ target: 123, pipe: [], path: [] })).toBeFalsy();
+		});
+
+		it("should reject non-array pipe", async () => {
+			expect(isCriterion({ target: "name", pipe: "year", path: [] })).toBeFalsy();
+		});
+
+		it("should reject non-array path", async () => {
+			expect(isCriterion({ target: "name", pipe: [], path: "address" })).toBeFalsy();
+		});
+
+		it("should reject unexpected properties", async () => {
+			expect(isCriterion({ target: "name", pipe: [], path: [], extra: "value" })).toBeFalsy();
+		});
+
+	});
+
+});
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+describe("asQuery()", () => {
+
+	it("should return valid query unchanged", async () => {
+		const query = { name: "", price: 0 };
+		expect(asQuery(query)).toBe(query);
+	});
+
+	it("should return complex query unchanged", async () => {
+		const query = {
+			id: "",
+			name: "",
+			">=price": 50,
+			"^name": 1,
+			"@": 0,
+			"#": 25
+		};
+		expect(asQuery(query)).toBe(query);
+	});
+
+	it("should throw TypeError for non-object", async () => {
+		expect(() => asQuery(null)).toThrow(TypeError);
+		expect(() => asQuery(undefined)).toThrow(TypeError);
+		expect(() => asQuery("string")).toThrow(TypeError);
+		expect(() => asQuery(123)).toThrow(TypeError);
+	});
+
+	it("should throw TypeError for invalid query", async () => {
+		expect(() => asQuery({ "123invalid": "" })).toThrow(TypeError);
+	});
+
+});
+
+
+describe("asCriterion()", () => {
+
+	it("should return valid criterion unchanged", async () => {
+		const criterion: Criterion = { target: "name", pipe: [], path: [] };
+		expect(asCriterion(criterion)).toBe(criterion);
+	});
+
+	it("should return complex criterion unchanged", async () => {
+		const criterion: Criterion = { target: "avgPrice", pipe: ["round", "avg"], path: ["price"] };
+		expect(asCriterion(criterion)).toBe(criterion);
+	});
+
+	it("should throw TypeError for non-object", async () => {
+		expect(() => asCriterion(null)).toThrow(TypeError);
+		expect(() => asCriterion(undefined)).toThrow(TypeError);
+		expect(() => asCriterion("string")).toThrow(TypeError);
+	});
+
+	it("should throw TypeError for missing fields", async () => {
+		expect(() => asCriterion({ pipe: [], path: [] })).toThrow(TypeError);
+		expect(() => asCriterion({ target: "name", path: [] })).toThrow(TypeError);
+		expect(() => asCriterion({ target: "name", pipe: [] })).toThrow(TypeError);
+	});
+
+	it("should throw TypeError for unexpected properties", async () => {
+		expect(() => asCriterion({ target: "name", pipe: [], path: [], extra: "value" })).toThrow(TypeError);
+	});
+
+});
+
+
+describe("isModel()", () => {
+
+	describe("valid models", () => {
+
+		it("should accept literals", async () => {
+			expect(isModel(true)).toBeTruthy();
+			expect(isModel(false)).toBeTruthy();
+			expect(isModel(0)).toBeTruthy();
+			expect(isModel(42)).toBeTruthy();
+			expect(isModel("")).toBeTruthy();
+			expect(isModel("text")).toBeTruthy();
+		});
+
+		it("should accept references (IRIs)", async () => {
+			expect(isModel("/products/42")).toBeTruthy();
+			expect(isModel("https://example.com/products/42")).toBeTruthy();
+		});
+
+		it("should accept single-valued language maps", async () => {
+			expect(isModel({ "*": "" })).toBeTruthy();
+			expect(isModel({ "en": "Widget" })).toBeTruthy();
+			expect(isModel({ "en": "Widget", "fr": "Gadget" })).toBeTruthy();
+		});
+
+		it("should accept multi-valued language maps (singleton arrays)", async () => {
+			expect(isModel({ "en": [""] })).toBeTruthy();
+			expect(isModel({ "en": ["Widget"], "fr": ["Gadget"] })).toBeTruthy();
+		});
+
+		it("should accept singleton reference arrays", async () => {
+			expect(isModel(["/products/42"])).toBeTruthy();
+		});
+
+		it("should accept nested queries", async () => {
+			expect(isModel({ id: "", name: "" })).toBeTruthy();
+			expect(isModel({ vendor: { id: "", name: "" } })).toBeTruthy();
+		});
+
+		it("should accept singleton query arrays", async () => {
+			expect(isModel([{ id: "", name: "" }])).toBeTruthy();
+		});
+
+	});
+
+	describe("invalid models", () => {
+
+		it("should reject null and undefined", async () => {
+			expect(isModel(null)).toBeFalsy();
+			expect(isModel(undefined)).toBeFalsy();
+		});
+
+		it("should reject empty arrays", async () => {
+			expect(isModel([])).toBeFalsy();
+		});
+
+		it("should reject arrays with multiple elements", async () => {
+			expect(isModel(["/a", "/b"])).toBeFalsy();
+			expect(isModel([{ id: "" }, { id: "" }])).toBeFalsy();
+		});
+
+	});
+
+});
+
+
+describe("asModel()", () => {
+
+	it("should return valid model unchanged", async () => {
+		const model = "";
+		expect(asModel(model)).toBe(model);
+	});
+
+	it("should return valid query model unchanged", async () => {
+		const model = { id: "", name: "" };
+		expect(asModel(model)).toBe(model);
+	});
+
+	it("should throw TypeError for invalid values", async () => {
+		expect(() => asModel(null)).toThrow(TypeError);
+		expect(() => asModel(undefined)).toThrow(TypeError);
+		expect(() => asModel([])).toThrow(TypeError);
+	});
+
+});
+
+
+describe("asBinding()", () => {
+
+	it("should return valid binding unchanged", async () => {
+		const binding = "name=value";
+		expect(asBinding(binding)).toBe(binding);
+	});
+
+	it("should return complex binding unchanged", async () => {
+		const binding = "total=count:";
+		expect(asBinding(binding)).toBe(binding);
+	});
+
+	it("should throw TypeError for invalid values", async () => {
+		expect(() => asBinding(null)).toThrow(TypeError);
+		expect(() => asBinding(undefined)).toThrow(TypeError);
+		expect(() => asBinding("")).toThrow(TypeError);
+		expect(() => asBinding("name")).toThrow(TypeError);
+		expect(() => asBinding("=value")).toThrow(TypeError);
+	});
+
+});
+
+
+describe("asExpression()", () => {
+
+	it("should return valid expression unchanged", async () => {
+		const expression = "name";
+		expect(asExpression(expression)).toBe(expression);
+	});
+
+	it("should return complex expression unchanged", async () => {
+		const expression = "round:avg:items.price";
+		expect(asExpression(expression)).toBe(expression);
+	});
+
+	it("should return empty expression unchanged", async () => {
+		const expression = "";
+		expect(asExpression(expression)).toBe(expression);
+	});
+
+	it("should throw TypeError for invalid values", async () => {
+		expect(() => asExpression(null)).toThrow(TypeError);
+		expect(() => asExpression(undefined)).toThrow(TypeError);
+		expect(() => asExpression(123)).toThrow(TypeError);
+		expect(() => asExpression(".name")).toThrow(TypeError);
+		expect(() => asExpression(":name")).toThrow(TypeError);
+	});
+
+});
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+describe("Transforms", () => {
+
+	it("should contain validated transforms", async () => {
+		expect(Object.keys(Transforms).length).toBeGreaterThan(0);
+	});
+
+	it("should have transforms with required name property", async () => {
+		for (const [name, transform] of Object.entries(Transforms)) {
+			expect(transform.name).toBe(name);
+		}
 	});
 
 });

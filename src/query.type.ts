@@ -14,20 +14,17 @@
  * limitations under the License.
  */
 
-import { isIdentifier } from "@metreeca/core";
+import { Identifier, isIdentifier } from "@metreeca/core";
 import { error } from "@metreeca/core/error";
 import { isArray, isBoolean, isNull, isNumber, isObject, isString } from "@metreeca/core/json";
 import { isTagRange } from "@metreeca/core/language";
-import { isIRI } from "@metreeca/core/resource";
 import { BindingSource, ExpressionSource } from "./index.js";
-import type { Criterion, Query, Transform } from "./query.js";
-
-export { asString } from "./state.type.js";
+import type { Binding, Criterion, Expression, Model, Query, Transform } from "./query.js";
+import { isLiteral, isReference } from "./state.type.js";
 
 
 const BindingPattern = new RegExp(`^${BindingSource}$`, "u");
 const ExpressionPattern = new RegExp(`^${ExpressionSource}$`, "u");
-
 
 const CriterionKeys = new Set(["target", "pipe", "path"]);
 const TransformKeys = new Set(["name", "aggregate", "datatype"]);
@@ -36,44 +33,162 @@ const DatatypeValues = new Set(["boolean", "number", "string"]);
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export function asQuery(value: unknown): Query {
-	return !isQuery(value) ? error(new TypeError("invalid query"))
-		: value as unknown as Query;
+/**
+ * Type guard for {@link Query} values.
+ *
+ * Validates that a value is an object containing valid projection, filtering, ordering, and paging entries.
+ *
+ * @param value The value to check
+ *
+ * @returns `true` if the value is a valid query
+ */
+export function isQuery(value: unknown): value is Query {
+	return isObject(value, isQueryEntry);
 }
 
-export function asCriterion(value: unknown): Criterion {
-	return !isObject(value) ? error(new TypeError("expected object"))
-		: !isString(value.target) ? error(new TypeError("expected string target"))
-			: !isArray(value.pipe, isString) ? error(new TypeError("expected string array pipe"))
-				: !isArray(value.path, isString) ? error(new TypeError("expected string array path"))
-					: !Object.keys(value).every(key => CriterionKeys.has(key)) ? error(new TypeError("unexpected properties"))
-						: value as unknown as Criterion;
+/**
+ * Type guard for {@link Binding} values.
+ *
+ * Validates that a value is a string matching the `name=expression` syntax,
+ * where `name` is a valid {@link Identifier} and `expression` is a valid {@link Expression}.
+ *
+ * @param value The value to check
+ *
+ * @returns `true` if the value is a valid binding string
+ */
+export function isBinding(value: unknown): value is Binding {
+	return isString(value) && BindingPattern.test(value);
 }
 
-export function asTransform(value: unknown): Transform {
-	return !isObject(value) ? error(new TypeError("expected object"))
-		: !isIdentifier(value.name) ? error(new TypeError("expected identifier name"))
-			: !(value.aggregate === undefined || isBoolean(value.aggregate))
-				? error(new TypeError("expected boolean aggregate"))
-				: !(value.datatype === undefined || (isString(value.datatype) && DatatypeValues.has(value.datatype)))
-					? error(new TypeError("expected datatype"))
-					: !Object.keys(value).every(key => TransformKeys.has(key)) ? error(new TypeError("unexpected properties"))
-						: value as unknown as Transform;
+/**
+ * Type guard for {@link Expression} values.
+ *
+ * Validates that a value is a string matching the expression syntax `[transform:]*[path]`.
+ * Empty strings are valid (both transform and path are optional).
+ *
+ * @param value The value to check
+ *
+ * @returns `true` if the value is a valid expression string
+ */
+export function isExpression(value: unknown): value is Expression {
+	return isString(value) && ExpressionPattern.test(value);
 }
 
-export function asTransforms(value: unknown): readonly Transform[] {
-	return !isArray(value) ? error(new TypeError("expected array"))
-		: value.map(asTransform);
+/**
+ * Type guard for {@link Model} values.
+ *
+ * Validates that a value is a valid projection model: a literal, a TagRange-keyed language map,
+ * a reference, a singleton reference array, a query, or a singleton query array.
+ *
+ * @param value The value to check
+ *
+ * @returns `true` if the value is a valid model
+ */
+export function isModel(value: unknown): value is Model {
+	return isLiteral(value)
+		|| isLocalModel(value)
+		|| isLocalsModel(value)
+		|| isReference(value)
+		|| isReferenceCollection(value)
+		|| isQuery(value)
+		|| isQueryCollection(value);
+}
+
+/**
+ * Type guard for {@link Criterion} values.
+ *
+ * Validates that a value is an object with `target` (string), `pipe` (string array), and `path` (string array)
+ * properties, with no additional properties.
+ *
+ * @param value The value to check
+ *
+ * @returns `true` if the value is a valid criterion
+ */
+export function isCriterion(value: unknown): value is Criterion {
+	return isObject(value)
+		&& isString(value.target)
+		&& isArray(value.pipe, isString)
+		&& isArray(value.path, isString)
+		&& Object.keys(value).every(key => CriterionKeys.has(key));
 }
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Query = Projection & Filtering & Ordering & Paging
-
-function isQuery(value: unknown): boolean {
-	return isObject(value, isQueryEntry);
+/**
+ * Validates a {@link Query} value.
+ *
+ * @param value The value to validate
+ *
+ * @returns The validated query
+ *
+ * @throws {TypeError} If the value is not a valid query
+ */
+export function asQuery(value: unknown): Query {
+	return !isQuery(value) ? error(new TypeError("invalid query"))
+		: value;
 }
+
+/**
+ * Validates a {@link Binding} value.
+ *
+ * @param value The value to validate
+ *
+ * @returns The validated binding
+ *
+ * @throws {TypeError} If the value is not a valid binding
+ */
+export function asBinding(value: unknown): Binding {
+	return !isBinding(value) ? error(new TypeError("invalid binding"))
+		: value;
+}
+
+/**
+ * Validates an {@link Expression} value.
+ *
+ * @param value The value to validate
+ *
+ * @returns The validated expression
+ *
+ * @throws {TypeError} If the value is not a valid expression
+ */
+export function asExpression(value: unknown): Expression {
+	return !isExpression(value) ? error(new TypeError("invalid expression"))
+		: value;
+}
+
+/**
+ * Validates a {@link Model} value.
+ *
+ * @param value The value to validate
+ *
+ * @returns The validated model
+ *
+ * @throws {TypeError} If the value is not a valid model
+ */
+export function asModel(value: unknown): Model {
+	return !isModel(value) ? error(new TypeError("invalid model"))
+		: value;
+}
+
+/**
+ * Validates a {@link Criterion} value.
+ *
+ * @param value The value to validate
+ *
+ * @returns The validated criterion
+ *
+ * @throws {TypeError} If the value is not a valid criterion
+ */
+export function asCriterion(value: unknown): Criterion {
+	return !isCriterion(value) ? error(new TypeError("invalid criterion"))
+		: value;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// query = projection & filtering & ordering & paging
 
 function isQueryEntry([key, value]: [unknown, unknown]): boolean {
 	return isProjectionEntry(key as string, value)
@@ -83,7 +198,7 @@ function isQueryEntry([key, value]: [unknown, unknown]): boolean {
 }
 
 
-// Projection
+// projection
 
 function isProjectionEntry(key: string, value: unknown): boolean {
 	return isProjectionKey(key) && isProjectionValue(value);
@@ -101,16 +216,6 @@ function isIndexedModel(value: unknown): boolean {
 	return isObject(value, ([k, v]) => isIdentifier(k) && isModel(v));
 }
 
-function isModel(value: unknown): boolean {
-	return isLiteral(value)
-		|| isLocalModel(value)
-		|| isLocalsModel(value)
-		|| isReference(value)
-		|| isReferenceCollection(value)
-		|| isQuery(value)
-		|| isQueryCollection(value);
-}
-
 function isLocalModel(value: unknown): boolean {
 	return isObject(value, ([k, v]) => isTagRange(k) && isString(v));
 }
@@ -119,26 +224,16 @@ function isLocalsModel(value: unknown): boolean {
 	return isObject(value, ([k, v]) => isTagRange(k) && isArray(v, isString) && v.length === 1);
 }
 
-function isReference(value: unknown): boolean {
-	return isIRI(value, "internal");
-}
-
 function isReferenceCollection(value: unknown): boolean {
-	return isArray(value, isString) && value.length === 1;
+	return isArray(value, isReference) && value.length === 1;
 }
 
 function isQueryCollection(value: unknown): boolean {
 	return isArray(value, isQuery) && value.length === 1;
 }
 
-function isLiteral(value: unknown): boolean {
-	return isBoolean(value)
-		|| isNumber(value)
-		|| isString(value);
-}
 
-
-// Filtering
+// filtering
 
 function isFilteringEntry(key: string, value: unknown): boolean {
 	return (isLteKey(key) && isLiteral(value))
@@ -179,7 +274,7 @@ function isAllKey(key: string): boolean {
 }
 
 
-// Ordering
+// ordering
 
 function isOrderingEntry(key: string, value: unknown): boolean {
 	return (isFocusKey(key) && isOptions(value))
@@ -201,7 +296,7 @@ function isOrderValue(value: unknown): boolean {
 }
 
 
-// Paging
+// paging
 
 function isPagingEntry(key: string, value: unknown): boolean {
 	return (key === "@" || key === "#")
@@ -209,27 +304,20 @@ function isPagingEntry(key: string, value: unknown): boolean {
 }
 
 
-// Expression
-
-function isExpression(expr: string): boolean {
-	return ExpressionPattern.test(expr);
-}
-
-
-// Options
+// options
 
 function isOptions(value: unknown): boolean {
 	return isOption(value)
-		|| isLocal(value)
-		|| isLocals(value)
+		|| isLocalOption(value)
+		|| isLocalsOption(value)
 		|| isOptionArray(value);
 }
 
-function isLocal(value: unknown): boolean {
+function isLocalOption(value: unknown): boolean {
 	return isObject(value, ([k, v]) => isTagRange(k) && isString(v));
 }
 
-function isLocals(value: unknown): boolean {
+function isLocalsOption(value: unknown): boolean {
 	return isObject(value, ([k, v]) => isTagRange(k) && isArray(v, isString));
 }
 
@@ -238,9 +326,28 @@ function isOptionArray(value: unknown): boolean {
 }
 
 
-// Option
+// option
 
 function isOption(value: unknown): boolean {
 	return isNull(value)
 		|| isLiteral(value);
+}
+
+
+// transform
+
+function asTransform(value: unknown): Transform {
+	return !isObject(value) ? error(new TypeError("expected object"))
+		: !isIdentifier(value.name) ? error(new TypeError("expected identifier name"))
+			: !(value.aggregate === undefined || isBoolean(value.aggregate))
+				? error(new TypeError("expected boolean aggregate"))
+				: !(value.datatype === undefined || (isString(value.datatype) && DatatypeValues.has(value.datatype)))
+					? error(new TypeError("expected datatype"))
+					: !Object.keys(value).every(key => TransformKeys.has(key)) ? error(new TypeError("unexpected properties"))
+						: value as unknown as Transform;
+}
+
+function asTransforms(value: unknown): readonly Transform[] {
+	return !isArray(value) ? error(new TypeError("expected array"))
+		: value.map(asTransform);
 }

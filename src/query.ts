@@ -21,8 +21,13 @@
  * resource expansion, and—for collections—filtering, ordering, and pagination:
  *
  * - {@link Query} — Resource retrieval query
- * - {@link Expression} — Computed expression for transforms and paths
- * - {@link Transforms} — Standard value transformations
+ * - {@link Binding} — Named computed expression
+ * - {@link Expression} — Computed expression syntax
+ * - {@link Model} — Projection value types
+ *
+ * Defines structures for programmatic query key handling:
+ *
+ * - {@link Criterion} — Parsed query key representation
  *
  * Provides utilities for converting between serialized and structured representations:
  *
@@ -182,7 +187,7 @@
  * - Postfix aliases provide natural form syntax for some operators:
  *   - `expression=value` for `?expression=value` (disjunctive matching)
  *   - `expression<=value` for `<=expression=value` (less than or equal)
- *   - `expression>=value` for `>=expression=value (greater than or equal)
+ *   - `expression>=value` for `>=expression=value` (greater than or equal)
  *
  * **Encoding notes:**
  *
@@ -272,9 +277,12 @@ import type { IRI } from "@metreeca/core/resource";
 import { asIRI, internalize, isIRI, resolve } from "@metreeca/core/resource";
 import { decodeBase64, encodeBase64 } from "./base64.js";
 import { BindingSource, ExpressionSource } from "./index.js";
+import { asString } from "./index.type.js";
 import * as QueryParser from "./query.pegjs.js";
-import { asCriterion, asQuery, asString, asTransforms } from "./query.type.js";
+import { asCriterion, asQuery } from "./query.type.js";
 import { CodecOpts, Literal, Local, Locals, Reference, Resource } from "./state.js";
+
+export * from "./query.type.js";
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -553,16 +561,17 @@ export type Binding =
  *
  * Both path steps and transform names follow {@link Identifier} rules (ECMAScript names).
  *
- * **Important:** Expressions are rejected with an error if they reference undefined properties
- * or undefined transforms.
- *
  * > [!WARNING]
  * > This is a type alias for documentation purposes only; expression syntax is validated at runtime
  * > by query processors.
  *
+ * > [!WARNING]
+ * > Processors are expected to reject expressions with an error if they reference undefined properties or undefined
+ * transforms.
+ *
  * @remarks
  *
- * Compliant processors support all standard {@link Transforms}.
+ * Compliant processors are expected to support all standard {@link Transforms}.
  */
 export type Expression =
 	string;
@@ -718,37 +727,6 @@ export type Transform = {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
- * Type guard for {@link Binding} values.
- *
- * Validates that a value is a string matching the `name=expression` syntax,
- * where `name` is a valid {@link Identifier} and `expression` is a valid {@link Expression}.
- *
- * @param value The value to check
- *
- * @returns `true` if the value is a valid binding string
- */
-export function isBinding(value: unknown): value is Binding {
-	return isString(value) && BindingPattern.test(value);
-}
-
-/**
- * Type guard for {@link Expression} values.
- *
- * Validates that a value is a string matching the expression syntax `[transform:]*[path]`.
- * Empty strings are valid (both transform and path are optional).
- *
- * @param value The value to check
- *
- * @returns `true` if the value is a valid expression string
- */
-export function isExpression(value: unknown): value is Expression {
-	return isString(value) && ExpressionPattern.test(value);
-}
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-/**
  * Encodes a query as a URL-safe string.
  *
  * Serializes a {@link Query} object into a string representation suitable for transmission as a URL query string in
@@ -772,9 +750,9 @@ export function isExpression(value: unknown): value is Expression {
  *
  * @returns The encoded query string, with internalized IRIs if `base` is provided
  *
- * @throws RangeError If `base` is provided but not an absolute hierarchical IRI
+ * @throws {RangeError} If `base` is provided but not an absolute hierarchical IRI
  * @throws TypeGuardError If `query` is not a valid {@link Query} or `mode` is not a string
- * @throws TypeError If `mode` is not a supported encoding
+ * @throws {TypeError} If `mode` is not a supported encoding
  *
  * @remarks
  *
@@ -875,9 +853,9 @@ export function encodeQuery(query: Query, {
  *
  * @returns The decoded query object, with resolved IRIs if `base` is provided
  *
- * @throws RangeError If `base` is provided but not an absolute hierarchical IRI
+ * @throws {RangeError} If `base` is provided but not an absolute hierarchical IRI
  * @throws TypeGuardError If `query` is not a string or not a valid {@link Query}
- * @throws Error If `query` is malformed or unparseable
+ * @throws {Error} If `query` is malformed or unparseable
  *
  * @remarks
  *
@@ -1006,7 +984,7 @@ export function encodeCriterion(criterion: Criterion): string {
  * @returns The parsed criterion
  *
  * @throws TypeGuardError If `key` is not a string
- * @throws Error If `key` is malformed or unparseable
+ * @throws {Error} If `key` is malformed or unparseable
  *
  * @see {@link encodeCriterion}
  */
@@ -1043,6 +1021,6 @@ export function decodeCriterion(key: string): Criterion {
  */
 function transforms<const T extends readonly Transform[]>(transforms: T): Transforms {
 
-	return Object.fromEntries(asTransforms(transforms).map(t => [t.name, t])) as Transforms;
+	return Object.fromEntries(transforms.map(t => [t.name, t])) as Transforms;
 
 }

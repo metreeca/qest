@@ -12,6 +12,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Add `Indexed` type for key-indexed property value containers
 - Add `Model` type for projection property value models
 - Add `Binding` type for named computed expressions in projections
+- Add `isModel()` type guard and `asModel()` validator for projection models
 - Add `isBinding()` and `isExpression()` type guards
 - Add `BindingPattern` and `ExpressionPattern` regex constants
 

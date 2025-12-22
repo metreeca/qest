@@ -24,9 +24,8 @@
  * - {@link Patch} — Partial resource updates (HTTP PATCH)
  * - {@link Values} — Property value sets
  * - {@link Value} — Individual property values
- * - {@link Reference} — IRI resource references
- * - {@link IRI} — Resource identifiers
  * - {@link Literal} — Primitive data values
+ * - {@link Reference} — IRI resource references
  * - {@link Local} — Language-tagged text map (single-valued)
  * - {@link Locals} — Language-tagged text map (multi-valued)
  * - {@link Indexed} — Key-indexed value container
@@ -286,7 +285,10 @@ import { Identifier } from "@metreeca/core";
 import { Tag } from "@metreeca/core/language";
 import { assert, immutable } from "@metreeca/core/nested";
 import { asIRI, internalize, IRI, isIRI, resolve } from "@metreeca/core/resource";
-import { asPatch, asResource, asString } from "./state.type.js";
+import { asString } from "./index.type.js";
+import { asPatch, asResource } from "./state.type.js";
+
+export * from "./state.type.js";
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -364,8 +366,8 @@ export type Literal =
 /**
  * Resource reference.
  *
- * An absolute or root-relative {@link IRI} identifying a linked resource without embedding its state. Contrast
- * with {@link Resource}, which includes the linked resource's properties inline.
+ * An {@link IRI} identifying a linked resource without embedding its state. Contrast with {@link Resource},
+ * which includes the linked resource's properties inline.
  *
  * > [!WARNING]
  * > This is a type alias for documentation purposes only. Branding was considered but not adopted due to
@@ -430,6 +432,8 @@ export type Indexed =
 	| { readonly [key: Identifier]: Values }
 
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 /**
  * Options for resource encoding and decoding.
  *
@@ -466,7 +470,7 @@ export type CodecOpts = {
  *
  * @returns The JSON string, with internalized IRIs if `base` is provided
  *
- * @throws RangeError If `base` is provided but not an absolute hierarchical IRI
+ * @throws {RangeError} If `base` is provided but not an absolute hierarchical IRI
  * @throws TypeGuardError If `resource` is not a valid {@link Resource}
  *
  * @see {@link decodeResource}
@@ -510,9 +514,9 @@ export function encodeResource(resource: Resource, {
  *
  * @returns The decoded resource state, with resolved IRIs if `base` is provided
  *
- * @throws RangeError If `base` is provided but not an absolute hierarchical IRI
+ * @throws {RangeError} If `base` is provided but not an absolute hierarchical IRI
  * @throws TypeGuardError If `resource` is not a string or not a valid {@link Resource}
- * @throws SyntaxError If `resource` is not valid JSON
+ * @throws {SyntaxError} If `resource` is not valid JSON
  *
  * @see {@link encodeResource}
  */
@@ -555,7 +559,7 @@ export function decodeResource(resource: string, {
  *
  * @returns The JSON string, with internalized IRIs if `base` is provided
  *
- * @throws RangeError If `base` is provided but not an absolute hierarchical IRI
+ * @throws {RangeError} If `base` is provided but not an absolute hierarchical IRI
  * @throws TypeGuardError If `patch` is not a valid {@link Patch}
  *
  * @see {@link decodePatch}
@@ -599,9 +603,9 @@ export function encodePatch(patch: Patch, {
  *
  * @returns The decoded patch, with resolved IRIs if `base` is provided
  *
- * @throws RangeError If `base` is provided but not an absolute hierarchical IRI
+ * @throws {RangeError} If `base` is provided but not an absolute hierarchical IRI
  * @throws TypeGuardError If `patch` is not a string or not a valid {@link Patch}
- * @throws SyntaxError If `patch` is not valid JSON
+ * @throws {SyntaxError} If `patch` is not valid JSON
  *
  * @see {@link encodePatch}
  */
