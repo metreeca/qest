@@ -14,16 +14,18 @@
  * limitations under the License.
  */
 
-import { Identifier, isIdentifier } from "@metreeca/core";
+import { Identifier, IdentifierPattern, isIdentifier } from "@metreeca/core";
 import { error } from "@metreeca/core/error";
 import { isArray, isBoolean, isNull, isNumber, isObject, isString } from "@metreeca/core/json";
 import { isTagRange } from "@metreeca/core/language";
-import { BindingSource, ExpressionSource } from "./index.js";
 import type { Binding, Criterion, Expression, Model, Query, Transform } from "./query.js";
 import { isLiteral, isReference } from "./state.type.js";
 
 
-const BindingPattern = new RegExp(`^${BindingSource}$`, "u");
+const IdentifierSource = IdentifierPattern.source.slice(1, -1);
+const ExpressionSource = `(${IdentifierSource}:)*(${IdentifierSource}(\\.${IdentifierSource})*)?`;
+
+const BindingPattern = new RegExp(`^${IdentifierSource}=${ExpressionSource}$`, "u");
 const ExpressionPattern = new RegExp(`^${ExpressionSource}$`, "u");
 
 const CriterionKeys = new Set(["target", "pipe", "path"]);

@@ -276,7 +276,6 @@ import { assert, immutable } from "@metreeca/core/nested";
 import type { IRI } from "@metreeca/core/resource";
 import { asIRI, internalize, isIRI, resolve } from "@metreeca/core/resource";
 import { decodeBase64, encodeBase64 } from "./base64.js";
-import { BindingSource, ExpressionSource } from "./index.js";
 import { asString } from "./index.type.js";
 import * as QueryParser from "./query.pegjs.js";
 import { asCriterion, asQuery } from "./query.type.js";
@@ -286,29 +285,6 @@ export * from "./query.type.js";
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-/**
- * Regular expression for validating {@link Binding} syntax.
- *
- * Matches the pattern `name=expression` where:
- *
- * - `name` is a required {@link Identifier}
- * - `expression` follows the {@link ExpressionPattern} syntax
- */
-export const BindingPattern = new RegExp(`^${BindingSource}$`, "u");
-
-/**
- * Regular expression for validating {@link Expression} syntax.
- *
- * Matches the pattern `[transform:]*[path]` where:
- *
- * - `transform` is an {@link Identifier} followed by `:`
- * - `path` is a dot-separated list of {@link Identifier | Identifiers}
- *
- * Both parts are optional; empty strings are valid expressions.
- */
-export const ExpressionPattern = new RegExp(`^${ExpressionSource}$`, "u");
-
 
 /**
  * Standard value transformations for computed {@link Expression | expressions}.

@@ -14,7 +14,6 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Add `Binding` type for named computed expressions in projections
 - Add `isModel()` type guard and `asModel()` validator for projection models
 - Add `isBinding()` and `isExpression()` type guards
-- Add `BindingPattern` and `ExpressionPattern` regex constants
 
 ### Changed
 
