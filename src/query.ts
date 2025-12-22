@@ -267,7 +267,7 @@ import { Identifier, isIdentifier } from "@metreeca/core";
 import { error } from "@metreeca/core/error";
 import { isArray, isObject, isString } from "@metreeca/core/json";
 import { TagRange } from "@metreeca/core/language";
-import { immutable } from "@metreeca/core/nested";
+import { assert, immutable } from "@metreeca/core/nested";
 import type { IRI } from "@metreeca/core/resource";
 import { asIRI, internalize, isIRI, resolve } from "@metreeca/core/resource";
 import { decodeBase64, encodeBase64 } from "./base64.js";
@@ -797,9 +797,9 @@ export function encodeQuery(query: Query, {
 
 }: CodecOpts & { readonly mode?: "json" | "base64" | "form" } = {}): string {
 
-	const $mode = asString(mode);
-	const $base = base !== undefined ? asIRI(base, "hierarchical") : undefined;
-	const $query = internalizeIRIs($base, asQuery(query));
+	const $mode = assert(asString, mode);
+	const $base = base === undefined ? undefined : assert(v => asIRI(v, "hierarchical"), base);
+	const $query = internalizeIRIs($base, assert(asQuery, query));
 
 
 	return $mode === "json" ? encodeURIComponent(JSON.stringify($query))
@@ -898,34 +898,34 @@ export function decodeQuery(query: string, {
 
 }: CodecOpts = {}): Query {
 
-	const $query = asString(query);
-	const $base = base !== undefined ? asIRI(base, "hierarchical") : undefined;
+	const $query = assert(asString, query);
+	const $base = base !== undefined ? assert(v => asIRI(v, "hierarchical"), base) : undefined;
 
 
 	try {
 
 		if ( $query === "" ) {
 
-			return immutable(asQuery({} as Query));
+			return immutable(assert(asQuery, {}));
 
 		} else if ( $query.startsWith("%7B") || $query.startsWith("{") ) {
 
 			// JSON format (starts with %7B which is encoded '{')
 
-			return immutable(asQuery(parseJSON($base, decodeURIComponent($query))));
+			return immutable(assert(asQuery, parseJSON($base, decodeURIComponent($query))));
 
 		} else if ( /^e[A-Za-z0-9+/_-]*=*$/.test($query) ) {
 
 			// base64 format - JSON objects encode to base64 starting with 'e'
 
-			return immutable(asQuery(parseJSON($base, decodeBase64($query))));
+			return immutable(assert(asQuery, parseJSON($base, decodeBase64($query))));
 
 		} else {
 
 			// form format (application/x-www-form-urlencoded) parsed via Peggy grammar
 			// decode keys separately while preserving encoded values for the parser's value handling
 
-			return immutable(asQuery(resolveIRIs($base, QueryParser.parse(decodeFormKeys($query), { startRule: "Query" }))));
+			return immutable(assert(asQuery, resolveIRIs($base, QueryParser.parse(decodeFormKeys($query), { startRule: "Query" }))));
 
 		}
 
@@ -982,9 +982,7 @@ export function decodeQuery(query: string, {
  */
 export function encodeCriterion(criterion: Criterion): string {
 
-	asCriterion(criterion);
-
-	const { target, pipe, path } = criterion;
+	const { target, pipe, path } = assert(asCriterion, criterion);
 
 	const pipeString = pipe.map(p => `${p}:`).join("");
 	const pathString = path.join(".");
@@ -1014,11 +1012,11 @@ export function encodeCriterion(criterion: Criterion): string {
  */
 export function decodeCriterion(key: string): Criterion {
 
-	asString(key);
+	const $key = assert(asString, key);
 
 	try {
 
-		return immutable(QueryParser.parse(key, { startRule: "Criterion" }) as Criterion);
+		return immutable(assert(asCriterion, QueryParser.parse($key, { startRule: "Criterion" })));
 
 	} catch ( cause ) {
 		throw new Error(`invalid criterion <${key}>`, { cause });

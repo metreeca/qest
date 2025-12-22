@@ -284,7 +284,7 @@
 
 import { Identifier } from "@metreeca/core";
 import { Tag } from "@metreeca/core/language";
-import { immutable } from "@metreeca/core/nested";
+import { assert, immutable } from "@metreeca/core/nested";
 import { asIRI, internalize, IRI, isIRI, resolve } from "@metreeca/core/resource";
 import { asPatch, asResource, asString } from "./state.type.js";
 
@@ -477,7 +477,7 @@ export function encodeResource(resource: Resource, {
 
 }: CodecOpts = {}): string {
 
-	const $resource = asResource(resource);
+	const $resource = assert(asResource, resource);
 
 	if ( base === undefined ) {
 
@@ -485,7 +485,7 @@ export function encodeResource(resource: Resource, {
 
 	} else {
 
-		const $base = asIRI(base, "hierarchical");
+		const $base = assert(v => asIRI(v, "hierarchical"), base);
 
 		return JSON.stringify($resource, (_key, value) =>
 			isIRI(value, "absolute")
@@ -522,17 +522,17 @@ export function decodeResource(resource: string, {
 
 }: CodecOpts = {}): Resource {
 
-	const $resource = asString(resource);
+	const $resource = assert(asString, resource);
 
 	if ( base === undefined ) {
 
-		return immutable(asResource(JSON.parse($resource)));
+		return immutable(assert(asResource, JSON.parse($resource)));
 
 	} else {
 
-		const $base = asIRI(base, "hierarchical");
+		const $base = assert(v => asIRI(v, "hierarchical"), base);
 
-		return immutable(asResource(JSON.parse($resource, (_key, value) =>
+		return immutable(assert(asResource, JSON.parse($resource, (_key, value) =>
 			isIRI(value, "internal")
 				? resolve($base, value)
 				: value
@@ -566,7 +566,7 @@ export function encodePatch(patch: Patch, {
 
 }: CodecOpts = {}): string {
 
-	const $patch = asPatch(patch);
+	const $patch = assert(asPatch, patch);
 
 	if ( base === undefined ) {
 
@@ -574,7 +574,7 @@ export function encodePatch(patch: Patch, {
 
 	} else {
 
-		const $base = asIRI(base, "hierarchical");
+		const $base = assert(v => asIRI(v, "hierarchical"), base);
 
 		return JSON.stringify($patch, (_key, value) =>
 			isIRI(value, "absolute")
@@ -611,17 +611,17 @@ export function decodePatch(patch: string, {
 
 }: CodecOpts = {}): Patch {
 
-	const $patch = asString(patch);
+	const $patch = assert(asString, patch);
 
 	if ( base === undefined ) {
 
-		return immutable(asPatch(JSON.parse($patch)));
+		return immutable(assert(asPatch, JSON.parse($patch)));
 
 	} else {
 
-		const $base = asIRI(base, "hierarchical");
+		const $base = assert(v => asIRI(v, "hierarchical"), base);
 
-		return immutable(asPatch(JSON.parse($patch, (_key, value) =>
+		return immutable(assert(asPatch, JSON.parse($patch, (_key, value) =>
 			isIRI(value, "internal")
 				? resolve($base, value)
 				: value

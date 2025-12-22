@@ -21,11 +21,6 @@ import { isTag } from "@metreeca/core/language";
 import type { Patch, Resource } from "./state.js";
 
 
-export function asString(value: unknown): string {
-	return !isString(value) ? error(new TypeError("expected string"))
-		: value;
-}
-
 export function asResource(value: unknown): Resource {
 	return !isResource(value) ? error(new TypeError("invalid resource"))
 		: value as unknown as Resource;
@@ -34,6 +29,12 @@ export function asResource(value: unknown): Resource {
 export function asPatch(value: unknown): Patch {
 	return !isPatch(value) ? error(new TypeError("invalid patch"))
 		: value as unknown as Patch;
+}
+
+
+export function asString(value: unknown): string {
+	return !isString(value) ? error(new TypeError("expected string"))
+		: value;
 }
 
 
