@@ -419,37 +419,22 @@ export type Query =
 	& Ordering
 	& Paging;
 
+
 /**
  * Projection criteria of {@link Query}.
  *
- * Maps property names to their expected models for retrieval:
- *
- * - {@link Literal} — Plain literal value
- * - `{ readonly [range: TagRange]: string }` — Single-valued {@link Local} language-tagged text map
- * - `{ readonly [range: TagRange]: [string] }` — Multi-valued {@link Locals} language-tagged text map
- * - {@link Reference} — Resource reference
- * - `readonly [Reference]` — Resource reference collection
- * - {@link Query} — Nested resource
- * - `readonly [Query]` — Nested resource collection
+ * Maps property names to their expected {@link Model | models} for retrieval. Properties may also hold key-indexed
+ * model containers for union-typed or dynamically-keyed structures; indexed containers can only appear as top-level
+ * property values and cannot be nested.
  *
  * Projections may define *computed* properties using the `property=expression` syntax, where the value is computed
- * from an {@link Expression}; in this case, the model defines the expected type of the computed value.
- *
- * Scalar values in projections serve as type placeholders; their actual value is immaterial, but their type must
- * match the (possibly computed) property definition.
- *
- * @see [RFC 4647 - Matching of Language Tags](https://www.rfc-editor.org/rfc/rfc4647.html)
+ * from an {@link Expression}. Scalar values serve as type placeholders; their actual value is immaterial.
  */
 export type Projection = {
 
 	readonly [property: Identifier | Binding]:
-		| Literal
-		| { readonly [range: TagRange]: string }
-		| { readonly [range: TagRange]: readonly [string] }
-		| Reference
-		| readonly [Reference]
-		| Query
-		| readonly [Query]
+		| Model
+		| { readonly [key: Identifier]: Model }
 
 };
 
@@ -581,6 +566,31 @@ export type Binding =
  */
 export type Expression =
 	string;
+
+/**
+ * Property value model for {@link Projection}.
+ *
+ * Defines the expected value type for a projected property. Scalar values serve as type placeholders; their actual
+ * value is immaterial, but their type signals the expected property value type:
+ *
+ * - {@link Literal} — Primitive value (`boolean`, `number`, `string`)
+ * - `{ [TagRange]: string }` — Single-valued language-tagged text map
+ * - `{ [TagRange]: readonly [string] }` — Multi-valued language-tagged text map
+ * - {@link Reference} — IRI reference to a linked resource
+ * - `readonly [Reference]` — Array of IRI references
+ * - {@link Query} — Nested query for expanding linked resources
+ * - `readonly [Query]` — Nested query for multi-valued linked resources
+ *
+ * @see {@link https://www.rfc-editor.org/rfc/rfc4647.html RFC 4647 - Matching of Language Tags}
+ */
+export type Model =
+	| Literal
+	| { readonly [range: TagRange]: string }
+	| { readonly [range: TagRange]: readonly [string] }
+	| Reference
+	| readonly [Reference]
+	| Query
+	| readonly [Query];
 
 
 /**

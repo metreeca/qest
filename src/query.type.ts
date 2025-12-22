@@ -94,6 +94,14 @@ function isProjectionKey(key: string): boolean {
 }
 
 function isProjectionValue(value: unknown): boolean {
+	return isIndexedModel(value) || isModel(value);
+}
+
+function isIndexedModel(value: unknown): boolean {
+	return isObject(value, ([k, v]) => isIdentifier(k) && isModel(v));
+}
+
+function isModel(value: unknown): boolean {
 	return isLiteral(value)
 		|| isLocalModel(value)
 		|| isLocalsModel(value)

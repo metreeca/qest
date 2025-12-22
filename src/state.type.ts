@@ -40,11 +40,16 @@ export function asPatch(value: unknown): Patch {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 function isResource(value: unknown): boolean {
-	return isObject(value, ([k, v]) => isIdentifier(k) && isValues(v));
+	return isObject(value, ([k, v]) => isIdentifier(k) && (isIndexed(v) || isValues(v)));
 }
 
 function isPatch(value: unknown): boolean {
-	return isObject(value, ([k, v]) => isIdentifier(k) && (v === null || isValues(v)));
+	return isObject(value, ([k, v]) => isIdentifier(k) && (v === null || isIndexed(v) || isValues(v)));
+}
+
+
+function isIndexed(value: unknown): boolean {
+	return isObject(value, ([k, v]) => isIdentifier(k) && isValues(v));
 }
 
 function isValues(value: unknown): boolean {

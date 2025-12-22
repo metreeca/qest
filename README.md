@@ -35,15 +35,15 @@ npm install @metreeca/qest
 >
 > This section introduces essential concepts; for complete coverage, see the API reference:
 >
-> | Module | Description |
-> | --- | --- |
-> | [@metreeca/qest/state](https://metreeca.github.io/qest/modules/state.html) | Resource state model |
+> | Module                                                                     | Description                      |
+> | -------------------------------------------------------------------------- | -------------------------------- |
+> | [@metreeca/qest/state](https://metreeca.github.io/qest/modules/state.html) | Resource state model             |
 > | [@metreeca/qest/query](https://metreeca.github.io/qest/modules/query.html) | Client-driven resource retrieval |
 
 **@metreeca/qest** types define payload semantics and formats for standard REST operations:
 
 | Method | Type                                                                  | Description                      |
-|--------|-----------------------------------------------------------------------|----------------------------------|
+| ------ | --------------------------------------------------------------------- | -------------------------------- |
 | GET    | [Resource](https://metreeca.github.io/qest/types/state.Resource.html) | Resource retrieval               |
 | GET    | [Query](https://metreeca.github.io/qest/types/query.Query.html)       | Client-driven resource retrieval |
 | POST   | [Resource](https://metreeca.github.io/qest/types/state.Resource.html) | Resource creation                |
@@ -65,10 +65,7 @@ GET https://data.example.com/products/123
   "id": "https://data.example.com/products/123",
   "name": "Widget",
   "category": "Electronics",
-  "tags": [
-    "gadget",
-    "featured"
-  ],
+  "tags": ["gadget", "featured"],
   "vendor": "https://data.example.com/vendors/456",
   "price": 99.99,
   "inStock": true
@@ -83,13 +80,13 @@ PUT https://data.example.com/products/123
 
 ```js
 ({
-    "name": "Widget",
-    "category": "Electronics",
-    "tags": ["gadget", "premium"],
-    "vendor": "https://data.example.com/vendors/456",
-    "price": 79.99
-    // inStock                     // not included → deleted
-})
+  name: "Widget",
+  category: "Electronics",
+  tags: ["gadget", "premium"],
+  vendor: "https://data.example.com/vendors/456",
+  price: 79.99,
+  // inStock                     // not included → deleted
+});
 ```
 
 A [**Patch**](https://metreeca.github.io/qest/types/state.Patch.html) describes partial updates with the same effect:
@@ -100,10 +97,10 @@ PATCH https://data.example.com/products/123
 
 ```js
 ({
-    "tags": ["gadget", "premium"], // updated
-    "price": 79.99,                // updated
-    "inStock": null                // deleted
-})
+  tags: ["gadget", "premium"], // updated
+  price: 79.99, // updated
+  inStock: null, // deleted
+});
 ```
 
 Properties set to `null` are deleted; properties not included are unchanged.
@@ -123,22 +120,22 @@ where `<query>` is the following URL-encoded JSON:
 
 ```js
 ({
-    "items": [
-        {
-            "id": "",
-            "name": "",
-            "price": 0,
-            "vendor": {
-                "id": "",
-                "name": ""
-            },
-            ">=price": 50,     // filter: price ≥ 50
-            "<=price": 150,    // filter: price ≤ 150
-            "^price": "asc",   // sort: by price ascending
-            "#": 25            // limit: 25 results
-        }
-    ]
-})
+  items: [
+    {
+      id: "",
+      name: "",
+      price: 0,
+      vendor: {
+        id: "",
+        name: "",
+      },
+      ">=price": 50, // filter: price ≥ 50
+      "<=price": 150, // filter: price ≤ 150
+      "^price": "asc", // sort: by price ascending
+      "#": 25, // limit: 25 results
+    },
+  ],
+});
 ```
 
 A single call returns exactly what the client requested:
@@ -207,18 +204,19 @@ But **@metreeca/qest** is also the foundation of an integrated ecosystem for rap
 those same types into a complete model-driven stack:
 
 | Package                     | Description                                                |
-|-----------------------------|------------------------------------------------------------|
+| --------------------------- | ---------------------------------------------------------- |
 | **@metreeca/qest**          | Data types for client-driven, queryable REST/JSON APIs     |
-| @metreeca/blue *(upcoming)* | Shape-based validation for resources, patches, and queries |
-| @metreeca/keep *(upcoming)* | Shape-driven storage framework with pluggable adapters     |
-| @metreeca/gate *(upcoming)* | Shape-driven REST/JSON API publishing                      |
+| @metreeca/blue _(upcoming)_ | Shape-based validation for resources, patches, and queries |
+| @metreeca/keep _(upcoming)_ | Shape-driven storage framework with pluggable adapters     |
+| @metreeca/gate _(upcoming)_ | Shape-driven REST/JSON API publishing                      |
 
 # JSON-LD Foundations
 
-[JSON-LD](https://www.w3.org/TR/json-ld11/) (JSON for Linked Data) is a [W3C](https://www.w3.org/) standard for publishing
-linked data on the web. It extends JSON with web identifiers ([IRIs](https://www.rfc-editor.org/rfc/rfc3987)) to link
-resources across systems and domains, and to give property names precise, machine-readable meaning by mapping them to
-shared vocabularies — a capability at the heart of the [Web Data Activity](https://www.w3.org/2013/data/) (Semantic Web)
+[JSON-LD](https://www.w3.org/TR/json-ld11/) (JSON for Linked Data) is a [W3C](https://www.w3.org/) standard for
+publishing linked data on the web. It extends JSON with web identifiers ([IRIs](https://www.rfc-editor.org/rfc/rfc3987))
+to link resources across systems and domains, and to give property names precise, machine-readable meaning by mapping
+them to shared vocabularies — a capability at the heart of the [Web Data Activity](https://www.w3.org/2013/data/) (
+Semantic Web)
 and modern knowledge graphs.
 
 **@metreeca/qest** defines a controlled JSON-LD subset designed to feel like plain idiomatic JSON, letting JavaScript
@@ -241,9 +239,13 @@ This controlled subset is specified by:
   [typed literals](https://www.w3.org/TR/json-ld11/#typed-values) with arbitrary datatypes are not allowed and must be
   represented as strings with [datatype coercion](https://www.w3.org/TR/json-ld11/#type-coercion) declared in `@context`
 
-- [language maps](https://www.w3.org/TR/json-ld11/#language-indexing) for localised text;
-  [`@none`](https://www.w3.org/TR/json-ld11/#dfn-none) keys for non-localised values in language maps are not allowed and must be handled
-  using `string | Local` union types or the [`zxx`](https://iso639-3.sil.org/code/zxx) language tag
+- [language maps](https://www.w3.org/TR/json-ld11/#language-indexing) for localised text; [
+  `@none`](https://www.w3.org/TR/json-ld11/#dfn-none) keys for non-localised values in language maps are not allowed and
+  must be handled using `string | Local` union types or the [`zxx`](https://iso639-3.sil.org/code/zxx) language tag
+
+- [index maps](https://www.w3.org/TR/json-ld11/#data-indexing) for key-indexed property values; indexed semantics must
+  be signalled by application-provided `@context` declarations, as indexed values are otherwise indistinguishable from
+  nested resources
 
 - [IRI references](https://www.w3.org/TR/json-ld11/#node-identifiers) for linking resources across systems and domains;
   applications may opt to restrict references to absolute or root-relative IRIs

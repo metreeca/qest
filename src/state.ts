@@ -29,6 +29,7 @@
  * - {@link Literal} — Primitive data values
  * - {@link Local} — Language-tagged text map (single-valued)
  * - {@link Locals} — Language-tagged text map (multi-valued)
+ * - {@link Indexed} — Key-indexed value container
  *
  * Provides utilities for converting between serialized and structured representations:
  *
@@ -215,6 +216,8 @@
  * - a {@link Locals} multi-valued language-tagged text map
  * - an array representing a set of values
  *
+ * Additionally, properties can hold an {@link Indexed} container, mapping arbitrary keys to {@link Values}.
+ *
  * A {@link Value} can be:
  *
  * - **{@link Literal}**: primitive data (`boolean`, `number`, `string`)
@@ -291,8 +294,9 @@ import { asPatch, asResource, asString } from "./state.type.js";
 /**
  * Linked data resource state.
  *
- * A property map describing the state of a resource. Each property holds {@link Values} and may include an `id`
- * property mapped to `@id` for resource identification. Descriptions without `id` represent anonymous (blank) nodes.
+ * A property map describing the state of a resource. Each property holds {@link Values} or {@link Indexed} and may
+ * include an `id` property mapped to `@id` for resource identification. Descriptions without `id` represent anonymous
+ * (blank) nodes.
  *
  * Used for both retrieving resource state (HTTP GET) and complete state replacement (HTTP PUT).
  *
@@ -300,18 +304,19 @@ import { asPatch, asResource, asString } from "./state.type.js";
  * @see {@link https://datatracker.ietf.org/doc/html/rfc9110#section-9.3.4 RFC 9110 - HTTP PUT Method}
  */
 export type Resource =
-	| { readonly [property: Identifier]: Values }
+	| { readonly [property: Identifier]: Values | Indexed }
 
 /**
  * Partial resource state update.
  *
- * A property map specifying incremental changes to a {@link Resource} state. Each property maps to {@link Values}
- * to set or `null` to delete; unlisted properties remain unchanged. Empty arrays are equivalent to `null`.
+ * A property map specifying incremental changes to a {@link Resource} state. Each property maps to
+ * {@link Values} or {@link Indexed} to set, or `null` to delete; unlisted properties remain unchanged.
+ * Empty arrays are equivalent to `null`.
  *
  * @see {@link https://datatracker.ietf.org/doc/html/rfc5789 RFC 5789 - HTTP PATCH Method}
  */
 export type Patch =
-	| { readonly [property: Identifier]: null | Values }
+	| { readonly [property: Identifier]: null | Values | Indexed }
 
 
 /**
@@ -320,6 +325,10 @@ export type Patch =
  * A single {@link Value}, a {@link Local} or {@link Locals} language map, or an array of values.
  *
  * Arrays represent sets of values: duplicate values are ignored and ordering is immaterial. Empty arrays are ignored.
+ *
+ * @remarks
+ *
+ * {@link Indexed} containers are accepted at the property level but excluded from `Values` to prevent nesting.
  */
 export type Values =
 	| Value
@@ -402,6 +411,23 @@ export type Local =
  */
 export type Locals =
 	| { readonly [tag: Tag]: readonly string[] }
+
+/**
+ * Key-indexed container for property values.
+ *
+ * Maps arbitrary {@link Identifier} keys to {@link Values}, supporting index-based organization of property values.
+ * Useful for representing union-typed properties or dynamically-keyed structures.
+ *
+ * @remarks
+ *
+ * - Corresponds to JSON-LD's `@index` container semantics; requires `@context` to distinguish from nested resources
+ * - Keys are limited to valid JavaScript identifiers
+ * - Allowed only as top-level property values; no nesting
+ *
+ * @see {@link https://www.w3.org/TR/json-ld11/#data-indexing JSON-LD 1.1 - Data Indexing}
+ */
+export type Indexed =
+	| { readonly [key: Identifier]: Values }
 
 
 /**
