@@ -40,8 +40,8 @@
  *
  * @module
  *
- * @see {@link https://datatracker.ietf.org/doc/html/rfc4648#section-5 | RFC 4648 §5}
- * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Window/btoa | MDN - btoa()}
+ * @see {@link https://datatracker.ietf.org/doc/html/rfc4648#section-5 RFC 4648 §5}
+ * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Window/btoa MDN - btoa()}
  */
 
 /**

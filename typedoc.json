@@ -19,6 +19,8 @@
   "groupOrder": [
     "Variables",
     "Type Aliases",
+    "Guards",
+    "Codecs",
     "*"
   ],
   "useFirstParagraphOfCommentAsSummary": true,

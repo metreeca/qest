@@ -29,11 +29,6 @@
  *
  * - {@link Criterion} — Parsed query key representation
  *
- * Provides utilities for converting between serialized and structured representations:
- *
- * - {@link encodeQuery} / {@link decodeQuery} — codecs for URL-safe query strings
- * - {@link encodeCriterion} / {@link decodeCriterion} — codecs for {@link Query} criterion keys
- *
  * # Query Patterns
  *
  * ## Resource Queries
@@ -265,26 +260,29 @@
  * >
  * > Numeric-looking values like `123` are parsed as numbers unless quoted.
  *
+ * @groupDescription Guards
+ * Type guards for runtime validation of query and value types.
+ *
+ * @groupDescription Codecs
+ * Functions for converting between serialized and structured representations.
+ *
  * @module
  */
 
-import { Identifier, isIdentifier } from "@metreeca/core";
-import { error } from "@metreeca/core/error";
-import { isArray, isObject, isString } from "@metreeca/core/json";
-import { TagRange } from "@metreeca/core/language";
-import { assert, immutable } from "@metreeca/core/nested";
+import {
+	Identifier, isAny, isArray, isBoolean, isIdentifier, isLiteral as isLiteralValue, isNull, isNumber, isObject,
+	isOptional, isString
+} from "@metreeca/core";
+import { assert, error } from "@metreeca/core/error";
+import { isTagRange, TagRange } from "@metreeca/core/language";
+import { immutable } from "@metreeca/core/nested";
 import type { IRI } from "@metreeca/core/resource";
-import { asIRI, internalize, isIRI, resolve } from "@metreeca/core/resource";
+import { internalize, isIRI, resolve } from "@metreeca/core/resource";
 import { decodeBase64, encodeBase64 } from "./base64.js";
-import { asString } from "./index.type.js";
+import { type CodecOpts, isCodecOpts } from "./index.js";
 import * as QueryParser from "./query.pegjs.js";
-import { asCriterion, asQuery } from "./query.type.js";
-import { CodecOpts, Literal, Local, Locals, Reference, Resource } from "./state.js";
+import { isLiteral, isLocal, isLocals, isReference, Literal, Local, Locals, Reference, Resource } from "./state.js";
 
-export * from "./query.type.js";
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
  * Standard value transformations for computed {@link Expression | expressions}.
@@ -656,9 +654,7 @@ export type Operator =
 	| "?"
 	| "!"
 	| "*"
-	| "^"
-	| "@"
-	| "#";
+	| "^";
 
 
 /**
@@ -703,17 +699,262 @@ export type Transform = {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
+ * Checks if a value is a {@link Query}.
+ *
+ * @group Guards
+ *
+ * @param value The value to check
+ *
+ * @returns true if the value is a valid query combining projection, filtering, ordering, and paging
+ */
+export function isQuery(value: unknown): value is Query {
+	return isProjection(value)
+		&& isFiltering(value)
+		&& isOrdering(value)
+		&& isPaging(value);
+}
+
+/**
+ * Checks if a value is a {@link Projection}.
+ *
+ * @group Guards
+ *
+ * @param value The value to check
+ *
+ * @returns true if the value is an object with identifier or binding keys and model values
+ */
+export function isProjection(value: unknown): value is Projection {
+	return isObject(value, (v, k) => isString(k) && (
+		(isIdentifier(k) || isBinding(k)) ? (isModel(v) || isIndexedModel(v))
+			: /^([<>]=?|[~?!*^])/.test(k) || k === "@" || k === "#" // allow filtering, ordering, paging keys
+	));
+}
+
+/**
+ * Checks if a value is a {@link Filtering}.
+ *
+ * @group Guards
+ *
+ * @param value The value to check
+ *
+ * @returns true if the value is an object with filtering operator keys
+ */
+export function isFiltering(value: unknown): value is Filtering {
+	return isObject(value, (v, k) => isString(k) && (
+		k.startsWith("<=") ? isLiteral(v)
+			: k.startsWith(">=") ? isLiteral(v)
+				: k.startsWith("<") ? isLiteral(v)
+					: k.startsWith(">") ? isLiteral(v)
+						: k.startsWith("~") ? isString(v)
+							: k.startsWith("?") ? isOptions(v)
+								: k.startsWith("!") ? isOptions(v)
+									: true // allow other keys
+	));
+}
+
+const isOrderDirection = (v: unknown) => isAny(v, [
+	isNumber, v => isLiteralValue(v, ["asc", "desc", "ascending", "descending"])
+]);
+
+/**
+ * Checks if a value is an {@link Ordering}.
+ *
+ * @group Guards
+ *
+ * @param value The value to check
+ *
+ * @returns true if the value is an object with ordering operator keys
+ */
+export function isOrdering(value: unknown): value is Ordering {
+	return isObject(value, (v, k) => isString(k) && (
+		k.startsWith("*") ? isOptions(v)
+			: k.startsWith("^") ? isOrderDirection(v)
+				: true // allow other keys
+	));
+}
+
+/**
+ * Checks if a value is a {@link Paging}.
+ *
+ * @group Guards
+ *
+ * @param value The value to check
+ *
+ * @returns true if the value is an object with valid paging keys
+ */
+export function isPaging(value: unknown): value is Paging {
+	return isObject(value, (v, k) =>
+		k === "@" ? isNumber(v)
+			: k === "#" ? isNumber(v)
+				: true // allow other keys
+	);
+}
+
+
+/**
+ * Checks if a value is a {@link Binding}.
+ *
+ * @group Guards
+ *
+ * @param value The value to check
+ *
+ * @returns true if the value is a string matching the `{identifier}={expression}` syntax
+ */
+export function isBinding(value: unknown): value is Binding {
+	return isString(value) && value.includes("=")
+		&& isIdentifier(value.slice(0, value.indexOf("=")))
+		&& isExpression(value.slice(value.indexOf("=")+1));
+}
+
+/**
+ * Checks if a value is an {@link Expression}.
+ *
+ * @group Guards
+ *
+ * @param value The value to check
+ *
+ * @returns true if the value is a string
+ */
+export function isExpression(value: unknown): value is Expression {
+	try { return isString(value) && QueryParser.parse(value, { startRule: "Expr" }) === value; } catch { return false; }
+}
+
+/**
+ * Checks if a value is a {@link Model}.
+ *
+ * @group Guards
+ *
+ * @param value The value to check
+ *
+ * @returns true if the value is a valid projection model type
+ */
+export function isModel(value: unknown): value is Model {
+	return isAny(value, [
+		isLiteral, isTaggedText, isTaggedTextArray, isReference,
+		v => isArray(v, [isReference]), isQuery, v => isArray(v, [isQuery])
+	]);
+}
+
+
+/**
+ * Checks if a value is an indexed model container.
+ *
+ * @param value The value to check
+ *
+ * @returns true if the value is an object with identifier keys and model values
+ */
+function isIndexedModel(value: unknown): value is { readonly [key: Identifier]: Model } {
+	return isObject(value, (v, k) => isIdentifier(k) && isModel(v));
+}
+
+/**
+ * Checks if a value is a language-tagged text map.
+ */
+function isTaggedText(value: unknown): value is { readonly [range: TagRange]: string } {
+	return isObject(value, (v, k) => isTagRange(k) && isString(v));
+}
+
+/**
+ * Checks if a value is a multi-valued language-tagged text map.
+ */
+function isTaggedTextArray(value: unknown): value is { readonly [range: TagRange]: readonly [string] } {
+	return isObject(value, (v, k) => isTagRange(k) && isArray(v, [isString]));
+}
+
+
+/**
+ * Checks if a value is an {@link Options}.
+ *
+ * @group Guards
+ *
+ * @param value The value to check
+ *
+ * @returns true if the value is an option, local, locals, or array of options
+ */
+export function isOptions(value: unknown): value is Options {
+	return isAny(value, [isOption, isLocal, isLocals, v => isArray(v, isOption)]);
+}
+
+/**
+ * Checks if a value is an {@link Option}.
+ *
+ * @group Guards
+ *
+ * @param value The value to check
+ *
+ * @returns true if the value is null, a literal, or a reference
+ */
+export function isOption(value: unknown): value is Option {
+	return isAny(value, [isNull, isLiteral, isReference]);
+}
+
+
+/**
+ * Checks if a value is a {@link Criterion}.
+ *
+ * @group Guards
+ *
+ * @param value The value to check
+ *
+ * @returns true if the value is a valid parsed criterion
+ */
+export function isCriterion(value: unknown): value is Criterion {
+	return isObject(value, {
+		target: v => isAny(v, [
+			isIdentifier, v => isLiteralValue(v, ["<", ">", "<=", ">=", "~", "?", "!", "*", "^", "@", "#"])
+		]),
+		pipe: (v: unknown) => isArray(v, isIdentifier),
+		path: (v: unknown) => isArray(v, isIdentifier)
+	});
+}
+
+/**
+ * Checks if a value is a {@link Transforms}.
+ *
+ * @group Guards
+ *
+ * @param value The value to check
+ *
+ * @returns true if the value is an object with identifier keys and transform values
+ */
+export function isTransforms(value: unknown): value is Transforms {
+	return isObject(value, (v, k) => isIdentifier(k) && isTransform(v));
+}
+
+/**
+ * Checks if a value is a {@link Transform}.
+ *
+ * @group Guards
+ *
+ * @param value The value to check
+ *
+ * @returns true if the value is a valid transform definition
+ */
+export function isTransform(value: unknown): value is Transform {
+	return isObject(value, {
+		name: isString,
+		aggregate: v => isOptional(v, isBoolean),
+		datatype: v => isOptional(v, isString)
+	});
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
  * Encodes a query as a URL-safe string.
  *
  * Serializes a {@link Query} object into a string representation suitable for transmission as a URL query string in
  * GET requests. The output format can be selected based on readability, compactness, and compatibility requirements.
  *
  * If `base` is provided, converts absolute IRIs (matching `isIRI(value, "absolute")`) to root-relative IRIs
- * using `internalize()`, recursively throughout the query structure. Otherwise, performs plain serialization.
+ * using {@link internalize}, recursively throughout the query structure. Otherwise, performs plain serialization.
+ *
+ * @group Codecs
  *
  * @param query The query object to encode
- * @param options Encoding options
- * @param options.mode The output format:
+ * @param opts Encoding options
+ * @param opts.mode The output format:
  *
  * - `"json"` (default) — [Percent-encoded](https://www.rfc-editor.org/rfc/rfc3986#section-2.1) JSON; human-readable
  *   but verbose; see [JSON Serialization](#json-serialization)
@@ -721,14 +962,10 @@ export type Transform = {
  * - `"form"` — [Form-encoded](https://url.spec.whatwg.org/#application/x-www-form-urlencoded) `key=value` pairs;
  *   most compatible with standard tooling; see [Form Serialization](#form-serialization)
  *
- * @param options.base Base IRI for internalizing absolute references (must be absolute and hierarchical);
- *   if omitted, no IRI rewriting is performed
- *
  * @returns The encoded query string, with internalized IRIs if `base` is provided
  *
- * @throws {RangeError} If `base` is provided but not an absolute hierarchical IRI
- * @throws TypeGuardError If `query` is not a valid {@link Query} or `mode` is not a string
- * @throws {TypeError} If `mode` is not a supported encoding
+ * @throws {TypeError} If `query` is not a valid {@link Query}, `opts.mode` is not a supported format,
+ *   or `opts.base` is not an absolute hierarchical IRI
  *
  * @remarks
  *
@@ -744,22 +981,26 @@ export type Transform = {
  *
  * @see {@link decodeQuery}
  */
-export function encodeQuery(query: Query, {
+export function encodeQuery(
+	query: Query,
+	opts: CodecOpts & { readonly mode?: "json" | "base64" | "form" } = {}
+): string {
 
-	base,
-	mode = "json"
+	const $query = assert(query, isQuery);
+	const { base, mode = "json" } = assert(opts, v => isCodecOpts(v) && isEncodeOpts(v));
 
-}: CodecOpts & { readonly mode?: "json" | "base64" | "form" } = {}): string {
+	const internalized = internalizeIRIs(base, $query);
 
-	const $mode = assert(asString, mode);
-	const $base = base === undefined ? undefined : assert(v => asIRI(v, "hierarchical"), base);
-	const $query = internalizeIRIs($base, assert(asQuery, query));
+	return mode === "json" ? encodeURIComponent(JSON.stringify(internalized))
+		: mode === "base64" ? encodeBase64(JSON.stringify(internalized))
+			: mode === "form" ? encodeFormQuery(internalized)
+				: error(new TypeError(`unsupported mode <${mode}>`));
 
 
-	return $mode === "json" ? encodeURIComponent(JSON.stringify($query))
-		: $mode === "base64" ? encodeBase64(JSON.stringify($query))
-			: $mode === "form" ? encodeFormQuery($query)
-				: error(new TypeError(`unsupported mode <${$mode}>`));
+	function isEncodeOpts(value: unknown): value is CodecOpts & { readonly mode?: "json" | "base64" | "form" } {
+		return isObject(value)
+			&& (value.mode === undefined || value.mode === "json" || value.mode === "base64" || value.mode === "form");
+	}
 
 
 	function internalizeIRIs(base: string | undefined, q: Query): Query {
@@ -820,18 +1061,17 @@ export function encodeQuery(query: Query, {
  * input string structure.
  *
  * If `base` is provided, resolves internal IRIs (matching `isIRI(value, "internal")`) to absolute IRIs
- * using `resolve()`, recursively throughout the query structure. Otherwise, performs plain parsing.
+ * using {@link resolve}, recursively throughout the query structure. Otherwise, performs plain parsing.
  *
- * @param query The encoded query string
- * @param options Decoding options
- * @param options.base Base IRI for resolving internal references (must be absolute and hierarchical);
- *   if omitted, no IRI rewriting is performed
+ * @group Codecs
  *
- * @returns The decoded query object, with resolved IRIs if `base` is provided
+ * @param json The URL-encoded {@link Query} string (JSON, base64, or form format)
+ * @param opts Decoding options
  *
- * @throws {RangeError} If `base` is provided but not an absolute hierarchical IRI
- * @throws TypeGuardError If `query` is not a string or not a valid {@link Query}
- * @throws {Error} If `query` is malformed or unparseable
+ * @returns The decoded query, with resolved IRIs if `base` is provided
+ *
+ * @throws {TypeError} If `json` is not a string, not a valid {@link Query}, or `opts` is not a valid {@link CodecOpts}
+ * @throws {Error} If `json` is malformed or unparseable
  *
  * @remarks
  *
@@ -846,45 +1086,46 @@ export function encodeQuery(query: Query, {
  *
  * @see {@link encodeQuery}
  */
-export function decodeQuery(query: string, {
+export function decodeQuery(json: string, opts: CodecOpts = {}): Query {
 
-	base
-
-}: CodecOpts = {}): Query {
-
-	const $query = assert(asString, query);
-	const $base = base !== undefined ? assert(v => asIRI(v, "hierarchical"), base) : undefined;
-
+	const $json = assert(json, isString);
+	const { base } = assert(opts, isCodecOpts);
 
 	try {
 
-		if ( $query === "" ) {
+		if ( $json === "" ) {
 
-			return immutable(assert(asQuery, {}));
+			return immutable(assert({}, isQuery, "malformed query"));
 
-		} else if ( $query.startsWith("%7B") || $query.startsWith("{") ) {
+		} else if ( $json.startsWith("%7B") || $json.startsWith("{") ) {
 
 			// JSON format (starts with %7B which is encoded '{')
 
-			return immutable(assert(asQuery, parseJSON($base, decodeURIComponent($query))));
+			const query = parseJSON(base, decodeURIComponent($json));
 
-		} else if ( /^e[A-Za-z0-9+/_-]*=*$/.test($query) ) {
+			return immutable(assert(query, isQuery, "malformed query"));
+
+		} else if ( /^e[A-Za-z0-9+/_-]*=*$/.test($json) ) {
 
 			// base64 format - JSON objects encode to base64 starting with 'e'
 
-			return immutable(assert(asQuery, parseJSON($base, decodeBase64($query))));
+			const query = parseJSON(base, decodeBase64($json));
+
+			return immutable(assert(query, isQuery, "malformed query"));
 
 		} else {
 
 			// form format (application/x-www-form-urlencoded) parsed via Peggy grammar
 			// decode keys separately while preserving encoded values for the parser's value handling
 
-			return immutable(assert(asQuery, resolveIRIs($base, QueryParser.parse(decodeFormKeys($query), { startRule: "Query" }))));
+			const query = resolveIRIs(base, QueryParser.parse(decodeFormKeys($json), { startRule: "Query" }));
+
+			return immutable(assert(query, isQuery, "malformed query"));
 
 		}
 
 	} catch ( cause ) {
-		throw new Error(`invalid query <${$query}>`, { cause });
+		throw new Error(`invalid query <${$json}>`, { cause });
 	}
 
 
@@ -926,6 +1167,8 @@ export function decodeQuery(query: string, {
  *
  * Serializes a parsed {@link Criterion} back into its compact string representation suitable for use as a Query key.
  *
+ * @group Codecs
+ *
  * @param criterion The criterion to encode
  *
  * @returns The encoded key string
@@ -936,7 +1179,7 @@ export function decodeQuery(query: string, {
  */
 export function encodeCriterion(criterion: Criterion): string {
 
-	const { target, pipe, path } = assert(asCriterion, criterion);
+	const { target, pipe, path } = assert(criterion, isCriterion);
 
 	const pipeString = pipe.map(p => `${p}:`).join("");
 	const pathString = path.join(".");
@@ -955,6 +1198,8 @@ export function encodeCriterion(criterion: Criterion): string {
  * Parses a Query key string into its structural {@link Criterion} components, distinguishing projection keys
  * from constraint keys based on the presence of an {@link Operator} prefix.
  *
+ * @group Codecs
+ *
  * @param key The query key string to decode
  *
  * @returns The parsed criterion
@@ -966,11 +1211,13 @@ export function encodeCriterion(criterion: Criterion): string {
  */
 export function decodeCriterion(key: string): Criterion {
 
-	const $key = assert(asString, key);
+	const $key = assert(key, isString);
 
 	try {
 
-		return immutable(assert(asCriterion, QueryParser.parse($key, { startRule: "Criterion" })));
+		const criterion = QueryParser.parse($key, { startRule: "Criterion" });
+
+		return immutable(assert(criterion, isCriterion, "malformed criterion"));
 
 	} catch ( cause ) {
 		throw new Error(`invalid criterion <${key}>`, { cause });
@@ -997,6 +1244,6 @@ export function decodeCriterion(key: string): Criterion {
  */
 function transforms<const T extends readonly Transform[]>(transforms: T): Transforms {
 
-	return Object.fromEntries(transforms.map(t => [t.name, t])) as Transforms;
+	return immutable(Object.fromEntries(transforms.map(t => [t.name, t])));
 
 }

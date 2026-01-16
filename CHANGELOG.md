@@ -9,24 +9,29 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Add `index` module with `CodecOpts` configuration type
 - Add `Indexed` type for key-indexed property value containers
 - Add `Model` type for projection property value models
 - Add `Binding` type for named computed expressions in projections
-- Add `isModel()` type guard and `asModel()` validator for projection models
-- Add `isBinding()` and `isExpression()` type guards
 
 ### Changed
 
+- Migrate validators to composable `is*()` type guard pattern
 - Extend `Resource` and `Patch` types to support `Indexed` property values
 - Extend `Projection` type to support indexed model containers
 - Rename `Text`/`Texts` types to `Local`/`Locals` for language-tagged text maps
 
 ### Fixed
 
+- Fix expression grammar to support empty expressions and aggregates without path
 - Add `Tag` validation for `Local`/`Locals` language maps in resource validators
 - Add `TagRange` validation for language-tagged projection keys in query validators
 - Add `Identifier | Binding` key validation for projection entries in query validators
 - Add `Identifier` key validation for resource and patch entries in state validators
+
+### Removed
+
+- Remove `@metreeca/type` dependency
 
 ## [0.9.1](https://github.com/metreeca/qest/releases/tag/v0.9.1) - 2025-12-10
 
