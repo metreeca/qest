@@ -7,15 +7,15 @@ Minimalist foundations for client-driven, queryable REST/JSON APIs.
 **@metreeca/qest** standardizes critical capabilities that vanilla REST/JSON APIs typically lack or implement in ad‑hoc,
 non‑portable ways:
 
-- **Client-driven** — clients specify what they need, retrieving complex envelopes in a single call
-- **Queryable** — advanced filtering and aggregation, supporting faceted search and analytics
+- **client-driven** — clients specify what they need, retrieving complex envelopes in a single call
+- **queryable** — advanced filtering and aggregation, supporting faceted search and analytics
 
 Developers seek these features in frameworks like GraphQL; **@metreeca/qest** brings them to REST/JSON, achieving:
 
-- **Familiar patterns** — standard REST and JSON conventions, no new paradigms to learn
-- **Simple clients** — no specialized libraries, preprocessors, or code generators
-- **Automated servers** — model-driven development, dramatically reducing implementation effort
-- **Standard caching** — compatibility with CDNs and browser caches using standard GET requests
+- **familiar patterns** — standard REST and JSON conventions, no new paradigms to learn
+- **simple clients** — no specialized libraries, preprocessors, or code generators
+- **automated servers** — model-driven development, dramatically reducing implementation effort
+- **standard caching** — compatibility with CDNs and browser caches using standard GET requests
 - **URL-based versioning** — standard REST versioning without field deprecation complexity
 
 # Installation
@@ -35,21 +35,29 @@ npm install @metreeca/qest
 >
 > This section introduces essential concepts; for complete coverage, see the API reference:
 >
-> | Module                                                                     | Description                      |
-> | -------------------------------------------------------------------------- | -------------------------------- |
-> | [@metreeca/qest/state](https://metreeca.github.io/qest/modules/state.html) | Resource state model             |
-> | [@metreeca/qest/query](https://metreeca.github.io/qest/modules/query.html) | Client-driven resource retrieval |
+> | Module                                                                     | Description                     |
+> |----------------------------------------------------------------------------|---------------------------------|
+> | [@metreeca/qest/state](https://metreeca.github.io/qest/modules/state.html) | Resource state management       |
+> | [@metreeca/qest/model](https://metreeca.github.io/qest/modules/model.html) | Client-driven retrieval |
 
 **@metreeca/qest** types define payload semantics and formats for standard REST operations:
 
-| Method | Type                                                                  | Description                      |
-| ------ | --------------------------------------------------------------------- | -------------------------------- |
-| GET    | [Resource](https://metreeca.github.io/qest/types/state.Resource.html) | Resource retrieval               |
-| GET    | [Query](https://metreeca.github.io/qest/types/query.Query.html)       | Client-driven resource retrieval |
-| POST   | [Resource](https://metreeca.github.io/qest/types/state.Resource.html) | Resource creation                |
-| PUT    | [Resource](https://metreeca.github.io/qest/types/state.Resource.html) | Complete resource state update   |
-| PATCH  | [Patch](https://metreeca.github.io/qest/types/state.Patch.html)       | Partial resource state update    |
-| DELETE | [IRI](https://metreeca.github.io/core/types/resource.IRI.html)        | Resource deletion                |
+| Method | Type         | Description                        |
+|--------|--------------|------------------------------------|
+| GET    | [Resource][] | Resource retrieval                 |
+| GET    | [Resource][] | Collection retrieval               |
+| GET    | [Model][]    | Client-driven resource retrieval   |
+| GET    | [Query][]    | Client-driven collection retrieval |
+| POST   | [Resource][] | Resource creation                  |
+| PUT    | [Resource][] | Complete resource state update     |
+| PATCH  | [Patch][]    | Partial resource state update      |
+| DELETE | [IRI][]      | Resource deletion                  |
+
+[Resource]: https://metreeca.github.io/qest/types/state.Resource.html
+[Model]: https://metreeca.github.io/qest/types/model.Model.html
+[Query]: https://metreeca.github.io/qest/types/model.Query.html
+[Patch]: https://metreeca.github.io/qest/types/state.Patch.html
+[IRI]: https://metreeca.github.io/core/types/resource.IRI.html
 
 ## Resources and Patches
 
@@ -65,7 +73,10 @@ GET https://data.example.com/products/123
   "id": "https://data.example.com/products/123",
   "name": "Widget",
   "category": "Electronics",
-  "tags": ["gadget", "featured"],
+  "tags": [
+    "gadget",
+    "featured"
+  ],
   "vendor": "https://data.example.com/vendors/456",
   "price": 99.99,
   "inStock": true
@@ -80,12 +91,12 @@ PUT https://data.example.com/products/123
 
 ```js
 ({
-  name: "Widget",
-  category: "Electronics",
-  tags: ["gadget", "premium"],
-  vendor: "https://data.example.com/vendors/456",
-  price: 79.99,
-  // inStock                     // not included → deleted
+    name: "Widget",
+    category: "Electronics",
+    tags: ["gadget", "premium"],
+    vendor: "https://data.example.com/vendors/456",
+    price: 79.99,
+    // inStock                     // not included → deleted
 });
 ```
 
@@ -97,9 +108,9 @@ PATCH https://data.example.com/products/123
 
 ```js
 ({
-  tags: ["gadget", "premium"], // updated
-  price: 79.99, // updated
-  inStock: null, // deleted
+    tags: ["gadget", "premium"], // updated
+    price: 79.99, // updated
+    inStock: null, // deleted
 });
 ```
 
@@ -107,10 +118,57 @@ Properties set to `null` are deleted; properties not included are unchanged.
 
 ## Client-Driven Retrieval
 
-A [**Query**](https://metreeca.github.io/qest/types/query.Query.html) is a declarative specification that controls how
-resources are retrieved: which properties to include and how deeply to expand linked resources. For collections, queries
-also support filtering, sorting, pagination, and computed projections including aggregates supporting faceted search and
-analytics.
+Client-driven retrieval lets clients specify exactly what data to retrieve from both single resources and collections.
+Expansions and nested queries can be arbitrarily deep: no over-fetching of unwanted fields, no under-fetching requiring
+additional calls to resolve linked resources.
+
+This is the core contribution of **@metreeca/qest**: vanilla REST/JSON APIs lack a standard way for clients to control
+retrieval, forcing them to accept fixed server responses or rely on ad-hoc query parameters. Client-driven retrieval
+fills this gap, supporting precise control over responses while remaining fully compatible with standard HTTP caching.
+
+> [!IMPORTANT]
+>
+> Client-driven retrieval is fully optional. Servers may provide defaults, typically derived from the underlying data
+> model, preserving standard REST/JSON behavior while enabling advanced capabilities when needed.
+
+**Resources** — A [**Model**](https://metreeca.github.io/qest/types/model.Model.html) defines the data retrieval
+envelope: which properties to include and how deeply and in how much detail to expand linked resources.
+
+```http request
+GET https://data.example.com/products/123?<model>
+```
+
+where `<model>` is the following URL-encoded JSON:
+
+```js
+({
+    id: "",
+    name: "",
+    price: 0,
+    vendor: {
+        id: "",
+        name: "",
+    },
+});
+```
+
+The response includes only the requested properties, with the linked `vendor` expanded to show just `id` and `name`:
+
+```json
+{
+  "id": "https://data.example.com/products/123",
+  "name": "Widget",
+  "price": 99.99,
+  "vendor": {
+    "id": "https://data.example.com/vendors/145",
+    "name": "Acme"
+  }
+}
+```
+
+**Collections** — A [**Query**](https://metreeca.github.io/qest/types/model.Query.html) combines a projection model with
+filtering, ordering, and pagination criteria, also supporting computed projections including aggregates for faceted
+search and analytics.
 
 ```http request
 GET https://data.example.com/products/?<query>
@@ -120,21 +178,21 @@ where `<query>` is the following URL-encoded JSON:
 
 ```js
 ({
-  items: [
-    {
-      id: "",
-      name: "",
-      price: 0,
-      vendor: {
-        id: "",
-        name: "",
-      },
-      ">=price": 50, // filter: price ≥ 50
-      "<=price": 150, // filter: price ≤ 150
-      "^price": "asc", // sort: by price ascending
-      "#": 25, // limit: 25 results
-    },
-  ],
+    items: [
+        {
+            id: "",
+            name: "",
+            price: 0,
+            vendor: {
+                id: "",
+                name: "",
+            },
+            ">=price": 50, // filter: price ≥ 50
+            "<=price": 150, // filter: price ≤ 150
+            "^price": "asc", // sort: by price ascending
+            "#": 25, // limit: 25 results
+        },
+    ],
 });
 ```
 
@@ -145,9 +203,6 @@ A single call returns exactly what the client requested:
 - **filtered**: `price` between 50 and 150
 - **sorted**: by `price` ascending
 - **paginated**: up to 25 results
-
-Expansions and nested queries can be arbitrarily deep. No over-fetching of unwanted fields, no under-fetching requiring
-additional calls to resolve linked resources:
 
 ```json
 {
@@ -183,16 +238,6 @@ additional calls to resolve linked resources:
 }
 ```
 
-This is the core contribution of **@metreeca/qest**: vanilla REST/JSON APIs lack a standard way for clients to control
-retrieval, forcing them to accept fixed server responses or rely on ad-hoc query parameters. The Query model fills this
-gap, giving clients precise control over responses while remaining fully compatible with standard HTTP caching.
-
-> [!IMPORTANT]
->
-> Client-driven retrieval is fully optional. When clients don't provide a query, servers may provide a default one,
-> typically derived from the underlying data model. This preserves standard REST/JSON behavior while enabling advanced
-> retrieval capabilities when needed.
-
 # Integrated Ecosystem
 
 > [!IMPORTANT]
@@ -204,7 +249,7 @@ But **@metreeca/qest** is also the foundation of an integrated ecosystem for rap
 those same types into a complete model-driven stack:
 
 | Package                     | Description                                                |
-| --------------------------- | ---------------------------------------------------------- |
+|-----------------------------|------------------------------------------------------------|
 | **@metreeca/qest**          | Data types for client-driven, queryable REST/JSON APIs     |
 | @metreeca/blue _(upcoming)_ | Shape-based validation for resources, patches, and queries |
 | @metreeca/keep _(upcoming)_ | Shape-driven storage framework with pluggable adapters     |

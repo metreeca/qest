@@ -15,12 +15,12 @@
  */
 
 import { describe, expect, it } from "vitest";
+import { isIndexed } from "./index.js";
 import {
 	decodePatch,
 	decodeResource,
 	encodePatch,
 	encodeResource,
-	isIndexed,
 	isLiteral,
 	isLocal,
 	isLocals,
@@ -317,41 +317,6 @@ describe("guards", () => {
 		it("should reject primitives", async () => {
 			expect(isLocals("string")).toBeFalsy();
 			expect(isLocals(null)).toBeFalsy();
-		});
-
-	});
-
-	describe("isIndexed", () => {
-
-		it("should accept object with string values", async () => {
-			expect(isIndexed({ key1: "value1", key2: "value2" })).toBeTruthy();
-		});
-
-		it("should accept object with mixed value types", async () => {
-			expect(isIndexed({ str: "value", num: 42, bool: true })).toBeTruthy();
-		});
-
-		it("should accept object with array values", async () => {
-			expect(isIndexed({ tags: ["a", "b", "c"] })).toBeTruthy();
-		});
-
-		it("should accept empty object", async () => {
-			expect(isIndexed({})).toBeTruthy();
-		});
-
-		it("should reject object with null values", async () => {
-			expect(isIndexed({ key: null })).toBeFalsy();
-		});
-
-		it("should reject primitives", async () => {
-			expect(isIndexed("string")).toBeFalsy();
-			expect(isIndexed(42)).toBeFalsy();
-			expect(isIndexed(null)).toBeFalsy();
-		});
-
-		it("should reject arrays", async () => {
-			expect(isIndexed([])).toBeFalsy();
-			expect(isIndexed(["a", "b"])).toBeFalsy();
 		});
 
 	});

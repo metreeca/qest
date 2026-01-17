@@ -1,5 +1,5 @@
 /*
- * Copyright © 2025 Metreeca srl
+ * Copyright © 2026 Metreeca srl
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * Resource state model.
+ * Resource state management.
  *
  * Defines types for describing resource states and partial updates in REST/JSON APIs, using native JSON types
  * with localised text support:
@@ -230,9 +230,9 @@
  * across systems and domains.
  *
  * > [!NOTE]
- * > The choice between absolute, root-relative, or relative IRIs is application-specific, but root-relative IRIs
+ * > The choice between absolute or internal IRIs is application-specific, but internal IRIs
  * > (e.g., `/users/123`) are preferred for readability and portability. JSON-LD `@base` declarations can resolve
- * > relative references to absolute IRIs during processing.
+ * > internal references to absolute IRIs during processing.
  *
  * ## Literals
  *
@@ -283,13 +283,21 @@
  */
 
 import {
-	Identifier, isAny, isArray, isBoolean, isIdentifier, isNull, isNumber, isObject, isString
+	Identifier,
+	isArray,
+	isBoolean,
+	isIdentifier,
+	isNull,
+	isNumber,
+	isObject,
+	isString,
+	isUnion
 } from "@metreeca/core";
 import { assert } from "@metreeca/core/error";
 import { isTag, Tag } from "@metreeca/core/language";
 import { immutable } from "@metreeca/core/nested";
 import { internalize, IRI, isIRI, resolve } from "@metreeca/core/resource";
-import { type CodecOpts, isCodecOpts } from "./index.js";
+import { type CodecOpts, type Indexed, isCodecOpts, isIndexed } from "./index.js";
 
 
 /**
@@ -305,7 +313,7 @@ import { type CodecOpts, isCodecOpts } from "./index.js";
  * @see {@link https://datatracker.ietf.org/doc/html/rfc9110#section-9.3.4 RFC 9110 - HTTP PUT Method}
  */
 export type Resource =
-	| { readonly [property: Identifier]: Values | Indexed }
+	| { readonly [property: Identifier]: Values | Indexed<Values> }
 
 /**
  * Partial resource state update.
@@ -317,7 +325,7 @@ export type Resource =
  * @see {@link https://datatracker.ietf.org/doc/html/rfc5789 RFC 5789 - HTTP PATCH Method}
  */
 export type Patch =
-	| { readonly [property: Identifier]: null | Values | Indexed }
+	| { readonly [property: Identifier]: null | Values | Indexed<Values> }
 
 
 /**
@@ -413,23 +421,6 @@ export type Local =
 export type Locals =
 	| { readonly [tag: Tag]: readonly string[] }
 
-/**
- * Key-indexed container for property values.
- *
- * Maps arbitrary {@link Identifier} keys to {@link Values}, supporting index-based organisation of property values.
- * Useful for representing union-typed properties or dynamically-keyed structures.
- *
- * @remarks
- *
- * - Corresponds to JSON-LD's `@index` container semantics; requires `@context` to distinguish from nested resources
- * - Keys are limited to valid JavaScript identifiers
- * - Allowed only as top-level property values; no nesting
- *
- * @see {@link https://www.w3.org/TR/json-ld11/#data-indexing JSON-LD 1.1 - Data Indexing}
- */
-export type Indexed =
-	| { readonly [key: Identifier]: Values }
-
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -440,10 +431,10 @@ export type Indexed =
  *
  * @param value The value to check
  *
- * @returns true if the value is a plain object with identifier keys and {@link Values} or {@link Indexed} values
+ * @returns True if the value is a plain object with identifier keys and {@link Values} or {@link Indexed} values
  */
 export function isResource(value: unknown): value is Resource {
-	return isObject(value, (v, k) => isIdentifier(k) && isAny(v, [isValues, isIndexed]));
+	return isObject(value, (v, k) => isIdentifier(k) && isUnion(v, [isValues, v => isIndexed(v, isValues)]));
 }
 
 /**
@@ -453,11 +444,11 @@ export function isResource(value: unknown): value is Resource {
  *
  * @param value The value to check
  *
- * @returns true if the value is a plain object with identifier keys and `null`, {@link Values},
+ * @returns True if the value is a plain object with identifier keys and `null`, {@link Values},
  *   or {@link Indexed} values
  */
 export function isPatch(value: unknown): value is Patch {
-	return isObject(value, (v, k) => isIdentifier(k) && isAny(v, [isNull, isValues, isIndexed]));
+	return isObject(value, (v, k) => isIdentifier(k) && isUnion(v, [isNull, isValues, v => isIndexed(v, isValues)]));
 }
 
 
@@ -468,10 +459,10 @@ export function isPatch(value: unknown): value is Patch {
  *
  * @param value The value to check
  *
- * @returns true if the value is a {@link Value}, {@link Local}, {@link Locals}, or array of values
+ * @returns True if the value is a {@link Value}, {@link Local}, {@link Locals}, or array of values
  */
 export function isValues(value: unknown): value is Values {
-	return isAny(value, [isValue, isLocal, isLocals, v => isArray(v, isValue)]);
+	return isUnion(value, [isValue, isLocal, isLocals, v => isArray(v, isValue)]);
 }
 
 /**
@@ -481,10 +472,10 @@ export function isValues(value: unknown): value is Values {
  *
  * @param value The value to check
  *
- * @returns true if the value is a {@link Literal}, {@link Reference}, or {@link Resource}
+ * @returns True if the value is a {@link Literal}, {@link Reference}, or {@link Resource}
  */
 export function isValue(value: unknown): value is Value {
-	return isAny(value, [isLiteral, isReference, isResource]);
+	return isUnion(value, [isLiteral, isReference, isResource]);
 }
 
 /**
@@ -494,10 +485,10 @@ export function isValue(value: unknown): value is Value {
  *
  * @param value The value to check
  *
- * @returns true if the value is a boolean, finite number, or string
+ * @returns True if the value is a boolean, finite number, or string
  */
 export function isLiteral(value: unknown): value is Literal {
-	return isAny(value, [isBoolean, isNumber, isString]);
+	return isUnion(value, [isBoolean, isNumber, isString]);
 }
 
 /**
@@ -507,7 +498,7 @@ export function isLiteral(value: unknown): value is Literal {
  *
  * @param value The value to check
  *
- * @returns true if the value is a relative IRI string
+ * @returns True if the value is a well-formed IRI reference
  */
 export function isReference(value: unknown): value is Reference {
 	return isIRI(value, "relative");
@@ -520,7 +511,7 @@ export function isReference(value: unknown): value is Reference {
  *
  * @param value The value to check
  *
- * @returns true if the value is a plain object with language tag keys and string values
+ * @returns True if the value is a plain object with language tag keys and string values
  */
 export function isLocal(value: unknown): value is Local {
 	return isObject(value, (v, k) => isTag(k) && isString(v));
@@ -533,23 +524,10 @@ export function isLocal(value: unknown): value is Local {
  *
  * @param value The value to check
  *
- * @returns true if the value is a plain object with language tag keys and string array values
+ * @returns True if the value is a plain object with language tag keys and string array values
  */
 export function isLocals(value: unknown): value is Locals {
 	return isObject(value, (v, k) => isTag(k) && isArray(v, isString));
-}
-
-/**
- * Checks if a value is an {@link Indexed}.
- *
- * @group Guards
- *
- * @param value The value to check
- *
- * @returns true if the value is a plain object with identifier keys and {@link Values} values
- */
-export function isIndexed(value: unknown): value is Indexed {
-	return isObject(value, (v, k) => isIdentifier(k) && isValues(v));
 }
 
 
@@ -558,9 +536,9 @@ export function isIndexed(value: unknown): value is Indexed {
 /**
  * Encodes a resource state as a JSON string.
  *
- * If `base` is provided, converts absolute IRIs (matching `isIRI(value, "absolute")`) to root-relative IRIs
- * using {@link internalize}, recursively throughout the resource structure. Otherwise, performs plain JSON
- * serialization.
+ * If `base` is provided, converts absolute IRIs (matching `isIRI(value, "absolute")`) to
+ * internal IRIs using {@link internalize}, recursively throughout the resource structure.
+ * Otherwise, performs plain JSON serialization.
  *
  * @group Codecs
  *
@@ -575,7 +553,7 @@ export function isIndexed(value: unknown): value is Indexed {
  */
 export function encodeResource(resource: Resource, opts: CodecOpts = {}): string {
 
-	const $resource = assert(resource, isResource);
+	const $resource = immutable(resource, isResource);
 	const { base } = assert(opts, isCodecOpts);
 
 	if ( base === undefined ) {
@@ -597,8 +575,9 @@ export function encodeResource(resource: Resource, opts: CodecOpts = {}): string
 /**
  * Decodes a resource state from a JSON string.
  *
- * If `base` is provided, resolves internal IRIs (matching `isIRI(value, "internal")`) to absolute IRIs
- * using `resolve()`, recursively throughout the json structure. Otherwise, performs plain JSON parsing.
+ * If `base` is provided, resolves internal IRIs (matching `isIRI(value, "internal")`) to
+ * absolute IRIs using `resolve()`, recursively throughout the json structure. Otherwise,
+ * performs plain JSON parsing.
  *
  * @group Codecs
  *
@@ -621,7 +600,7 @@ export function decodeResource(json: string, opts: CodecOpts = {}): Resource {
 
 		const resource = JSON.parse($json);
 
-		return immutable(assert(resource, isResource, "malformed resource"));
+		return immutable(resource, isResource, "malformed resource");
 
 	} else {
 
@@ -631,7 +610,7 @@ export function decodeResource(json: string, opts: CodecOpts = {}): Resource {
 				: value
 		);
 
-		return immutable(assert(resource, isResource, "malformed resource"));
+		return immutable(resource, isResource, "malformed resource");
 
 	}
 }
@@ -640,9 +619,9 @@ export function decodeResource(json: string, opts: CodecOpts = {}): Resource {
 /**
  * Encodes a patch as a JSON string.
  *
- * If `base` is provided, converts absolute IRIs (matching `isIRI(value, "absolute")`) to root-relative IRIs
- * using {@link internalize}, recursively throughout the patch structure. Otherwise, performs plain JSON
- * serialization.
+ * If `base` is provided, converts absolute IRIs (matching `isIRI(value, "absolute")`) to
+ * internal IRIs using {@link internalize}, recursively throughout the patch structure.
+ * Otherwise, performs plain JSON serialization.
  *
  * @group Codecs
  *
@@ -657,7 +636,7 @@ export function decodeResource(json: string, opts: CodecOpts = {}): Resource {
  */
 export function encodePatch(patch: Patch, opts: CodecOpts = {}): string {
 
-	const $patch = assert(patch, isPatch);
+	const $patch = immutable(patch, isPatch);
 	const { base } = assert(opts, isCodecOpts);
 
 	if ( base === undefined ) {
@@ -679,8 +658,9 @@ export function encodePatch(patch: Patch, opts: CodecOpts = {}): string {
 /**
  * Decodes a patch from a JSON string.
  *
- * If `base` is provided, resolves internal IRIs (matching `isIRI(value, "internal")`) to absolute IRIs
- * using `resolve()`, recursively throughout the patch structure. Otherwise, performs plain JSON parsing.
+ * If `base` is provided, resolves internal IRIs (matching `isIRI(value, "internal")`) to
+ * absolute IRIs using `resolve()`, recursively throughout the patch structure. Otherwise,
+ * performs plain JSON parsing.
  *
  * @group Codecs
  *
@@ -702,7 +682,7 @@ export function decodePatch(json: string, opts: CodecOpts = {}): Patch {
 
 		const patch = JSON.parse($json);
 
-		return immutable(assert(patch, isPatch, "malformed patch"));
+		return immutable(patch, isPatch, "malformed patch");
 
 	} else {
 
@@ -712,7 +692,7 @@ export function decodePatch(json: string, opts: CodecOpts = {}): Patch {
 				: value
 		);
 
-		return immutable(assert(patch, isPatch, "malformed patch"));
+		return immutable(patch, isPatch, "malformed patch");
 
 	}
 

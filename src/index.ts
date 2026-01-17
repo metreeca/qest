@@ -18,11 +18,33 @@
  * Shared types and guards.
  *
  * @module index
+ *
+ * @groupDescription Guards
+ * Type guards for runtime validation of shared types.
  */
 
-import { isAny, isObject, isOptional, key } from "@metreeca/core";
+import { Identifier, isAny, isIdentifier, isObject, isOptional, key } from "@metreeca/core";
 import { type IRI, isIRI } from "@metreeca/core/resource";
 
+
+/**
+ * Key-indexed container for property values.
+ *
+ * Maps arbitrary {@link Identifier} keys to values of type `T`, supporting index-based organisation of property values.
+ * Useful for representing union-typed properties or dynamically-keyed structures.
+ *
+ * @typeParam T The type of values in the container
+ *
+ * @remarks
+ *
+ * - Corresponds to JSON-LD's `@index` container semantics; requires `@context` to distinguish from nested resources
+ * - Keys are limited to valid JavaScript identifiers
+ * - Allowed only as top-level property values; no nesting
+ *
+ * @see {@link https://www.w3.org/TR/json-ld11/#data-indexing JSON-LD 1.1 - Data Indexing}
+ */
+export type Indexed<T> =
+	| { readonly [key: Identifier]: T }
 
 /**
  * Shared configuration options for codec operations.
@@ -30,7 +52,7 @@ import { type IRI, isIRI } from "@metreeca/core/resource";
  * Controls IRI rewriting behaviour during encoding and decoding. When a base IRI is provided, absolute IRIs are
  * converted to root-relative form during encoding and resolved back to absolute form during decoding.
  */
-export interface CodecOpts {
+export type CodecOpts = {
 
 	/**
 	 * Base IRI for IRI resolution (must be absolute and hierarchical).
@@ -48,14 +70,32 @@ export interface CodecOpts {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
+ * Checks if a value is an {@link Indexed}.
+ *
+ * @group Guards
+ *
+ * @typeParam T The expected type of values in the container
+ *
+ * @param value The value to check
+ * @param is Type guard for validating container values
+ *
+ * @returns True if the value is a plain object with identifier keys and values satisfying the type guard
+ */
+export function isIndexed<T>(value: unknown, is: (value: unknown) => value is T): value is Indexed<T> {
+	return isObject(value, (v, k) => isIdentifier(k) && is(v));
+}
+
+/**
  * Checks if a value is a valid {@link CodecOpts} object.
  *
  * Validates that `value` is an object with an optional `base` property containing a hierarchical IRI. Additional
  * properties are permitted.
  *
+ * @group Guards
+ *
  * @param value The value to check
  *
- * @returns true if `value` conforms to {@link CodecOpts}; false otherwise
+ * @returns True if `value` conforms to {@link CodecOpts}; false otherwise
  */
 export function isCodecOpts(value: unknown): value is CodecOpts {
 	return isObject(value, {

@@ -1,5 +1,5 @@
 /*
- * Copyright © 2025 Metreeca srl
+ * Copyright © 2026 Metreeca srl
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,29 +15,38 @@
  */
 
 /**
- * Client-driven resource retrieval.
+ * Client-driven retrieval.
  *
  * Defines types for specifying what data to retrieve in REST/JSON APIs, including property selection, linked
  * resource expansion, and—for collections—filtering, ordering, and pagination:
  *
- * - {@link Query} — Resource retrieval query
+ * - {@link Model} — Resource projection model
+ * - {@link Specs} — Property projection specs
+ * - {@link Query} — Collection query
  * - {@link Binding} — Named computed expression
- * - {@link Expression} — Computed expression syntax
- * - {@link Model} — Projection value types
+ * - {@link Expression} — Computed expression
+ * - {@link Options} — Constraint option set
+ * - {@link Option} — Constraint option
  *
  * Defines structures for programmatic query key handling:
  *
- * - {@link Criterion} — Parsed query key representation
+ * - {@link Criterion} — Query criterion
+ * - {@link Operator} — Constraint operator symbols
  *
- * # Query Patterns
+ * Defines value transformation infrastructure:
  *
- * ## Resource Queries
+ * - {@link Transforms} — Standard transformations registry
+ * - {@link Transform} — Value transform
  *
- * A {@link Query} specifies which properties to retrieve from a single {@link Resource} and how deeply to
+ * # Retrieval Patterns
+ *
+ * ## Resource Retrieval
+ *
+ * A {@link Model} specifies which properties to retrieve from a single {@link Resource} and how deeply to
  * expand linked resources. No over-fetching of unwanted fields, no under-fetching requiring additional calls:
  *
  * ```typescript
- * const query: Query = {
+ * const model: Model = {
  *   id: "",               // resource identifier
  *   name: "",             // string property
  *   price: 0,             // numeric property
@@ -49,15 +58,16 @@
  * };
  * ```
  *
- * ## Collection Queries
+ * ## Collection Retrieval
  *
+ * A {@link Query} extends {@link Model} with filtering, ordering, and pagination criteria for collections.
  * Collection queries are nested inside a managing resource that owns the collection, following REST/JSON best
  * practices. Singleton array projections retrieve filtered, sorted, and paginated results with arbitrarily deep
  * expansions in a single call - no over-fetching, no under-fetching:
  *
  * ```typescript
- * const query: Query = {
- *   items: [{                                 // collection owned by parent
+ * const model: Model = {
+ *   items: [{                                 // collection query
  *     id: "",
  *     name: "",
  *     price: 0,
@@ -79,7 +89,7 @@
  * For multilingual properties, use {@link TagRange} keys to select language tags to retrieve:
  *
  * ```typescript
- * const query: Query = {
+ * const model: Model = {
  *   id: "",
  *   name: { "*": "" },                   // all available languages
  *   description: { "en": "", "fr": "" }, // English or French
@@ -89,13 +99,13 @@
  *
  * ## Computed Properties
  *
- * Queries can define computed properties using {@link Expression | expressions} combining property paths
+ * Models can define computed properties using {@link Expression | expressions} combining property paths
  * with {@link Transforms}.
  *
  * Plain transforms operate on individual values:
  *
  * ```typescript
- * const query: Query = {
+ * const model: Model = {
  *   id: "",
  *   name: "",
  *   price: 0,
@@ -107,7 +117,7 @@
  * Aggregate transforms operate on collections:
  *
  * ```typescript
- * const query: Query = {
+ * const model: Model = {
  *   items: [{
  *     vendor: { id: "", name: "" },    // group by vendor
  *     "items=count:": 0,               // count of items per vendor
@@ -123,7 +133,7 @@
  * ```typescript
  * // Category facet with product counts
  *
- * const categoryFacet: Query = {
+ * const categoryFacet: Model = {
  *   items: [{
  *     "category=sample:category": "",
  *     "count=count:": 0,
@@ -138,7 +148,7 @@
  *
  * // Price range for slider bounds
  *
- * const priceRange: Query = {
+ * const priceRange: Model = {
  *   items: [{
  *     "min=min:price": 0,
  *     "max=max:price": 0
@@ -149,7 +159,7 @@
  *
  * // Total product count
  *
- * const productCount: Query = {
+ * const productCount: Model = {
  *   items: [{
  *     "count=count:": 0
  *   }]
@@ -158,7 +168,7 @@
  * // → { items: [{ count: 284 }] }
  * ```
  *
- * # Query Serialization
+ * # Model Serialization
  *
  * Multiple formats are supported for transmission as URL query strings in GET requests:
  *
@@ -170,9 +180,14 @@
  *
  * ## JSON Serialization
  *
- * Directly encodes {@link Query} objects using operator key prefixes.
+ * Directly encodes {@link Model} objects using operator key prefixes.
  *
  * ## Form Serialization
+ *
+ * > [!WARNING]
+ * >
+ * > Form serialization specifies only query constraints; servers are expected to convert to a model by wrapping
+ * > inside the target endpoint's collection property and providing a default projection.
  *
  * Supports `application/x-www-form-urlencoded` encoding via the `form` mode. The format encodes queries as
  * `label=value` pairs where:
@@ -208,19 +223,14 @@
  * 4. Sorts results by `price` ascending
  * 5. Returns the first 25 items (offset 0, limit 25)
  *
- * > [!WARNING]
- * >
- * > Form queries specify only constraints; wrapping inside the target endpoint's collection property and providing
- * > a default projection is server-managed.
- *
- * # Query Grammar
+ * # Model Grammar
  *
  * The following grammar elements are shared by both JSON and Form serialization formats.
  *
  * ## Expressions
  *
- * {@link Expression | Expressions} identify properties or computed values combining an optional result name,
- * a pipeline of {@link Transforms}, and a property path:
+ * Criterion keys identify properties or computed values combining an optional result name (forming a
+ * {@link Binding}), a pipeline of {@link Transforms}, and a property path ({@link Expression}):
  *
  * ```text
  * expression  = ( name '=' )? transform* path?
@@ -270,8 +280,18 @@
  */
 
 import {
-	Identifier, isAny, isArray, isBoolean, isIdentifier, isLiteral as isLiteralValue, isNull, isNumber, isObject,
-	isOptional, isString
+	Identifier,
+	isArray,
+	isBoolean,
+	isIdentifier,
+	isLiteral as isLiteralValue,
+	isNull,
+	isNumber,
+	isObject,
+	isOptional,
+	isString,
+	isUnion,
+	key
 } from "@metreeca/core";
 import { assert, error } from "@metreeca/core/error";
 import { isTagRange, TagRange } from "@metreeca/core/language";
@@ -279,9 +299,20 @@ import { immutable } from "@metreeca/core/nested";
 import type { IRI } from "@metreeca/core/resource";
 import { internalize, isIRI, resolve } from "@metreeca/core/resource";
 import { decodeBase64, encodeBase64 } from "./base64.js";
-import { type CodecOpts, isCodecOpts } from "./index.js";
-import * as QueryParser from "./query.pegjs.js";
-import { isLiteral, isLocal, isLocals, isReference, Literal, Local, Locals, Reference, Resource } from "./state.js";
+import { type CodecOpts, Indexed, isCodecOpts, isIndexed } from "./index.js";
+import * as QueryParser from "./model.pegjs.js";
+import {
+	isLiteral,
+	isLocal,
+	isLocals,
+	isReference,
+	Literal,
+	Local,
+	Locals,
+	Reference,
+	Resource,
+	Values
+} from "./state.js";
 
 
 /**
@@ -382,136 +413,156 @@ export const Transforms = transforms([
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
- * Resource retrieval query.
+ * Resource projection model.
  *
- * Defines the data envelope of a {@link Resource} object to be retrieved, combining:
+ * A property map specifying which properties to retrieve from a {@link Resource}. Each property maps to
+ * {@link Specs} describing the expected value type and structure, or {@link Indexed} for union-typed or
+ * dynamically-keyed properties. Indexed containers can only appear as top-level property values and cannot be nested.
  *
- * - {@link Projection} — Properties and models to retrieve
- * - {@link Filtering} — Selection criteria for collections
- * - {@link Ordering} — Sorting criteria for collections
- * - {@link Paging} — Pagination criteria for collections
+ * Models may define *computed* properties using the `{name}={expression}` syntax, where the value is computed
+ * from an {@link Expression}. Scalar values serve as type placeholders; their actual value is immaterial.
  *
  * > [!WARNING]
- * > Query processors must reject queries with an error if they reference undefined properties or provide projections
- * > or constraints of mismatched types for defined properties.
+ * > Model processors must reject models with an error if they reference undefined properties or provide projections
+ * > of mismatched types for defined properties.
+ *
+ * @see {@link Query} for collection filtering, ordering, and pagination
  */
-export type Query =
-	& Projection
-	& Filtering
-	& Ordering
-	& Paging;
-
+export type Model =
+	| { readonly [property: Identifier | Binding]: Specs | Indexed<Specs> }
 
 /**
- * Projection criteria of {@link Query}.
+ * Property projection specs.
  *
- * Maps property names to their expected {@link Model | models} for retrieval. Properties may also hold key-indexed
- * model containers for union-typed or dynamically-keyed structures; indexed containers can only appear as top-level
- * property values and cannot be nested.
+ * Defines the expected type and structure for a {@link Model} property, mirroring {@link Values}:
  *
- * Projections may define *computed* properties using the `property=expression` syntax, where the value is computed
- * from an {@link Expression}. Scalar values serve as type placeholders; their actual value is immaterial.
+ * - {@link Literal} — Primitive value (`boolean`, `number`, `string`)
+ * - {@link Reference} — IRI reference to a linked resource
+ * - {@link Model} — Nested projection for expanding linked resources
+ * - `{ [TagRange]: string }` — Single-valued language-tagged text map
+ * - `{ [TagRange]: readonly [string] }` — Multi-valued language-tagged text map
+ * - `readonly [Literal]` — Array of primitive values
+ * - `readonly [Reference]` — Array of IRI references
+ * - `readonly [Query]` — Collection projection with filtering, ordering, and pagination
+ *
+ * @see {@link https://www.rfc-editor.org/rfc/rfc4647.html RFC 4647 - Matching of Language Tags}
  */
-export type Projection = {
+export type Specs =
+	| Literal
+	| Reference
+	| Model
+	| { readonly [range: TagRange]: string }
+	| { readonly [range: TagRange]: readonly [string] }
+	| readonly [Literal]
+	| readonly [Reference]
+	| readonly [Query]
 
-	readonly [property: Identifier | Binding]:
-		| Model
-		| { readonly [key: Identifier]: Model }
+/**
+ * Collection query.
+ *
+ * Extends {@link Model} with filtering, ordering, and pagination criteria for collections.
+ *
+ * > [!WARNING]
+ * > Model processors must reject queries with an error if they reference undefined properties or provide projections
+ * > or constraints of mismatched types for defined properties.
+ */
+export type Query = Model & {
+
+	/**
+	 * Less-than filter (`"<expression": value`).
+	 *
+	 * Includes resources where at least one expression value is less than the literal.
+	 */
+	readonly [lt: `<${Expression}`]: Literal
+
+	/**
+	 * Greater-than filter (`">expression": value`).
+	 *
+	 * Includes resources where at least one expression value is greater than the literal.
+	 */
+	readonly [gt: `>${Expression}`]: Literal
+
+	/**
+	 * Less-than-or-equal filter (`"<=expression": value`).
+	 *
+	 * Includes resources where at least one expression value is less than or equal to the literal.
+	 */
+	readonly [lte: `<=${Expression}`]: Literal
+
+	/**
+	 * Greater-than-or-equal filter (`">=expression": value`).
+	 *
+	 * Includes resources where at least one expression value is greater than or equal to the literal.
+	 */
+	readonly [gte: `>=${Expression}`]: Literal
+
+	/**
+	 * Stemmed word search filter (`"~expression": value`).
+	 *
+	 * Includes resources where at least one expression value contains all word stems from the search string.
+	 */
+	readonly [like: `~${Expression}`]: string
+
+	/**
+	 * Disjunctive matching filter (`"?expression": value`).
+	 *
+	 * Includes resources where at least one expression value equals one of the options; `null` matches undefined.
+	 */
+	readonly [any: `?${Expression}`]: Options
+
+	/**
+	 * Conjunctive matching filter (`"!expression": value`).
+	 *
+	 * Includes resources whose expression values include all specified options; for multi-valued properties.
+	 */
+	readonly [all: `!${Expression}`]: Options
+
+
+	/**
+	 * Focus ordering (`"*expression": options`).
+	 *
+	 * Orders results prioritising resources whose expression value appears in the specified {@link Options};
+	 * matching resources appear before non-matching ones; overrides regular sorting criteria.
+	 */
+	readonly [focus: `*${Expression}`]: Options
+
+	/**
+	 * Sort ordering (`"^expression": priority`).
+	 *
+	 * Orders results by expression value; the sign gives direction (positive for ascending, negative for descending);
+	 * the absolute value gives 1-based precedence (1 is highest priority); zero is ignored; `"asc"` and `"desc"` are
+	 * shorthands for `±1`.
+	 */
+	readonly [order: `^${Expression}`]: "asc" | "desc" | number
+
+
+	/**
+	 * Pagination offset (`"@": number`).
+	 *
+	 * Skips the first `number` resources from the filtered and ordered result set; zero is ignored.
+	 */
+	readonly "@"?: number
+
+	/**
+	 * Pagination limit (`"#": number`).
+	 *
+	 * Returns at most `number` resources from the result set after applying offset; zero is ignored.
+	 */
+	readonly "#"?: number
 
 };
 
-/**
- * Filtering criteria of {@link Query}.
- *
- * Defines comparison and matching operators for collections. Each criterion is applied to the value computed by an
- * {@link Expression} from a candidate member resource:
- *
- * - **less than** — `"<expression": Literal` — Includes resources where at least one expression value is less than
- *   the literal
- *
- * - **greater than** — `">expression": Literal` — Includes resources where at least one expression value is greater
- *   than the literal
- *
- * - **less than or equal** — `"<=expression": Literal` — Includes resources where at least one expression value is
- *   less than or equal to the literal
- *
- * - **greater than or equal** — `">=expression": Literal` — Includes resources where at least one expression value is
- *   greater than or equal to the literal
- *
- * - **stemmed word search** — `"~expression": string` — Includes resources where at least one expression value
- *   contains all word stems from the search string, in the given order
- *
- * - **disjunctive matching** — `"?expression": Options` — Includes resources where at least one expression value
- *   equals at least one of the specified {@link Options}; applies to both single and multi-valued properties;
- *   `null` matches resources where the property is undefined
- *
- * - **conjunctive matching** — `"!expression": Options` — Includes resources whose expression values include all
- *   specified {@link Options}; applies to multi-valued properties
- */
-export type Filtering = Partial<{
-
-	readonly [lt: `<${Expression}`]: Literal
-	readonly [gt: `>${Expression}`]: Literal
-	readonly [lte: `<=${Expression}`]: Literal
-	readonly [gte: `>=${Expression}`]: Literal
-
-	readonly [like: `~${Expression}`]: string
-
-	readonly [any: `?${Expression}`]: Options
-	readonly [all: `!${Expression}`]: Options
-
-}>;
 
 /**
- * Ordering criteria of {@link Query}.
+ * Named computed expression.
  *
- * Defines focus and sort ordering for collections:
- *
- * - **focus ordering** — `"*expression": Options` — Orders results prioritizing resources whose expression value
- *   appears in the specified {@link Options}; matching resources appear before non-matching ones; overrides regular
- *   sorting criteria
- *
- * - **sort ordering** — `"^expression": number` — Orders results by expression value; the sign of the priority gives
- *   ordering direction (positive for ascending, negative for descending); the absolute value gives 1-based ordering
- *   precedence (1 is highest priority); zero is ignored; `"asc"`/`"ascending"` and `"desc"`/`"descending"` are
- *   shorthands for `±1`
- */
-export type Ordering = Partial<{
-
-	readonly [focus: `*${Expression}`]: Options
-	readonly [order: `^${Expression}`]: "asc" | "desc" | "ascending" | "descending" | number
-
-}>;
-
-/**
- * Pagination criteria of {@link Query}.
- *
- * Defines offset and limit for collections:
- *
- * - **offset** — `"@": number` — Skips the first `number` resources from the filtered and ordered result set;
- *   zero is ignored
- *
- * - **limit** — `"#": number` — Returns at most `number` resources from the result set after applying offset;
- *   zero is ignored
- */
-export type Paging = Partial<{
-
-	readonly "@": number
-	readonly "#": number
-
-}>;
-
-
-/**
- * Binding assigning a name to a computed {@link Expression} in {@link Projection} fields.
- *
- * Uses the `name=expression` syntax to define custom property names for computed values
- * derived from paths or transformations.
+ * Assigns a name to a computed {@link Expression} in {@link Model} projections using the
+ * `{name}={expression}` syntax.
  *
  * @example
  *
  * ```typescript
- * const query: Query = {
+ * const model: Model = {
  *   "vendorName=vendor.name": "",     // path binding
  *   "releaseYear=year:releaseDate": 0 // transform binding
  * };
@@ -521,10 +572,10 @@ export type Binding =
 	`${Identifier}=${Expression}`;
 
 /**
- * Computed expression for deriving values from resource properties.
+ * Computed expression.
  *
- * Expressions combine value transformations and property access paths to define computed fields
- * in {@link Query} projections and constraints.
+ * Combines value transformations and property access paths to define computed fields
+ * in {@link Model} projections and {@link Query} constraints.
  *
  * Expressions use the compact string syntax `[transform:]*[path]` where:
  *
@@ -550,41 +601,16 @@ export type Binding =
 export type Expression =
 	string;
 
-/**
- * Property value model for {@link Projection}.
- *
- * Defines the expected value type for a projected property. Scalar values serve as type placeholders; their actual
- * value is immaterial, but their type signals the expected property value type:
- *
- * - {@link Literal} — Primitive value (`boolean`, `number`, `string`)
- * - `{ [TagRange]: string }` — Single-valued language-tagged text map
- * - `{ [TagRange]: readonly [string] }` — Multi-valued language-tagged text map
- * - {@link Reference} — IRI reference to a linked resource
- * - `readonly [Reference]` — Array of IRI references
- * - {@link Query} — Nested query for expanding linked resources
- * - `readonly [Query]` — Nested query for multi-valued linked resources
- *
- * @see {@link https://www.rfc-editor.org/rfc/rfc4647.html RFC 4647 - Matching of Language Tags}
- */
-export type Model =
-	| Literal
-	| { readonly [range: TagRange]: string }
-	| { readonly [range: TagRange]: readonly [string] }
-	| Reference
-	| readonly [Reference]
-	| Query
-	| readonly [Query];
-
 
 /**
- * Option values for {@link Query} matching and ordering operators.
+ * Constraint option set.
  *
- * Represents possible values for query matching (`?` and `!` operators) and focus ordering (`*` operator):
+ * Values for {@link Query} matching (`?` and `!`) and focus ordering (`*`) operators:
  *
- * - {@link Option} — Single option value
+ * - {@link Option} — Constraint option
  * - {@link Local} — Single-valued language-tagged text map
  * - {@link Locals} — Multi-valued language-tagged text map
- * - `readonly Option[]` — Array of option values
+ * - `readonly Option[]` — Array of options
  */
 export type Options =
 	| Option
@@ -593,9 +619,9 @@ export type Options =
 	| readonly Option[];
 
 /**
- * Single option value for {@link Query} matching and ordering operators.
+ * Constraint option.
  *
- * Represents a single value for query matching (`?` and `!` operators) and focus ordering (`*` operator):
+ * Single value for {@link Query} matching (`?` and `!`) and focus ordering (`*`) operators:
  *
  * - `null` — Undefined property value
  * - {@link Literal} — Literal value
@@ -607,16 +633,14 @@ export type Option =
 	| Reference;
 
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 /**
- * Parsed representation of a {@link Query} key.
+ * Query criterion.
  *
- * Decomposes projection keys (`property` or `alias=expression`) and constraint keys (`operator expression`)
- * into their structural components.
+ * Represents a projection, filtering, ordering, or pagination criterion in a {@link Query}.
+ * Query keys are encoded string representation of criteria.
  *
- * A unified type suffices as projections and constraints are easily
- * disambiguated after parsing using {@link isIdentifier} on the `target` field.
+ * A unified target suffices as projections and constraints are easily
+ * disambiguated after parsing using {@link isIdentifier}.
  *
  * @see {@link encodeCriterion}
  * @see {@link decodeCriterion}
@@ -634,7 +658,7 @@ export type Criterion = {
 	readonly pipe: readonly Identifier[];
 
 	/**
-	 * Dot-separated property path to the target value.
+	 * Property path segments to the target value.
 	 */
 	readonly path: readonly Identifier[];
 
@@ -654,34 +678,19 @@ export type Operator =
 	| "?"
 	| "!"
 	| "*"
-	| "^";
-
-
-/**
- * Registry of named transform definitions.
- *
- * Maps transform names to their {@link Transform} definitions for query processing.
- */
-export type Transforms = {
-
-	readonly [name: Identifier]: Transform;
-
-}
+	| "^"
+	| "@"
+	| "#";
 
 /**
- * Transform definition for query processing.
+ * Value transform.
  */
 export type Transform = {
 
 	/**
-	 * Transform name (must be a valid ECMAScript identifier).
-	 *
-	 * @remarks Covers Latin Extended-A only; full Unicode ID_Start/ID_Continue requires `u` flag.
-	 *
-	 * @see https://www.unicode.org/reports/tr31/ - UAX #31: Unicode Identifiers and Syntax
-	 * @see https://github.com/samchon/typia/issues/1699 - Feature request for regex flags support
+	 * Transform name.
 	 */
-	name: string;
+	name: Identifier;
 
 	/**
 	 * Whether the transform operates on collections (`true`) or individual values (`false`).
@@ -699,95 +708,78 @@ export type Transform = {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
+ * Checks if a value is a {@link Model}.
+ *
+ * @group Guards
+ *
+ * @param value The value to check
+ *
+ * @returns True if the value is a valid projection model
+ */
+export function isModel(value: unknown): value is Model {
+	return isObject(value, (v, k) =>
+		(isIdentifier(k) || isBinding(k)) && (isSpecs(v) || isIndexed(v, isSpecs))
+	);
+}
+
+/**
+ * Checks if a value is a {@link Specs}.
+ *
+ * @group Guards
+ *
+ * @param value The value to check
+ *
+ * @returns True if the value is a valid property projection spec
+ */
+export function isSpecs(value: unknown): value is Specs {
+	return isUnion(value, [
+		isLiteral,
+		isReference,
+		isModel,
+		v => isObject(v, (v, k) => isTagRange(k) && isString(v)),
+		v => isObject(v, (v, k) => isTagRange(k) && isArray(v, [isString])),
+		v => isArray(v, [isLiteral]),
+		v => isArray(v, [isReference]),
+		v => isArray(v, [isQuery])
+	]);
+}
+
+
+/**
  * Checks if a value is a {@link Query}.
  *
  * @group Guards
  *
  * @param value The value to check
  *
- * @returns true if the value is a valid query combining projection, filtering, ordering, and paging
+ * @returns True if the value is a valid query combining projection, filtering, ordering, and pagination
  */
 export function isQuery(value: unknown): value is Query {
-	return isProjection(value)
-		&& isFiltering(value)
-		&& isOrdering(value)
-		&& isPaging(value);
-}
+	return isObject(value, (v, k) => {
 
-/**
- * Checks if a value is a {@link Projection}.
- *
- * @group Guards
- *
- * @param value The value to check
- *
- * @returns true if the value is an object with identifier or binding keys and model values
- */
-export function isProjection(value: unknown): value is Projection {
-	return isObject(value, (v, k) => isString(k) && (
-		(isIdentifier(k) || isBinding(k)) ? (isModel(v) || isIndexedModel(v))
-			: /^([<>]=?|[~?!*^])/.test(k) || k === "@" || k === "#" // allow filtering, ordering, paging keys
-	));
-}
+		// projection
 
-/**
- * Checks if a value is a {@link Filtering}.
- *
- * @group Guards
- *
- * @param value The value to check
- *
- * @returns true if the value is an object with filtering operator keys
- */
-export function isFiltering(value: unknown): value is Filtering {
-	return isObject(value, (v, k) => isString(k) && (
-		k.startsWith("<=") ? isLiteral(v)
-			: k.startsWith(">=") ? isLiteral(v)
-				: k.startsWith("<") ? isLiteral(v)
-					: k.startsWith(">") ? isLiteral(v)
-						: k.startsWith("~") ? isString(v)
-							: k.startsWith("?") ? isOptions(v)
-								: k.startsWith("!") ? isOptions(v)
-									: true // allow other keys
-	));
-}
+		if ( (isIdentifier(k) || isBinding(k)) as boolean ) { return isSpecs(v) || isIndexed(v, isSpecs); }
 
-const isOrderDirection = (v: unknown) => isAny(v, [
-	isNumber, v => isLiteralValue(v, ["asc", "desc", "ascending", "descending"])
-]);
+		// filtering
 
-/**
- * Checks if a value is an {@link Ordering}.
- *
- * @group Guards
- *
- * @param value The value to check
- *
- * @returns true if the value is an object with ordering operator keys
- */
-export function isOrdering(value: unknown): value is Ordering {
-	return isObject(value, (v, k) => isString(k) && (
-		k.startsWith("*") ? isOptions(v)
-			: k.startsWith("^") ? isOrderDirection(v)
-				: true // allow other keys
-	));
-}
+		else if ( k.startsWith("<=") || k.startsWith(">=") ) { return isLiteral(v); }
+		else if ( k.startsWith("<") || k.startsWith(">") ) { return isLiteral(v); }
+		else if ( k.startsWith("~") ) { return isString(v); }
+		else if ( k.startsWith("?") || k.startsWith("!") ) { return isOptions(v); }
 
-/**
- * Checks if a value is a {@link Paging}.
- *
- * @group Guards
- *
- * @param value The value to check
- *
- * @returns true if the value is an object with valid paging keys
- */
-export function isPaging(value: unknown): value is Paging {
-	return isObject(value, (v, k) =>
-		k === "@" ? isNumber(v)
-			: k === "#" ? isNumber(v)
-				: true // allow other keys
-	);
+		// ordering
+
+		else if ( k.startsWith("*") ) { return isOptions(v); }
+		else if ( k.startsWith("^") ) { return isNumber(v) || isLiteralValue(v, ["asc", "desc"]); }
+
+		// paging
+
+		else if ( k === "@" || k === "#" ) { return isNumber(v); }
+
+		else { return false; }
+
+	});
 }
 
 
@@ -798,7 +790,7 @@ export function isPaging(value: unknown): value is Paging {
  *
  * @param value The value to check
  *
- * @returns true if the value is a string matching the `{identifier}={expression}` syntax
+ * @returns True if the value is a string matching the `{identifier}={expression}` syntax
  */
 export function isBinding(value: unknown): value is Binding {
 	return isString(value) && value.includes("=")
@@ -813,54 +805,19 @@ export function isBinding(value: unknown): value is Binding {
  *
  * @param value The value to check
  *
- * @returns true if the value is a string
+ * @returns True if the value matches expression syntax (transform pipeline and property path)
  */
 export function isExpression(value: unknown): value is Expression {
-	try { return isString(value) && QueryParser.parse(value, { startRule: "Expr" }) === value; } catch { return false; }
+	return isString(value) && (() => {
+
+		const segments = value.split(":");
+		const path = segments.at(-1) ?? "";
+
+		return segments.slice(0, -1).every(isIdentifier)
+			&& (path === "" || path.split(".").every(isIdentifier));
+
+	})();
 }
-
-/**
- * Checks if a value is a {@link Model}.
- *
- * @group Guards
- *
- * @param value The value to check
- *
- * @returns true if the value is a valid projection model type
- */
-export function isModel(value: unknown): value is Model {
-	return isAny(value, [
-		isLiteral, isTaggedText, isTaggedTextArray, isReference,
-		v => isArray(v, [isReference]), isQuery, v => isArray(v, [isQuery])
-	]);
-}
-
-
-/**
- * Checks if a value is an indexed model container.
- *
- * @param value The value to check
- *
- * @returns true if the value is an object with identifier keys and model values
- */
-function isIndexedModel(value: unknown): value is { readonly [key: Identifier]: Model } {
-	return isObject(value, (v, k) => isIdentifier(k) && isModel(v));
-}
-
-/**
- * Checks if a value is a language-tagged text map.
- */
-function isTaggedText(value: unknown): value is { readonly [range: TagRange]: string } {
-	return isObject(value, (v, k) => isTagRange(k) && isString(v));
-}
-
-/**
- * Checks if a value is a multi-valued language-tagged text map.
- */
-function isTaggedTextArray(value: unknown): value is { readonly [range: TagRange]: readonly [string] } {
-	return isObject(value, (v, k) => isTagRange(k) && isArray(v, [isString]));
-}
-
 
 /**
  * Checks if a value is an {@link Options}.
@@ -869,10 +826,10 @@ function isTaggedTextArray(value: unknown): value is { readonly [range: TagRange
  *
  * @param value The value to check
  *
- * @returns true if the value is an option, local, locals, or array of options
+ * @returns True if the value is an option, local, locals, or array of options
  */
 export function isOptions(value: unknown): value is Options {
-	return isAny(value, [isOption, isLocal, isLocals, v => isArray(v, isOption)]);
+	return isUnion(value, [isOption, isLocal, isLocals, v => isArray(v, isOption)]);
 }
 
 /**
@@ -882,12 +839,11 @@ export function isOptions(value: unknown): value is Options {
  *
  * @param value The value to check
  *
- * @returns true if the value is null, a literal, or a reference
+ * @returns True if the value is null, a literal, or a reference
  */
 export function isOption(value: unknown): value is Option {
-	return isAny(value, [isNull, isLiteral, isReference]);
+	return isUnion(value, [isNull, isLiteral, isReference]);
 }
-
 
 /**
  * Checks if a value is a {@link Criterion}.
@@ -896,29 +852,27 @@ export function isOption(value: unknown): value is Option {
  *
  * @param value The value to check
  *
- * @returns true if the value is a valid parsed criterion
+ * @returns True if the value is a valid parsed criterion
  */
 export function isCriterion(value: unknown): value is Criterion {
 	return isObject(value, {
-		target: v => isAny(v, [
-			isIdentifier, v => isLiteralValue(v, ["<", ">", "<=", ">=", "~", "?", "!", "*", "^", "@", "#"])
-		]),
+		target: v => isIdentifier(v) || isOperator(v),
 		pipe: (v: unknown) => isArray(v, isIdentifier),
 		path: (v: unknown) => isArray(v, isIdentifier)
 	});
 }
 
 /**
- * Checks if a value is a {@link Transforms}.
+ * Checks if a value is an {@link Operator}.
  *
  * @group Guards
  *
  * @param value The value to check
  *
- * @returns true if the value is an object with identifier keys and transform values
+ * @returns True if the value is a valid constraint operator symbol
  */
-export function isTransforms(value: unknown): value is Transforms {
-	return isObject(value, (v, k) => isIdentifier(k) && isTransform(v));
+export function isOperator(value: unknown): value is Operator {
+	return isLiteralValue(value, ["<", ">", "<=", ">=", "~", "?", "!", "*", "^", "@", "#"]);
 }
 
 /**
@@ -928,13 +882,13 @@ export function isTransforms(value: unknown): value is Transforms {
  *
  * @param value The value to check
  *
- * @returns true if the value is a valid transform definition
+ * @returns True if the value is a valid transform definition
  */
 export function isTransform(value: unknown): value is Transform {
 	return isObject(value, {
-		name: isString,
+		name: isIdentifier,
 		aggregate: v => isOptional(v, isBoolean),
-		datatype: v => isOptional(v, isString)
+		datatype: v => isOptional(v, v => isLiteralValue(v, ["boolean", "number", "string"]))
 	});
 }
 
@@ -986,8 +940,8 @@ export function encodeQuery(
 	opts: CodecOpts & { readonly mode?: "json" | "base64" | "form" } = {}
 ): string {
 
-	const $query = assert(query, isQuery);
-	const { base, mode = "json" } = assert(opts, v => isCodecOpts(v) && isEncodeOpts(v));
+	const $query = immutable(query, isQuery);
+	const { base, mode = "json" } = assert(opts, isOpts);
 
 	const internalized = internalizeIRIs(base, $query);
 
@@ -997,9 +951,11 @@ export function encodeQuery(
 				: error(new TypeError(`unsupported mode <${mode}>`));
 
 
-	function isEncodeOpts(value: unknown): value is CodecOpts & { readonly mode?: "json" | "base64" | "form" } {
-		return isObject(value)
-			&& (value.mode === undefined || value.mode === "json" || value.mode === "base64" || value.mode === "form");
+	function isOpts(value: unknown): value is typeof opts {
+		return isCodecOpts(value) && isObject(value, {
+			mode: v => isOptional(v, v => isLiteralValue(v, ["json", "base64", "form"])),
+			[key]: () => true
+		});
 	}
 
 
@@ -1061,7 +1017,7 @@ export function encodeQuery(
  * input string structure.
  *
  * If `base` is provided, resolves internal IRIs (matching `isIRI(value, "internal")`) to absolute IRIs
- * using {@link resolve}, recursively throughout the query structure. Otherwise, performs plain parsing.
+ * using `resolve()`, recursively throughout the query structure. Otherwise, performs plain parsing.
  *
  * @group Codecs
  *
@@ -1095,7 +1051,7 @@ export function decodeQuery(json: string, opts: CodecOpts = {}): Query {
 
 		if ( $json === "" ) {
 
-			return immutable(assert({}, isQuery, "malformed query"));
+			return immutable({}, isQuery, "malformed query");
 
 		} else if ( $json.startsWith("%7B") || $json.startsWith("{") ) {
 
@@ -1103,7 +1059,7 @@ export function decodeQuery(json: string, opts: CodecOpts = {}): Query {
 
 			const query = parseJSON(base, decodeURIComponent($json));
 
-			return immutable(assert(query, isQuery, "malformed query"));
+			return immutable(query, isQuery, "malformed query");
 
 		} else if ( /^e[A-Za-z0-9+/_-]*=*$/.test($json) ) {
 
@@ -1165,7 +1121,7 @@ export function decodeQuery(json: string, opts: CodecOpts = {}): Query {
 /**
  * Encodes a criterion as a {@link Query} key string.
  *
- * Serializes a parsed {@link Criterion} back into its compact string representation suitable for use as a Query key.
+ * Serializes a parsed {@link Criterion} back into its compact string representation suitable for use as a Model key.
  *
  * @group Codecs
  *
@@ -1179,7 +1135,7 @@ export function decodeQuery(json: string, opts: CodecOpts = {}): Query {
  */
 export function encodeCriterion(criterion: Criterion): string {
 
-	const { target, pipe, path } = assert(criterion, isCriterion);
+	const { target, pipe, path } = immutable(criterion, isCriterion);
 
 	const pipeString = pipe.map(p => `${p}:`).join("");
 	const pathString = path.join(".");
@@ -1195,7 +1151,7 @@ export function encodeCriterion(criterion: Criterion): string {
 /**
  * Decodes a {@link Query} key string into a criterion.
  *
- * Parses a Query key string into its structural {@link Criterion} components, distinguishing projection keys
+ * Parses a Model key string into its structural {@link Criterion} components, distinguishing projection keys
  * from constraint keys based on the presence of an {@link Operator} prefix.
  *
  * @group Codecs
@@ -1217,7 +1173,7 @@ export function decodeCriterion(key: string): Criterion {
 
 		const criterion = QueryParser.parse($key, { startRule: "Criterion" });
 
-		return immutable(assert(criterion, isCriterion, "malformed criterion"));
+		return immutable(criterion, isCriterion, "malformed criterion");
 
 	} catch ( cause ) {
 		throw new Error(`invalid criterion <${key}>`, { cause });
@@ -1242,7 +1198,7 @@ export function decodeCriterion(key: string): Criterion {
  *
  * @returns A record mapping each transform name to its definition
  */
-function transforms<const T extends readonly Transform[]>(transforms: T): Transforms {
+function transforms<const T extends readonly Transform[]>(transforms: T): { readonly [name: Identifier]: Transform; } {
 
 	return immutable(Object.fromEntries(transforms.map(t => [t.name, t])));
 
