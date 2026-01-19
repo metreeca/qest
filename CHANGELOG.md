@@ -12,7 +12,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Add `index` module with `CodecOpts` configuration type
 - Add generic `Indexed<T>` type for key-indexed property value containers
 - Add `Model` type for resource projection models
-- Add `Specs` type for property projection specs
+- Add `ValuesModel` type for property projection specs
+- Add `ValueModel`, `LocalModel`, `LocalsModel` types for model value variants
+- Add `isValueModel()`, `isLocalModel()`, `isLocalsModel()` type guards
 - Add `Binding` type for named computed expressions in projections
 
 ### Changed
@@ -21,7 +23,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Migrate validators to composable `is*()` type guard pattern
 - Remove `ascending`/`descending` sort direction values (use `asc`/`desc` instead)
 - Extend `Resource` and `Patch` types to support `Indexed` property values
-- Extend `Specs` type to support indexed model containers
+- Extend `ValuesModel` type to support indexed model containers
 - Rename `Text`/`Texts` types to `Local`/`Locals` for language-tagged text maps
 
 ### Fixed

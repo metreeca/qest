@@ -24,18 +24,63 @@ import {
 	isBinding,
 	isCriterion,
 	isExpression,
+	isLocalModel,
+	isLocalsModel,
 	isModel,
-	isSpecs,
 	isOperator,
 	isOption,
 	isOptions,
 	isQuery,
 	isTransform,
+	isValueModel,
+	isValuesModel,
 	type Query
 } from "./model.js";
 
 
 describe("guards", () => {
+
+	describe("isModel", () => {
+
+		describe("valid models", () => {
+
+			it("should accept empty model", async () => {
+				expect(isModel({})).toBeTruthy();
+			});
+
+			it("should accept model with properties", async () => {
+				expect(isModel({ id: "", name: "" })).toBeTruthy();
+				expect(isModel({ price: 0, available: true })).toBeTruthy();
+			});
+
+			it("should accept nested models", async () => {
+				expect(isModel({ vendor: { id: "", name: "" } })).toBeTruthy();
+			});
+
+			it("should accept binding keys", async () => {
+				expect(isModel({ "vendorName=vendor.name": "" })).toBeTruthy();
+			});
+
+		});
+
+		describe("invalid models", () => {
+
+			it("should reject non-objects", async () => {
+				expect(isModel(null)).toBeFalsy();
+				expect(isModel(undefined)).toBeFalsy();
+				expect(isModel(true)).toBeFalsy();
+				expect(isModel(42)).toBeFalsy();
+				expect(isModel("text")).toBeFalsy();
+			});
+
+			it("should reject arrays", async () => {
+				expect(isModel([])).toBeFalsy();
+				expect(isModel([{ id: "" }])).toBeFalsy();
+			});
+
+		});
+
+	});
 
 	describe("isQuery", () => {
 
@@ -120,6 +165,7 @@ describe("guards", () => {
 		});
 
 	});
+
 
 	describe("isBinding", () => {
 
@@ -288,172 +334,53 @@ describe("guards", () => {
 
 	});
 
-	describe("isModel", () => {
 
-		describe("valid models", () => {
-
-			it("should accept empty model", async () => {
-				expect(isModel({})).toBeTruthy();
-			});
-
-			it("should accept model with properties", async () => {
-				expect(isModel({ id: "", name: "" })).toBeTruthy();
-				expect(isModel({ price: 0, available: true })).toBeTruthy();
-			});
-
-			it("should accept nested models", async () => {
-				expect(isModel({ vendor: { id: "", name: "" } })).toBeTruthy();
-			});
-
-			it("should accept binding keys", async () => {
-				expect(isModel({ "vendorName=vendor.name": "" })).toBeTruthy();
-			});
-
-		});
-
-		describe("invalid models", () => {
-
-			it("should reject non-objects", async () => {
-				expect(isModel(null)).toBeFalsy();
-				expect(isModel(undefined)).toBeFalsy();
-				expect(isModel(true)).toBeFalsy();
-				expect(isModel(42)).toBeFalsy();
-				expect(isModel("text")).toBeFalsy();
-			});
-
-			it("should reject arrays", async () => {
-				expect(isModel([])).toBeFalsy();
-				expect(isModel([{ id: "" }])).toBeFalsy();
-			});
-
-		});
-
-	});
-
-	describe("isCriterion", () => {
-
-		describe("valid criteria", () => {
-
-			it("should accept simple projection criterion", async () => {
-				expect(isCriterion({ target: "name", pipe: [], path: [] })).toBeTruthy();
-			});
-
-			it("should accept criterion with path", async () => {
-				expect(isCriterion({ target: "city", pipe: [], path: ["address"] })).toBeTruthy();
-				expect(isCriterion({ target: "city", pipe: [], path: ["customer", "address"] })).toBeTruthy();
-			});
-
-			it("should accept criterion with pipe", async () => {
-				expect(isCriterion({ target: "releaseYear", pipe: ["year"], path: ["releaseDate"] })).toBeTruthy();
-				expect(isCriterion({ target: "avgPrice", pipe: ["round", "avg"], path: ["price"] })).toBeTruthy();
-			});
-
-			it("should accept filtering criteria", async () => {
-				expect(isCriterion({ target: "<", pipe: [], path: ["price"] })).toBeTruthy();
-				expect(isCriterion({ target: ">=", pipe: [], path: ["price"] })).toBeTruthy();
-				expect(isCriterion({ target: "~", pipe: [], path: ["name"] })).toBeTruthy();
-				expect(isCriterion({ target: "?", pipe: [], path: ["category"] })).toBeTruthy();
-			});
-
-			it("should accept ordering criteria", async () => {
-				expect(isCriterion({ target: "*", pipe: [], path: ["category"] })).toBeTruthy();
-				expect(isCriterion({ target: "^", pipe: [], path: ["price"] })).toBeTruthy();
-			});
-
-			it("should accept paging criteria", async () => {
-				expect(isCriterion({ target: "@", pipe: [], path: [] })).toBeTruthy();
-				expect(isCriterion({ target: "#", pipe: [], path: [] })).toBeTruthy();
-			});
-
-		});
-
-		describe("invalid criteria", () => {
-
-			it("should reject non-objects", async () => {
-				expect(isCriterion(null)).toBeFalsy();
-				expect(isCriterion(undefined)).toBeFalsy();
-				expect(isCriterion("string")).toBeFalsy();
-				expect(isCriterion(123)).toBeFalsy();
-			});
-
-			it("should reject missing target", async () => {
-				expect(isCriterion({ pipe: [], path: [] })).toBeFalsy();
-			});
-
-			it("should reject missing pipe", async () => {
-				expect(isCriterion({ target: "name", path: [] })).toBeFalsy();
-			});
-
-			it("should reject missing path", async () => {
-				expect(isCriterion({ target: "name", pipe: [] })).toBeFalsy();
-			});
-
-			it("should reject non-string target", async () => {
-				expect(isCriterion({ target: 123, pipe: [], path: [] })).toBeFalsy();
-			});
-
-			it("should reject non-array pipe", async () => {
-				expect(isCriterion({ target: "name", pipe: "year", path: [] })).toBeFalsy();
-			});
-
-			it("should reject non-array path", async () => {
-				expect(isCriterion({ target: "name", pipe: [], path: "address" })).toBeFalsy();
-			});
-
-			it("should reject unexpected properties", async () => {
-				expect(isCriterion({ target: "name", pipe: [], path: [], extra: "value" })).toBeFalsy();
-			});
-
-		});
-
-	});
-
-	describe("isSpecs", () => {
+	describe("isValuesModel", () => {
 
 		describe("valid model values", () => {
 
 			it("should accept literals", async () => {
-				expect(isSpecs(true)).toBeTruthy();
-				expect(isSpecs(false)).toBeTruthy();
-				expect(isSpecs(0)).toBeTruthy();
-				expect(isSpecs(42)).toBeTruthy();
-				expect(isSpecs("")).toBeTruthy();
-				expect(isSpecs("text")).toBeTruthy();
+				expect(isValuesModel(true)).toBeTruthy();
+				expect(isValuesModel(false)).toBeTruthy();
+				expect(isValuesModel(0)).toBeTruthy();
+				expect(isValuesModel(42)).toBeTruthy();
+				expect(isValuesModel("")).toBeTruthy();
+				expect(isValuesModel("text")).toBeTruthy();
 			});
 
 			it("should accept references", async () => {
-				expect(isSpecs("/products/42")).toBeTruthy();
-				expect(isSpecs("https://example.com/resource")).toBeTruthy();
+				expect(isValuesModel("/products/42")).toBeTruthy();
+				expect(isValuesModel("https://example.com/resource")).toBeTruthy();
 			});
 
 			it("should accept nested models", async () => {
-				expect(isSpecs({ id: "", name: "" })).toBeTruthy();
-				expect(isSpecs({ vendor: { id: "" } })).toBeTruthy();
+				expect(isValuesModel({ id: "", name: "" })).toBeTruthy();
+				expect(isValuesModel({ vendor: { id: "" } })).toBeTruthy();
 			});
 
 			it("should accept single-valued language maps", async () => {
-				expect(isSpecs({ "*": "" })).toBeTruthy();
-				expect(isSpecs({ "en": "text" })).toBeTruthy();
-				expect(isSpecs({ "en": "hello", "fr": "bonjour" })).toBeTruthy();
+				expect(isValuesModel({ "*": "" })).toBeTruthy();
+				expect(isValuesModel({ "en": "text" })).toBeTruthy();
+				expect(isValuesModel({ "en": "hello", "fr": "bonjour" })).toBeTruthy();
 			});
 
 			it("should accept multi-valued language maps", async () => {
-				expect(isSpecs({ "en": [""] })).toBeTruthy();
-				expect(isSpecs({ "en": ["hello"], "fr": ["bonjour"] })).toBeTruthy();
+				expect(isValuesModel({ "en": [""] })).toBeTruthy();
+				expect(isValuesModel({ "en": ["hello"], "fr": ["bonjour"] })).toBeTruthy();
 			});
 
 			it("should accept literal arrays", async () => {
-				expect(isSpecs([true])).toBeTruthy();
-				expect(isSpecs([0])).toBeTruthy();
-				expect(isSpecs([""])).toBeTruthy();
+				expect(isValuesModel([true])).toBeTruthy();
+				expect(isValuesModel([0])).toBeTruthy();
+				expect(isValuesModel([""])).toBeTruthy();
 			});
 
 			it("should accept reference arrays", async () => {
-				expect(isSpecs(["/products/42"])).toBeTruthy();
+				expect(isValuesModel(["/products/42"])).toBeTruthy();
 			});
 
 			it("should accept query arrays", async () => {
-				expect(isSpecs([{ id: "", name: "" }])).toBeTruthy();
+				expect(isValuesModel([{ id: "", name: "" }])).toBeTruthy();
 			});
 
 		});
@@ -461,22 +388,160 @@ describe("guards", () => {
 		describe("invalid model values", () => {
 
 			it("should reject null and undefined", async () => {
-				expect(isSpecs(null)).toBeFalsy();
-				expect(isSpecs(undefined)).toBeFalsy();
+				expect(isValuesModel(null)).toBeFalsy();
+				expect(isValuesModel(undefined)).toBeFalsy();
 			});
 
 			it("should reject empty arrays", async () => {
-				expect(isSpecs([])).toBeFalsy();
+				expect(isValuesModel([])).toBeFalsy();
 			});
 
 			it("should reject arrays with multiple elements", async () => {
-				expect(isSpecs(["/a", "/b"])).toBeFalsy();
-				expect(isSpecs([{ id: "" }, { id: "" }])).toBeFalsy();
+				expect(isValuesModel(["/a", "/b"])).toBeFalsy();
+				expect(isValuesModel([{ id: "" }, { id: "" }])).toBeFalsy();
 			});
 
 		});
 
 	});
+
+	describe("isValueModel", () => {
+
+		describe("valid value models", () => {
+
+			it("should accept literals", async () => {
+				expect(isValueModel(true)).toBeTruthy();
+				expect(isValueModel(false)).toBeTruthy();
+				expect(isValueModel(0)).toBeTruthy();
+				expect(isValueModel(42)).toBeTruthy();
+				expect(isValueModel("")).toBeTruthy();
+				expect(isValueModel("text")).toBeTruthy();
+			});
+
+			it("should accept references", async () => {
+				expect(isValueModel("/products/42")).toBeTruthy();
+				expect(isValueModel("https://example.com/resource")).toBeTruthy();
+			});
+
+			it("should accept nested models", async () => {
+				expect(isValueModel({ id: "", name: "" })).toBeTruthy();
+				expect(isValueModel({ vendor: { id: "" } })).toBeTruthy();
+			});
+
+		});
+
+		describe("invalid value models", () => {
+
+			it("should reject null and undefined", async () => {
+				expect(isValueModel(null)).toBeFalsy();
+				expect(isValueModel(undefined)).toBeFalsy();
+			});
+
+			it("should reject arrays", async () => {
+				expect(isValueModel([])).toBeFalsy();
+				expect(isValueModel([true])).toBeFalsy();
+				expect(isValueModel(["/a"])).toBeFalsy();
+			});
+
+			it("should accept objects that are valid models", async () => {
+				// { "en": ["hello"] } is a valid Model (identifier key with literal array value)
+				expect(isValueModel({ "en": ["hello"] })).toBeTruthy();
+			});
+
+		});
+
+	});
+
+	describe("isLocalModel", () => {
+
+		describe("valid local models", () => {
+
+			it("should accept wildcard tag", async () => {
+				expect(isLocalModel({ "*": "" })).toBeTruthy();
+				expect(isLocalModel({ "*": "text" })).toBeTruthy();
+			});
+
+			it("should accept language tags", async () => {
+				expect(isLocalModel({ "en": "hello" })).toBeTruthy();
+				expect(isLocalModel({ "fr": "bonjour" })).toBeTruthy();
+			});
+
+			it("should accept multiple language tags", async () => {
+				expect(isLocalModel({ "en": "hello", "fr": "bonjour" })).toBeTruthy();
+			});
+
+		});
+
+		describe("invalid local models", () => {
+
+			it("should reject null and undefined", async () => {
+				expect(isLocalModel(null)).toBeFalsy();
+				expect(isLocalModel(undefined)).toBeFalsy();
+			});
+
+			it("should reject primitives", async () => {
+				expect(isLocalModel(true)).toBeFalsy();
+				expect(isLocalModel(42)).toBeFalsy();
+				expect(isLocalModel("text")).toBeFalsy();
+			});
+
+			it("should reject multi-valued maps", async () => {
+				expect(isLocalModel({ "en": ["hello"] })).toBeFalsy();
+			});
+
+			it("should reject invalid tag keys", async () => {
+				expect(isLocalModel({ "invalid tag": "text" })).toBeFalsy();
+			});
+
+		});
+
+	});
+
+	describe("isLocalsModel", () => {
+
+		describe("valid locals models", () => {
+
+			it("should accept wildcard tag", async () => {
+				expect(isLocalsModel({ "*": [""] })).toBeTruthy();
+				expect(isLocalsModel({ "*": ["text"] })).toBeTruthy();
+			});
+
+			it("should accept language tags", async () => {
+				expect(isLocalsModel({ "en": ["hello"] })).toBeTruthy();
+				expect(isLocalsModel({ "fr": ["bonjour"] })).toBeTruthy();
+			});
+
+			it("should accept multiple language tags", async () => {
+				expect(isLocalsModel({ "en": ["hello"], "fr": ["bonjour"] })).toBeTruthy();
+			});
+
+		});
+
+		describe("invalid locals models", () => {
+
+			it("should reject null and undefined", async () => {
+				expect(isLocalsModel(null)).toBeFalsy();
+				expect(isLocalsModel(undefined)).toBeFalsy();
+			});
+
+			it("should reject primitives", async () => {
+				expect(isLocalsModel(true)).toBeFalsy();
+				expect(isLocalsModel(42)).toBeFalsy();
+				expect(isLocalsModel("text")).toBeFalsy();
+			});
+
+			it("should reject single-valued maps", async () => {
+				expect(isLocalsModel({ "en": "hello" })).toBeFalsy();
+			});
+
+			it("should reject invalid tag keys", async () => {
+				expect(isLocalsModel({ "invalid tag": ["text"] })).toBeFalsy();
+			});
+
+		});
+
+	});
+
 
 	describe("isOptions", () => {
 
@@ -567,6 +632,85 @@ describe("guards", () => {
 			it("should reject arrays", async () => {
 				expect(isOption([])).toBeFalsy();
 				expect(isOption(["a", "b"])).toBeFalsy();
+			});
+
+		});
+
+	});
+
+
+	describe("isCriterion", () => {
+
+		describe("valid criteria", () => {
+
+			it("should accept simple projection criterion", async () => {
+				expect(isCriterion({ target: "name", pipe: [], path: [] })).toBeTruthy();
+			});
+
+			it("should accept criterion with path", async () => {
+				expect(isCriterion({ target: "city", pipe: [], path: ["address"] })).toBeTruthy();
+				expect(isCriterion({ target: "city", pipe: [], path: ["customer", "address"] })).toBeTruthy();
+			});
+
+			it("should accept criterion with pipe", async () => {
+				expect(isCriterion({ target: "releaseYear", pipe: ["year"], path: ["releaseDate"] })).toBeTruthy();
+				expect(isCriterion({ target: "avgPrice", pipe: ["round", "avg"], path: ["price"] })).toBeTruthy();
+			});
+
+			it("should accept filtering criteria", async () => {
+				expect(isCriterion({ target: "<", pipe: [], path: ["price"] })).toBeTruthy();
+				expect(isCriterion({ target: ">=", pipe: [], path: ["price"] })).toBeTruthy();
+				expect(isCriterion({ target: "~", pipe: [], path: ["name"] })).toBeTruthy();
+				expect(isCriterion({ target: "?", pipe: [], path: ["category"] })).toBeTruthy();
+			});
+
+			it("should accept ordering criteria", async () => {
+				expect(isCriterion({ target: "*", pipe: [], path: ["category"] })).toBeTruthy();
+				expect(isCriterion({ target: "^", pipe: [], path: ["price"] })).toBeTruthy();
+			});
+
+			it("should accept paging criteria", async () => {
+				expect(isCriterion({ target: "@", pipe: [], path: [] })).toBeTruthy();
+				expect(isCriterion({ target: "#", pipe: [], path: [] })).toBeTruthy();
+			});
+
+		});
+
+		describe("invalid criteria", () => {
+
+			it("should reject non-objects", async () => {
+				expect(isCriterion(null)).toBeFalsy();
+				expect(isCriterion(undefined)).toBeFalsy();
+				expect(isCriterion("string")).toBeFalsy();
+				expect(isCriterion(123)).toBeFalsy();
+			});
+
+			it("should reject missing target", async () => {
+				expect(isCriterion({ pipe: [], path: [] })).toBeFalsy();
+			});
+
+			it("should reject missing pipe", async () => {
+				expect(isCriterion({ target: "name", path: [] })).toBeFalsy();
+			});
+
+			it("should reject missing path", async () => {
+				expect(isCriterion({ target: "name", pipe: [] })).toBeFalsy();
+			});
+
+			it("should reject non-string target", async () => {
+				expect(isCriterion({ target: 123, pipe: [], path: [] })).toBeFalsy();
+			});
+
+			it("should reject non-array pipe", async () => {
+				expect(isCriterion({ target: "name", pipe: "year", path: [] })).toBeFalsy();
+			});
+
+			it("should reject non-array path", async () => {
+				expect(isCriterion({ target: "name", pipe: [], path: "address" })).toBeFalsy();
+			});
+
+			it("should reject unexpected properties", async () => {
+				expect(isCriterion({ target: "name", pipe: [], path: [], extra: "value" })).toBeFalsy();
 			});
 
 		});

@@ -20,9 +20,12 @@
  * Defines types for specifying what data to retrieve in REST/JSON APIs, including property selection, linked
  * resource expansion, and—for collections—filtering, ordering, and pagination:
  *
- * - {@link Model} — Resource projection model
- * - {@link Specs} — Property projection specs
+ * - {@link Model} — Resource projection
  * - {@link Query} — Collection query
+ * - {@link ValuesModel} — Property projection specs
+ * - {@link ValueModel} — Model value
+ * - {@link LocalModel} — Single-valued language-tagged model
+ * - {@link LocalsModel} — Multi-valued language-tagged model
  * - {@link Binding} — Named computed expression
  * - {@link Expression} — Computed expression
  * - {@link Options} — Constraint option set
@@ -413,10 +416,10 @@ export const Transforms = transforms([
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
- * Resource projection model.
+ * Resource projection.
  *
  * A property map specifying which properties to retrieve from a {@link Resource}. Each property maps to
- * {@link Specs} describing the expected value type and structure, or {@link Indexed} for union-typed or
+ * {@link ValuesModel} describing the expected value type and structure, or {@link Indexed} for union-typed or
  * dynamically-keyed properties. Indexed containers can only appear as top-level property values and cannot be nested.
  *
  * Models may define *computed* properties using the `{name}={expression}` syntax, where the value is computed
@@ -429,33 +432,7 @@ export const Transforms = transforms([
  * @see {@link Query} for collection filtering, ordering, and pagination
  */
 export type Model =
-	| { readonly [property: Identifier | Binding]: Specs | Indexed<Specs> }
-
-/**
- * Property projection specs.
- *
- * Defines the expected type and structure for a {@link Model} property, mirroring {@link Values}:
- *
- * - {@link Literal} — Primitive value (`boolean`, `number`, `string`)
- * - {@link Reference} — IRI reference to a linked resource
- * - {@link Model} — Nested projection for expanding linked resources
- * - `{ [TagRange]: string }` — Single-valued language-tagged text map
- * - `{ [TagRange]: readonly [string] }` — Multi-valued language-tagged text map
- * - `readonly [Literal]` — Array of primitive values
- * - `readonly [Reference]` — Array of IRI references
- * - `readonly [Query]` — Collection projection with filtering, ordering, and pagination
- *
- * @see {@link https://www.rfc-editor.org/rfc/rfc4647.html RFC 4647 - Matching of Language Tags}
- */
-export type Specs =
-	| Literal
-	| Reference
-	| Model
-	| { readonly [range: TagRange]: string }
-	| { readonly [range: TagRange]: readonly [string] }
-	| readonly [Literal]
-	| readonly [Reference]
-	| readonly [Query]
+	| { readonly [property: Identifier | Binding]: ValuesModel | Indexed<ValuesModel> }
 
 /**
  * Collection query.
@@ -463,8 +440,10 @@ export type Specs =
  * Extends {@link Model} with filtering, ordering, and pagination criteria for collections.
  *
  * > [!WARNING]
- * > Model processors must reject queries with an error if they reference undefined properties or provide projections
+ * > Query processors must reject queries with an error if they reference undefined properties or provide projections
  * > or constraints of mismatched types for defined properties.
+ *
+ * @see {@link Model} for resource projection
  */
 export type Query = Model & {
 
@@ -551,6 +530,68 @@ export type Query = Model & {
 	readonly "#"?: number
 
 };
+
+
+/**
+ * Property projection specs.
+ *
+ * Defines the expected type and structure for a {@link Model} property, mirroring {@link Values}:
+ *
+ * - {@link Literal} — Primitive value (`boolean`, `number`, `string`)
+ * - {@link Reference} — IRI reference to a linked resource
+ * - {@link Model} — Nested projection for expanding linked resources
+ * - `{ [TagRange]: string }` — Single-valued language-tagged text map
+ * - `{ [TagRange]: readonly [string] }` — Multi-valued language-tagged text map
+ * - `readonly [Literal]` — Array of primitive values
+ * - `readonly [Reference]` — Array of IRI references
+ * - `readonly [Query]` — Collection projection with filtering, ordering, and pagination
+ *
+ * @see {@link https://www.rfc-editor.org/rfc/rfc4647.html RFC 4647 - Matching of Language Tags}
+ */
+export type ValuesModel =
+	| ValueModel
+	| LocalModel
+	| LocalsModel
+	| readonly [Literal]
+	| readonly [Reference]
+	| readonly [Query]
+
+
+/**
+ * Model value.
+ *
+ * Represents property values in resource projection models:
+ *
+ * - {@link Literal}: primitive data placeholder (boolean, number, string)
+ * - {@link Reference}: IRI reference placeholder
+ * - {@link Model}: nested projection model
+ *
+ * @see {@link Value} for state values
+ */
+export type ValueModel =
+	| Literal
+	| Reference
+	| Model
+
+/**
+ * Single-valued language-tagged model for internationalised text.
+ *
+ * Maps language {@link TagRange | tag ranges} to a single localised text placeholder per language.
+ *
+ * @see {@link Local} for state values
+ */
+export type LocalModel =
+	| { readonly [range: TagRange]: string };
+
+/**
+ * Multi-valued language-tagged model for internationalised text.
+ *
+ * Maps language {@link TagRange | tag ranges} to multiple localised text placeholders per language.
+ *
+ * @see {@link Locals} for state values
+ */
+export type LocalsModel =
+	| { readonly [range: TagRange]: readonly [string] };
 
 
 /**
@@ -718,32 +759,9 @@ export type Transform = {
  */
 export function isModel(value: unknown): value is Model {
 	return isObject(value, (v, k) =>
-		(isIdentifier(k) || isBinding(k)) && (isSpecs(v) || isIndexed(v, isSpecs))
+		(isIdentifier(k) || isBinding(k)) && (isValuesModel(v) || isIndexed(v, isValuesModel))
 	);
 }
-
-/**
- * Checks if a value is a {@link Specs}.
- *
- * @group Guards
- *
- * @param value The value to check
- *
- * @returns True if the value is a valid property projection spec
- */
-export function isSpecs(value: unknown): value is Specs {
-	return isUnion(value, [
-		isLiteral,
-		isReference,
-		isModel,
-		v => isObject(v, (v, k) => isTagRange(k) && isString(v)),
-		v => isObject(v, (v, k) => isTagRange(k) && isArray(v, [isString])),
-		v => isArray(v, [isLiteral]),
-		v => isArray(v, [isReference]),
-		v => isArray(v, [isQuery])
-	]);
-}
-
 
 /**
  * Checks if a value is a {@link Query}.
@@ -759,28 +777,83 @@ export function isQuery(value: unknown): value is Query {
 
 		// projection
 
-		if ( (isIdentifier(k) || isBinding(k)) as boolean ) { return isSpecs(v) || isIndexed(v, isSpecs); }
+		if ( (isIdentifier(k) || isBinding(k)) as boolean ) { return isValuesModel(v) || isIndexed(v, isValuesModel); }
 
 		// filtering
 
-		else if ( k.startsWith("<=") || k.startsWith(">=") ) { return isLiteral(v); }
-		else if ( k.startsWith("<") || k.startsWith(">") ) { return isLiteral(v); }
-		else if ( k.startsWith("~") ) { return isString(v); }
-		else if ( k.startsWith("?") || k.startsWith("!") ) { return isOptions(v); }
+		else if ( k.startsWith("<=") || k.startsWith(">=") ) { return isLiteral(v); } else if ( k.startsWith("<") || k.startsWith(">") ) { return isLiteral(v); } else if ( k.startsWith("~") ) { return isString(v); } else if ( k.startsWith("?") || k.startsWith("!") ) { return isOptions(v); }
 
 		// ordering
 
-		else if ( k.startsWith("*") ) { return isOptions(v); }
-		else if ( k.startsWith("^") ) { return isNumber(v) || isLiteralValue(v, ["asc", "desc"]); }
+		else if ( k.startsWith("*") ) { return isOptions(v); } else if ( k.startsWith("^") ) { return isNumber(v) || isLiteralValue(v, ["asc", "desc"]); }
 
 		// paging
 
-		else if ( k === "@" || k === "#" ) { return isNumber(v); }
-
-		else { return false; }
+		else if ( k === "@" || k === "#" ) { return isNumber(v); } else { return false; }
 
 	});
 }
+
+
+/**
+ * Checks if a value is a {@link ValuesModel}.
+ *
+ * @group Guards
+ *
+ * @param value The value to check
+ *
+ * @returns True if the value is a valid property projection spec
+ */
+export function isValuesModel(value: unknown): value is ValuesModel {
+	return isUnion(value, [
+		isValueModel,
+		isLocalModel,
+		isLocalsModel,
+		v => isArray(v, [isLiteral]),
+		v => isArray(v, [isReference]),
+		v => isArray(v, [isQuery])
+	]);
+}
+
+/**
+ * Checks if a value is a {@link ValueModel}.
+ *
+ * @group Guards
+ *
+ * @param value The value to check
+ *
+ * @returns True if the value is a literal, reference, or nested model
+ */
+export function isValueModel(value: unknown): value is ValueModel {
+	return isLiteral(value) || isReference(value) || isModel(value);
+}
+
+/**
+ * Checks if a value is a {@link LocalModel}.
+ *
+ * @group Guards
+ *
+ * @param value The value to check
+ *
+ * @returns True if the value is a single-valued language-tagged map
+ */
+export function isLocalModel(value: unknown): value is LocalModel {
+	return isObject(value, (v, k) => isTagRange(k) && isString(v));
+}
+
+/**
+ * Checks if a value is a {@link LocalsModel}.
+ *
+ * @group Guards
+ *
+ * @param value The value to check
+ *
+ * @returns True if the value is a multi-valued language-tagged map
+ */
+export function isLocalsModel(value: unknown): value is LocalsModel {
+	return isObject(value, (v, k) => isTagRange(k) && isArray(v, [isString]));
+}
+
 
 
 /**
@@ -819,6 +892,7 @@ export function isExpression(value: unknown): value is Expression {
 	})();
 }
 
+
 /**
  * Checks if a value is an {@link Options}.
  *
@@ -844,6 +918,7 @@ export function isOptions(value: unknown): value is Options {
 export function isOption(value: unknown): value is Option {
 	return isUnion(value, [isNull, isLiteral, isReference]);
 }
+
 
 /**
  * Checks if a value is a {@link Criterion}.
