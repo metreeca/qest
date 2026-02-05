@@ -15,7 +15,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { isIndexed } from "./index.js";
+import { defaultBase } from "./index.js";
 import {
 	decodePatch,
 	decodeResource,
@@ -233,16 +233,16 @@ describe("guards", () => {
 			expect(isReference("https://example.com/resource")).toBeTruthy();
 		});
 
-		it("should accept root-relative IRI", async () => {
-			expect(isReference("/path/to/resource")).toBeTruthy();
+		it("should reject root-relative IRI", async () => {
+			expect(isReference("/path/to/resource")).toBeFalsy();
 		});
 
-		it("should accept relative IRI", async () => {
-			expect(isReference("relative/path")).toBeTruthy();
+		it("should reject relative IRI", async () => {
+			expect(isReference("relative/path")).toBeFalsy();
 		});
 
-		it("should accept empty string", async () => {
-			expect(isReference("")).toBeTruthy();
+		it("should reject empty string", async () => {
+			expect(isReference("")).toBeFalsy();
 		});
 
 		it("should reject non-strings", async () => {
@@ -341,10 +341,11 @@ describe("codecs", () => {
 				expect(() => encodeResource(resource, { base: "/relative/path" })).toThrow(TypeError);
 			});
 
-			it("should reject opaque IRI base", async () => {
-				const resource: Resource = { id: "/products/42" };
+			it("should accept path-absolute IRI base", async () => {
+				const resource: Resource = { id: "app:/products/42" };
 
-				expect(() => encodeResource(resource, { base: "app:/" })).toThrow(TypeError);
+				expect(encodeResource(resource, { base: defaultBase }))
+					.toBe(JSON.stringify({ id: "/products/42" }));
 			});
 
 			it("should internalize absolute IRI to root-relative", async () => {
@@ -406,6 +407,13 @@ describe("codecs", () => {
 
 		});
 
+		it("should use defaultBase when base option is omitted", async () => {
+			const resource: Resource = { id: "app:/products/42" };
+
+			expect(encodeResource(resource))
+				.toBe(JSON.stringify({ id: "/products/42" }));
+		});
+
 		it("should encode empty resource", async () => {
 			const resource: Resource = {};
 
@@ -414,13 +422,18 @@ describe("codecs", () => {
 
 		it("should encode resource with primitive properties", async () => {
 			const resource: Resource = {
-				id: "/products/42",
+				id: "app:/products/42",
 				name: "Widget",
 				price: 29.99,
 				available: true
 			};
 
-			expect(encodeResource(resource)).toBe(JSON.stringify(resource));
+			expect(encodeResource(resource)).toBe(JSON.stringify({
+				id: "/products/42",
+				name: "Widget",
+				price: 29.99,
+				available: true
+			}));
 		});
 
 		it("should encode resource with nested resource", async () => {
@@ -474,10 +487,11 @@ describe("codecs", () => {
 				expect(() => decodeResource(json, { base: "/relative/path" })).toThrow(TypeError);
 			});
 
-			it("should reject opaque IRI base", async () => {
+			it("should accept path-absolute IRI base", async () => {
 				const json = JSON.stringify({ id: "/products/42" });
 
-				expect(() => decodeResource(json, { base: "app:/" })).toThrow(TypeError);
+				expect(decodeResource(json, { base: defaultBase }))
+					.toEqual({ id: "app:/products/42" });
 			});
 
 			it("should resolve root-relative IRI to absolute", async () => {
@@ -532,6 +546,13 @@ describe("codecs", () => {
 
 		});
 
+		it("should use defaultBase when base option is omitted", async () => {
+			const json = JSON.stringify({ id: "/products/42" });
+
+			expect(decodeResource(json))
+				.toEqual({ id: "app:/products/42" });
+		});
+
 		it("should decode empty resource", async () => {
 			const resource: Resource = {};
 
@@ -539,31 +560,42 @@ describe("codecs", () => {
 		});
 
 		it("should decode resource with primitive properties", async () => {
-			const resource: Resource = {
+			const json = JSON.stringify({
 				id: "/products/42",
 				name: "Widget",
 				price: 29.99,
 				available: true
-			};
+			});
 
-			expect(decodeResource(JSON.stringify(resource))).toEqual(resource);
+			expect(decodeResource(json)).toEqual({
+				id: "app:/products/42",
+				name: "Widget",
+				price: 29.99,
+				available: true
+			});
 		});
 
 		it("should decode resource with nested resource", async () => {
-			const resource: Resource = {
+			const json = JSON.stringify({
 				id: "/products/42",
 				vendor: {
 					id: "/vendors/acme",
 					name: "Acme Corp"
 				}
-			};
+			});
 
-			expect(decodeResource(JSON.stringify(resource))).toEqual(resource);
+			expect(decodeResource(json)).toEqual({
+				id: "app:/products/42",
+				vendor: {
+					id: "app:/vendors/acme",
+					name: "Acme Corp"
+				}
+			});
 		});
 
 		it("should roundtrip with encodeResource", async () => {
 			const resource: Resource = {
-				id: "/products/42",
+				id: "app:/products/42",
 				name: "Widget",
 				price: 29.99
 			};
@@ -594,10 +626,11 @@ describe("codecs", () => {
 				expect(() => encodePatch(patch, { base: "/relative/path" })).toThrow(TypeError);
 			});
 
-			it("should reject opaque IRI base", async () => {
-				const patch: Patch = { vendor: "/vendors/acme" };
+			it("should accept path-absolute IRI base", async () => {
+				const patch: Patch = { vendor: "app:/vendors/acme" };
 
-				expect(() => encodePatch(patch, { base: "app:/" })).toThrow(TypeError);
+				expect(encodePatch(patch, { base: defaultBase }))
+					.toBe(JSON.stringify({ vendor: "/vendors/acme" }));
 			});
 
 			it("should internalize absolute IRI to root-relative", async () => {
@@ -633,6 +666,13 @@ describe("codecs", () => {
 					}));
 			});
 
+		});
+
+		it("should use defaultBase when base option is omitted", async () => {
+			const patch: Patch = { vendor: "app:/vendors/acme" };
+
+			expect(encodePatch(patch))
+				.toBe(JSON.stringify({ vendor: "/vendors/acme" }));
 		});
 
 		it("should encode empty patch", async () => {
@@ -686,10 +726,11 @@ describe("codecs", () => {
 				expect(() => decodePatch(json, { base: "/relative/path" })).toThrow(TypeError);
 			});
 
-			it("should reject opaque IRI base", async () => {
+			it("should accept path-absolute IRI base", async () => {
 				const json = JSON.stringify({ vendor: "/vendors/acme" });
 
-				expect(() => decodePatch(json, { base: "app:/" })).toThrow(TypeError);
+				expect(decodePatch(json, { base: defaultBase }))
+					.toEqual({ vendor: "app:/vendors/acme" });
 			});
 
 			it("should resolve root-relative IRI to absolute", async () => {
@@ -740,6 +781,13 @@ describe("codecs", () => {
 					});
 			});
 
+		});
+
+		it("should use defaultBase when base option is omitted", async () => {
+			const json = JSON.stringify({ vendor: "/vendors/acme" });
+
+			expect(decodePatch(json))
+				.toEqual({ vendor: "app:/vendors/acme" });
 		});
 
 		it("should decode empty patch", async () => {

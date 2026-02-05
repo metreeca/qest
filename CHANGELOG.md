@@ -9,6 +9,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Add `defaultBase` IRI constant (`app:/`) as default base for codec operations
 - Add `index` module with `CodecOpts` configuration type
 - Add generic `Indexed<T>` type for key-indexed property value containers
 - Add `Model` type for resource projection models
@@ -19,6 +20,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Restrict `isReference()` to accept only absolute IRIs (was accepting relative)
 - Rename `query` module to `model` (export path `./query` → `./model`)
 - Migrate validators to composable `is*()` type guard pattern
 - Remove `ascending`/`descending` sort direction values (use `asc`/`desc` instead)

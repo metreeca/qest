@@ -37,8 +37,9 @@ npm install @metreeca/qest
 >
 > | Module                                                                     | Description                     |
 > |----------------------------------------------------------------------------|---------------------------------|
+> | [@metreeca/qest](https://metreeca.github.io/qest/modules/index.html)       | Shared values, types, and guards |
 > | [@metreeca/qest/state](https://metreeca.github.io/qest/modules/state.html) | Resource state management       |
-> | [@metreeca/qest/model](https://metreeca.github.io/qest/modules/model.html) | Client-driven retrieval |
+> | [@metreeca/qest/model](https://metreeca.github.io/qest/modules/model.html) | Client-driven retrieval         |
 
 **@metreeca/qest** types define payload semantics and formats for standard REST operations:
 
@@ -54,9 +55,13 @@ npm install @metreeca/qest
 | DELETE | [IRI][]      | Resource deletion                  |
 
 [Resource]: https://metreeca.github.io/qest/types/state.Resource.html
+
 [Model]: https://metreeca.github.io/qest/types/model.Model.html
+
 [Query]: https://metreeca.github.io/qest/types/model.Query.html
+
 [Patch]: https://metreeca.github.io/qest/types/state.Patch.html
+
 [IRI]: https://metreeca.github.io/core/types/resource.IRI.html
 
 ## Resources and Patches
@@ -293,7 +298,7 @@ This controlled subset is specified by:
   nested resources
 
 - [IRI references](https://www.w3.org/TR/json-ld11/#node-identifiers) for linking resources across systems and domains;
-  applications may opt to restrict references to absolute or root-relative IRIs
+  data structures require absolute IRIs; codec functions handle conversion to/from root-relative forms
 
 # Support
 

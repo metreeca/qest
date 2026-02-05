@@ -15,7 +15,7 @@
  */
 
 /**
- * Shared types and guards.
+ * Shared values, types, and guards.
  *
  * @module index
  *
@@ -24,8 +24,21 @@
  */
 
 import { Identifier, isAny, isIdentifier, isObject, isOptional, key } from "@metreeca/core";
-import { type IRI, isIRI } from "@metreeca/core/resource";
+import { asIRI, type IRI, isIRI } from "@metreeca/core/resource";
 
+
+/**
+ * Default base IRI (`app:/`) for codec operations.
+ *
+ * The `app:` URI scheme is hierarchical and supports relative IRI resolution.
+ *
+ * @see {@link https://www.w3.org/TR/2013/WD-app-uri-20130516/ W3C app: URI Scheme}
+ * @see {@link https://datatracker.ietf.org/doc/html/rfc3986 RFC 3986 - URI Generic Syntax}
+ */
+export const defaultBase: IRI = asIRI("app:/");
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
  * Key-indexed container for property values.

@@ -230,9 +230,8 @@
  * across systems and domains.
  *
  * > [!NOTE]
- * > The choice between absolute or internal IRIs is application-specific, but internal IRIs
- * > (e.g., `/users/123`) are preferred for readability and portability. JSON-LD `@base` declarations can resolve
- * > internal references to absolute IRIs during processing.
+ * > Data structures require absolute IRIs. Codec functions ({@link encodeResource}, {@link decodeResource}, etc.)
+ * > convert between absolute and internal (root-relative) forms for serialization.
  *
  * ## Literals
  *
@@ -297,7 +296,7 @@ import { assert } from "@metreeca/core/error";
 import { isTag, Tag } from "@metreeca/core/language";
 import { immutable } from "@metreeca/core/nested";
 import { internalize, IRI, isIRI, resolve } from "@metreeca/core/resource";
-import { type CodecOpts, type Indexed, isCodecOpts, isIndexed } from "./index.js";
+import { type CodecOpts, defaultBase, type Indexed, isCodecOpts, isIndexed } from "./index.js";
 
 
 /**
@@ -373,7 +372,7 @@ export type Literal =
 /**
  * Resource reference.
  *
- * An {@link IRI} identifying a linked resource without embedding its state. Contrast with {@link Resource},
+ * An absolute {@link IRI} identifying a linked resource without embedding its state. Contrast with {@link Resource},
  * which includes the linked resource's properties inline.
  *
  * > [!WARNING]
@@ -498,10 +497,10 @@ export function isLiteral(value: unknown): value is Literal {
  *
  * @param value The value to check
  *
- * @returns True if the value is a well-formed IRI reference
+ * @returns True if the value is an absolute IRI
  */
 export function isReference(value: unknown): value is Reference {
-	return isIRI(value, "relative");
+	return isIRI(value, "absolute");
 }
 
 /**
@@ -554,21 +553,13 @@ export function isLocals(value: unknown): value is Locals {
 export function encodeResource(resource: Resource, opts: CodecOpts = {}): string {
 
 	const $resource = immutable(resource, isResource);
-	const { base } = assert(opts, isCodecOpts);
+	const { base = defaultBase } = assert(opts, isCodecOpts);
 
-	if ( base === undefined ) {
-
-		return JSON.stringify($resource);
-
-	} else {
-
-		return JSON.stringify($resource, (_key, value) =>
-			isIRI(value, "absolute")
-				? internalize(base, value)
-				: value
-		);
-
-	}
+	return JSON.stringify($resource, (_key, value) =>
+		isIRI(value, "absolute")
+			? internalize(base, value)
+			: value
+	);
 
 }
 
@@ -594,25 +585,16 @@ export function encodeResource(resource: Resource, opts: CodecOpts = {}): string
 export function decodeResource(json: string, opts: CodecOpts = {}): Resource {
 
 	const $json = assert(json, isString);
-	const { base } = assert(opts, isCodecOpts);
+	const { base = defaultBase } = assert(opts, isCodecOpts);
 
-	if ( base === undefined ) {
+	const resource = JSON.parse($json, (_key, value) =>
+		isIRI(value, "internal")
+			? resolve(base, value)
+			: value
+	);
 
-		const resource = JSON.parse($json);
+	return immutable(resource, isResource, "malformed resource");
 
-		return immutable(resource, isResource, "malformed resource");
-
-	} else {
-
-		const resource = JSON.parse($json, (_key, value) =>
-			isIRI(value, "internal")
-				? resolve(base, value)
-				: value
-		);
-
-		return immutable(resource, isResource, "malformed resource");
-
-	}
 }
 
 
@@ -637,21 +619,13 @@ export function decodeResource(json: string, opts: CodecOpts = {}): Resource {
 export function encodePatch(patch: Patch, opts: CodecOpts = {}): string {
 
 	const $patch = immutable(patch, isPatch);
-	const { base } = assert(opts, isCodecOpts);
+	const { base = defaultBase } = assert(opts, isCodecOpts);
 
-	if ( base === undefined ) {
-
-		return JSON.stringify($patch);
-
-	} else {
-
-		return JSON.stringify($patch, (_key, value) =>
-			isIRI(value, "absolute")
-				? internalize(base, value)
-				: value
-		);
-
-	}
+	return JSON.stringify($patch, (_key, value) =>
+		isIRI(value, "absolute")
+			? internalize(base, value)
+			: value
+	);
 
 }
 
@@ -676,24 +650,14 @@ export function encodePatch(patch: Patch, opts: CodecOpts = {}): string {
 export function decodePatch(json: string, opts: CodecOpts = {}): Patch {
 
 	const $json = assert(json, isString);
-	const { base } = assert(opts, isCodecOpts);
+	const { base = defaultBase } = assert(opts, isCodecOpts);
 
-	if ( base === undefined ) {
+	const patch = JSON.parse($json, (_key, value) =>
+		isIRI(value, "internal")
+			? resolve(base, value)
+			: value
+	);
 
-		const patch = JSON.parse($json);
-
-		return immutable(patch, isPatch, "malformed patch");
-
-	} else {
-
-		const patch = JSON.parse($json, (_key, value) =>
-			isIRI(value, "internal")
-				? resolve(base, value)
-				: value
-		);
-
-		return immutable(patch, isPatch, "malformed patch");
-
-	}
+	return immutable(patch, isPatch, "malformed patch");
 
 }

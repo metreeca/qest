@@ -302,7 +302,7 @@ import { immutable } from "@metreeca/core/nested";
 import type { IRI } from "@metreeca/core/resource";
 import { internalize, isIRI, resolve } from "@metreeca/core/resource";
 import { decodeBase64, encodeBase64 } from "./base64.js";
-import { type CodecOpts, Indexed, isCodecOpts, isIndexed } from "./index.js";
+import { type CodecOpts, defaultBase, Indexed, isCodecOpts, isIndexed } from "./index.js";
 import * as QueryParser from "./model.pegjs.js";
 import {
 	isLiteral,
@@ -314,6 +314,7 @@ import {
 	Locals,
 	Reference,
 	Resource,
+	Value,
 	Values
 } from "./state.js";
 
@@ -855,7 +856,6 @@ export function isLocalsModel(value: unknown): value is LocalsModel {
 }
 
 
-
 /**
  * Checks if a value is a {@link Binding}.
  *
@@ -1016,7 +1016,7 @@ export function encodeQuery(
 ): string {
 
 	const $query = immutable(query, isQuery);
-	const { base, mode = "json" } = assert(opts, isOpts);
+	const { base = defaultBase, mode = "json" } = assert(opts, isOpts);
 
 	const internalized = internalizeIRIs(base, $query);
 
@@ -1034,8 +1034,8 @@ export function encodeQuery(
 	}
 
 
-	function internalizeIRIs(base: string | undefined, q: Query): Query {
-		return base === undefined ? q : JSON.parse(JSON.stringify(q), (_key, value) =>
+	function internalizeIRIs(base: string, q: Query): Query {
+		return JSON.parse(JSON.stringify(q), (_key, value) =>
 			isIRI(value, "absolute") ? internalize(base, value) : value
 		);
 	}
@@ -1120,7 +1120,7 @@ export function encodeQuery(
 export function decodeQuery(json: string, opts: CodecOpts = {}): Query {
 
 	const $json = assert(json, isString);
-	const { base } = assert(opts, isCodecOpts);
+	const { base = defaultBase } = assert(opts, isCodecOpts);
 
 	try {
 
@@ -1160,14 +1160,14 @@ export function decodeQuery(json: string, opts: CodecOpts = {}): Query {
 	}
 
 
-	function parseJSON(base: string | undefined, json: string): Query {
-		return base === undefined ? JSON.parse(json) : JSON.parse(json, (_key, value) =>
+	function parseJSON(base: string, json: string): Query {
+		return JSON.parse(json, (_key, value) =>
 			isIRI(value, "internal") ? resolve(base, value) : value
 		);
 	}
 
-	function resolveIRIs(base: string | undefined, parsed: Query): Query {
-		return base === undefined ? parsed : JSON.parse(JSON.stringify(parsed), (_key, value) =>
+	function resolveIRIs(base: string, parsed: Query): Query {
+		return JSON.parse(JSON.stringify(parsed), (_key, value) =>
 			isIRI(value, "internal") ? resolve(base, value) : value
 		);
 	}

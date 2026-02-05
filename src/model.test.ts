@@ -16,6 +16,7 @@
 
 import { describe, expect, it } from "vitest";
 import { decodeBase64 } from "./base64.js";
+import { defaultBase } from "./index.js";
 import {
 	decodeCriterion,
 	decodeQuery,
@@ -845,10 +846,12 @@ describe("codecs", () => {
 				expect(() => encodeQuery(query, { mode: "json", base: "/relative/path" })).toThrow(TypeError);
 			});
 
-			it("should reject opaque IRI base", async () => {
-				const query = { id: "/products/42" };
+			it("should accept path-absolute IRI base", async () => {
+				const query = { id: "app:/products/42" } as Query;
 
-				expect(() => encodeQuery(query, { mode: "json", base: "app:/" })).toThrow(TypeError);
+				const encoded = encodeQuery(query, { mode: "json", base: defaultBase });
+
+				expect(encoded).toBe(encodeURIComponent(JSON.stringify({ id: "/products/42" })));
 			});
 
 			it("should internalize absolute IRI to root-relative in json format", async () => {
@@ -864,7 +867,7 @@ describe("codecs", () => {
 
 				const encoded = encodeQuery(query, { mode: "base64", base: "https://example.com/" });
 
-				expect(decodeQuery(encoded)).toEqual({ id: "/products/42" } as Query);
+				expect(decodeQuery(encoded, { base: "https://example.com/" })).toEqual(query);
 			});
 
 			it("should internalize absolute IRI to root-relative in form format", async () => {
@@ -897,6 +900,13 @@ describe("codecs", () => {
 				})));
 			});
 
+		});
+
+		it("should use defaultBase when base option is omitted", async () => {
+			const query = { id: "app:/products/42" } as Query;
+			const encoded = encodeQuery(query, { mode: "json" });
+
+			expect(encoded).toBe(encodeURIComponent(JSON.stringify({ id: "/products/42" })));
 		});
 
 		describe("json format", () => {
@@ -1751,10 +1761,11 @@ describe("codecs", () => {
 				expect(() => decodeQuery(encoded, { base: "/relative/path" })).toThrow(TypeError);
 			});
 
-			it("should reject opaque IRI base", async () => {
+			it("should accept path-absolute IRI base", async () => {
 				const encoded = encodeURIComponent(JSON.stringify({ id: "/products/42" }));
 
-				expect(() => decodeQuery(encoded, { base: "app:/" })).toThrow(TypeError);
+				expect(decodeQuery(encoded, { base: defaultBase }))
+					.toEqual({ id: "app:/products/42" } as Query);
 			});
 
 			it("should resolve root-relative IRI to absolute in json format", async () => {
@@ -1818,6 +1829,13 @@ describe("codecs", () => {
 				});
 			});
 
+		});
+
+		it("should use defaultBase when base option is omitted", async () => {
+			const encoded = encodeURIComponent(JSON.stringify({ id: "/products/42" }));
+
+			expect(decodeQuery(encoded))
+				.toEqual({ id: "app:/products/42" } as Query);
 		});
 
 		describe("format auto-detection", () => {
