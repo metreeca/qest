@@ -7,16 +7,16 @@ Minimalist foundations for client-driven, queryable REST/JSON APIs.
 **@metreeca/qest** standardizes critical capabilities that vanilla REST/JSON APIs typically lack or implement in ad‑hoc,
 non‑portable ways:
 
-- **client-driven** — clients specify what they need, retrieving complex envelopes in a single call
-- **queryable** — advanced filtering and aggregation, supporting faceted search and analytics
+- **Client-Driven**: clients specify what they need, retrieving complex envelopes in a single call
+- **Queryable**: advanced filtering and aggregation, supporting faceted search and analytics
 
 Developers seek these features in frameworks like GraphQL; **@metreeca/qest** brings them to REST/JSON, achieving:
 
-- **familiar patterns** — standard REST and JSON conventions, no new paradigms to learn
-- **simple clients** — no specialized libraries, preprocessors, or code generators
-- **automated servers** — model-driven development, dramatically reducing implementation effort
-- **standard caching** — compatibility with CDNs and browser caches using standard GET requests
-- **URL-based versioning** — standard REST versioning without field deprecation complexity
+- **Familiar Patterns**: standard REST and JSON conventions, no new paradigms to learn
+- **Simple Clients**: no specialized libraries, preprocessors, or code generators
+- **Automated Servers**: model-driven development, dramatically reducing implementation effort
+- **Standard Caching**: compatibility with CDNs and browser caches using standard GET requests
+- **URL-Based Versioning**: standard REST versioning without field deprecation complexity
 
 # Installation
 
