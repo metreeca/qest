@@ -622,7 +622,8 @@ export type Binding =
  * Expressions use the compact string syntax `[transform:]*[path]` where:
  *
  * - **path** is a dot-separated list of property names (e.g., `order.items.price`);
- *   the empty path refers to the root value
+ *   the empty path refers to the root value; path steps always refer to actual resource property names
+ *   and not to projected computed properties defined by {@link Binding bindings}
  * - **transforms** is a sequence of transform names, each followed by a colon (e.g., `round:avg:`)
  *   and applied right-to-left (functional order)
  *
