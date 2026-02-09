@@ -253,12 +253,12 @@ A single call returns exactly what the client requested:
 But **@metreeca/qest** is also the foundation of an integrated ecosystem for rapid application development, turning
 those same types into a complete model-driven stack:
 
-| Package                     | Description                                                |
-|-----------------------------|------------------------------------------------------------|
-| **@metreeca/qest**          | Data types for client-driven, queryable REST/JSON APIs     |
-| @metreeca/blue _(upcoming)_ | Shape-based validation for resources, patches, and queries |
-| @metreeca/keep _(upcoming)_ | Shape-driven storage framework with pluggable adapters     |
-| @metreeca/gate _(upcoming)_ | Shape-driven REST/JSON API publishing                      |
+| Package                     | Description                                                    |
+|-----------------------------|----------------------------------------------------------------|
+| **@metreeca/qest**          | Data types for client-driven, queryable REST/JSON APIs         |
+| **@metreeca/blue**          | Declarative blueprints for model-driven linked data processing |
+| @metreeca/keep _(upcoming)_ | Shape-driven storage framework with pluggable adapters         |
+| @metreeca/gate _(upcoming)_ | Shape-driven REST/JSON API publishing                          |
 
 # JSON-LD Foundations
 
