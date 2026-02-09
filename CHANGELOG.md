@@ -5,7 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unpublished](https://github.com/metreeca/qest/compare/v0.9.1...HEAD)
+## [Unpublished](https://github.com/metreeca/qest/compare/v0.9.2...HEAD)
+
+## [0.9.2](https://github.com/metreeca/qest/releases/tag/v0.9.2) - 2026-02-09
 
 ### Added
 
@@ -28,6 +30,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Extend `Resource` and `Patch` types to support `Indexed` property values
 - Extend `ValuesModel` type to support indexed model containers
 - Rename `Text`/`Texts` types to `Local`/`Locals` for language-tagged text maps
+- Upgrade `@metreeca/core` dependency to `^0.9.18`
 
 ### Fixed
 
