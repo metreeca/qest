@@ -256,7 +256,7 @@ those same types into a complete model-driven stack:
 | Package                     | Description                                                    |
 |-----------------------------|----------------------------------------------------------------|
 | **@metreeca/qest**          | Data types for client-driven, queryable REST/JSON APIs         |
-| **@metreeca/blue**          | Declarative blueprints for model-driven linked data processing |
+| [**@metreeca/blue**](https://www.npmjs.com/package/@metreeca/blue) | Declarative blueprints for model-driven linked data processing |
 | @metreeca/keep _(upcoming)_ | Shape-driven storage framework with pluggable adapters         |
 | @metreeca/gate _(upcoming)_ | Shape-driven REST/JSON API publishing                          |
 
