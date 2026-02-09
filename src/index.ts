@@ -54,6 +54,16 @@ export const defaultBase: IRI = asIRI("app:/");
  * - Keys are limited to valid JavaScript identifiers
  * - Allowed only as top-level property values; no nesting
  *
+ * @example
+ *
+ * ```typescript
+ * const variants: Indexed<number> = {
+ *   small: 19.99,
+ *   medium: 29.99,
+ *   large: 39.99
+ * };
+ * ```
+ *
  * @see {@link https://www.w3.org/TR/json-ld11/#data-indexing JSON-LD 1.1 - Data Indexing}
  */
 export type Indexed<T> =

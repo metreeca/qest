@@ -548,6 +548,16 @@ export function isLocals(value: unknown): value is Locals {
  *
  * @throws {TypeError} If `resource` is not a valid {@link Resource} or `opts` is not a valid {@link CodecOpts}
  *
+ * @example
+ *
+ * ```typescript
+ * encodeResource(
+ *   { id: "https://example.com/products/42", name: "Widget", price: 29.99 },
+ *   { base: "https://example.com/" }
+ * );
+ * // → '{"id":"/products/42","name":"Widget","price":29.99}'
+ * ```
+ *
  * @see {@link decodeResource}
  */
 export function encodeResource(resource: Resource, opts: CodecOpts = {}): string {
@@ -579,6 +589,16 @@ export function encodeResource(resource: Resource, opts: CodecOpts = {}): string
  *
  * @throws {TypeError} If `json` is not a string, not a valid {@link Resource}, or `opts` is not a valid
  *   {@link CodecOpts}
+ *
+ * @example
+ *
+ * ```typescript
+ * decodeResource(
+ *   '{"id":"/products/42","name":"Widget","price":29.99}',
+ *   { base: "https://example.com/" }
+ * );
+ * // → { id: "https://example.com/products/42", name: "Widget", price: 29.99 }
+ * ```
  *
  * @see {@link encodeResource}
  */
@@ -614,6 +634,16 @@ export function decodeResource(json: string, opts: CodecOpts = {}): Resource {
  *
  * @throws {TypeError} If `patch` is not a valid {@link Patch} or `opts` is not a valid {@link CodecOpts}
  *
+ * @example
+ *
+ * ```typescript
+ * encodePatch(
+ *   { vendor: "https://example.com/vendors/acme", description: null },
+ *   { base: "https://example.com/" }
+ * );
+ * // → '{"vendor":"/vendors/acme","description":null}'
+ * ```
+ *
  * @see {@link decodePatch}
  */
 export function encodePatch(patch: Patch, opts: CodecOpts = {}): string {
@@ -644,6 +674,16 @@ export function encodePatch(patch: Patch, opts: CodecOpts = {}): string {
  * @returns The decoded patch, with resolved IRIs if `base` is provided
  *
  * @throws {TypeError} If `json` is not a string, not a valid {@link Patch}, or `opts` is not a valid {@link CodecOpts}
+ *
+ * @example
+ *
+ * ```typescript
+ * decodePatch(
+ *   '{"vendor":"/vendors/acme","description":null}',
+ *   { base: "https://example.com/" }
+ * );
+ * // → { vendor: "https://example.com/vendors/acme", description: null }
+ * ```
  *
  * @see {@link encodePatch}
  */

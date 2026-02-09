@@ -640,6 +640,16 @@ export type Binding =
  * @remarks
  *
  * Compliant processors are expected to support all standard {@link Transforms}.
+ *
+ * @example
+ *
+ * ```text
+ * name                    // simple property
+ * vendor.name             // nested property path
+ * year:releaseDate        // single transform
+ * round:avg:scores        // transform pipeline
+ * count:                  // aggregate (empty path)
+ * ```
  */
 export type Expression =
 	string;
@@ -684,6 +694,16 @@ export type Option =
  *
  * A unified target suffices as projections and constraints are easily
  * disambiguated after parsing using {@link isIdentifier}.
+ *
+ * @example
+ *
+ * ```typescript
+ * // Projection: "vendorName=vendor.name"
+ * { target: "vendorName", pipe: [], path: ["vendor", "name"] }
+ *
+ * // Constraint: ">=year:releaseDate"
+ * { target: ">=", pipe: ["year"], path: ["releaseDate"] }
+ * ```
  *
  * @see {@link encodeCriterion}
  * @see {@link decodeCriterion}
@@ -1009,6 +1029,16 @@ export function isTransform(value: unknown): value is Transform {
  * This ensures consistent, predictable output. The decoder accepts both canonical and shorthand forms (e.g., postfix
  * operators like `price>=100`, unquoted strings like `name=widget`).
  *
+ * @example
+ *
+ * ```typescript
+ * encodeQuery(
+ *   { "~name": "widget", ">=price": 50, "^price": 1, "#": 25 },
+ *   { mode: "form" }
+ * );
+ * // → '~name=%22widget%22&%3E%3Dprice=50&%5Eprice=1&%23=25'
+ * ```
+ *
  * @see {@link decodeQuery}
  */
 export function encodeQuery(
@@ -1116,6 +1146,14 @@ export function encodeQuery(
  *
  * Tagged strings always require the canonical `"value"@tag` format.
  *
+ * @example
+ *
+ * ```typescript
+ * // Form format with shorthand operators (auto-detected)
+ * decodeQuery("~name=widget&price>=50&^price=1&#=25");
+ * // → { "~name": "widget", ">=price": 50, "^price": 1, "#": 25 }
+ * ```
+ *
  * @see {@link encodeQuery}
  */
 export function decodeQuery(json: string, opts: CodecOpts = {}): Query {
@@ -1207,6 +1245,13 @@ export function decodeQuery(json: string, opts: CodecOpts = {}): Query {
  *
  * @throws TypeGuardError If `criterion` is not a valid {@link Criterion}
  *
+ * @example
+ *
+ * ```typescript
+ * encodeCriterion({ target: ">=", pipe: ["year"], path: ["releaseDate"] });
+ * // → '>=year:releaseDate'
+ * ```
+ *
  * @see {@link decodeCriterion}
  */
 export function encodeCriterion(criterion: Criterion): string {
@@ -1238,6 +1283,13 @@ export function encodeCriterion(criterion: Criterion): string {
  *
  * @throws TypeGuardError If `key` is not a string
  * @throws {Error} If `key` is malformed or unparseable
+ *
+ * @example
+ *
+ * ```typescript
+ * decodeCriterion(">=year:releaseDate");
+ * // → { target: ">=", pipe: ["year"], path: ["releaseDate"] }
+ * ```
  *
  * @see {@link encodeCriterion}
  */
