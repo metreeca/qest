@@ -409,7 +409,22 @@ export const Transforms = transforms([
 	/**
 	 * Extract day component from calendrical values.
 	 */
-	{ name: "day", aggregate: false, datatype: "number" }
+	{ name: "day", aggregate: false, datatype: "number" },
+
+	/**
+	 * Extract hours component from calendrical values.
+	 */
+	{ name: "hours", aggregate: false, datatype: "number" },
+
+	/**
+	 * Extract minutes component from calendrical values.
+	 */
+	{ name: "minutes", aggregate: false, datatype: "number" },
+
+	/**
+	 * Extract seconds component from calendrical values.
+	 */
+	{ name: "seconds", aggregate: false, datatype: "number" }
 
 ]);
 

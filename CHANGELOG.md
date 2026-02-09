@@ -17,6 +17,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Add `ValueModel`, `LocalModel`, `LocalsModel` types for model value variants
 - Add `isValueModel()`, `isLocalModel()`, `isLocalsModel()` type guards
 - Add `Binding` type for named computed expressions in projections
+- Add `hours`, `minutes`, `seconds` time-component transforms to `Transforms` registry
 
 ### Changed
 
