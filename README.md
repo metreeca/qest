@@ -250,15 +250,15 @@ A single call returns exactly what the client requested:
 > **@metreeca/qest** defines data types only; applications are absolutely free to handle validation, storage, and
 > publishing as they see fit.
 
-But **@metreeca/qest** is also the foundation of an integrated ecosystem for rapid application development, turning
-those same types into a complete model-driven stack:
+**@metreeca/qest** is also the foundation of an integrated ecosystem for rapid development of linked data applications,
+turning those same types into a complete model-driven stack:
 
-| Package                     | Description                                                    |
-|-----------------------------|----------------------------------------------------------------|
-| **@metreeca/qest**          | Data types for client-driven, queryable REST/JSON APIs         |
-| [**@metreeca/blue**](https://www.npmjs.com/package/@metreeca/blue) | Declarative blueprints for model-driven linked data processing |
-| @metreeca/keep _(upcoming)_ | Shape-driven storage framework with pluggable adapters         |
-| @metreeca/gate _(upcoming)_ | Shape-driven REST/JSON API publishing                          |
+| Package                                                | Description                                                    |
+|--------------------------------------------------------|----------------------------------------------------------------|
+| **@metreeca/qest**                                     | Data types for client-driven, queryable REST/JSON APIs         |
+| [**@metreeca/blue**](https://github.com/metreeca/blue) | Declarative blueprints for model-driven linked data processing |
+| @metreeca/keep _(upcoming)_                            | Shape-driven storage framework with pluggable adapters         |
+| @metreeca/gate _(upcoming)_                            | Shape-driven REST/JSON API publishing                          |
 
 # JSON-LD Foundations
 
