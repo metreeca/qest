@@ -16,6 +16,9 @@ description: Development guidelines and conventions for the @metreeca/qest packa
   - [Parsing Expression Grammar (PEG)](https://en.wikipedia.org/wiki/Parsing_expression_grammar) - Formal grammar type
   - [peggy npm](https://www.npmjs.com/package/peggy) - Package repository
 
+- Dependencies:
+  - [@metreeca/core](https://metreeca.github.io/core/) - Essential TypeScript abstractions
+
 # NPM Scripts
 
 - **`npm run clean`** - Remove build artifacts and dependencies (dist, docs, node_modules)
