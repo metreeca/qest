@@ -715,12 +715,17 @@ export type Expression =
 /**
  * Constraint option set.
  *
- * Values for {@link Query} matching (`?` and `!`) and focus ordering (`*`) operators:
+ * Specifies the set of values for {@link Query} matching (`?` and `!`) and focus ordering (`*`) operators.
  *
- * - {@link Option} — Constraint option
- * - {@link Local} — Single-valued language-tagged text map
- * - {@link Locals} — Multi-valued language-tagged text map
- * - `readonly Option[]` — Array of options
+ * > [!NOTE]
+ * > Options are inherently multi-valued regardless of the cardinality of the target property: matching and ordering
+ * > operators always work against a set of candidate values. Singular forms are accepted as shorthands
+ * > for single-element sets.
+ *
+ * - {@link Option} — Shorthand for a single-element option set
+ * - {@link Local} — Shorthand for a single-valued language-tagged option set
+ * - {@link Locals} — Multi-valued language-tagged option set
+ * - `readonly Option[]` — Explicit option set
  */
 export type Options =
 	| Option
