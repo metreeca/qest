@@ -7,6 +7,12 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unpublished](https://github.com/metreeca/qest/compare/v0.9.2...HEAD)
 
+### Changed
+
+- Replace `zxx` language tag with `und` for language-neutral values
+- Accept plain strings as `Local`/`LocalModel` shorthand and plain string arrays as `Locals`/`LocalsModel` shorthand for
+  language-neutral values
+
 ## [0.9.2](https://github.com/metreeca/qest/releases/tag/v0.9.2) - 2026-02-09
 
 ### Added

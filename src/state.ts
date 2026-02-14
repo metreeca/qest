@@ -262,8 +262,8 @@
  * ```
  *
  * > [!IMPORTANT]
- * > The `@none` key for non-localised values is not supported; for mixed content use `string | Local`
- * > or `readonly string[] | Locals` union types, or the `zxx` tag.
+ * > The `@none` key for non-localised values is not supported; use the `und` tag for language-neutral
+ * > values or plain string / string array shorthands, which are equivalent to `{ und: value }`.
  *
  * @see {@link https://www.w3.org/TR/json-ld11/ JSON-LD 1.1}
  * @see {@link https://datatracker.ietf.org/doc/html/rfc9110#section-9.3.1 RFC 9110 - HTTP GET Method}
@@ -385,39 +385,55 @@ export type Reference =
 	| IRI
 
 /**
- * Single-valued language-tagged map for internationalised text.
+ * Single-valued language-tagged text or language map for internationalised text.
  *
  * Maps language {@link Tag | tags} to a single localised text value per language.
  *
+ * A plain string is accepted as shorthand for a language-neutral value tagged with `und`:
+ * `"hello"` is equivalent to `{ und: "hello" }`. Consumers are responsible for normalising
+ * shorthand values to the canonical object form.
+ *
  * @remarks
  *
- * - The `@none` key for non-localised values is not supported; for mixed content use `string | Local`
- *   union types or the `zxx` tag
+ * - The `@none` key for non-localised values is not supported; use the `und` tag or the plain string
+ *   shorthand for language-neutral values
+ * - The `und` (Undetermined) tag is preferred over `zxx` (No Linguistic Content) for language-neutral text:
+ *   `und` denotes text not bound to a specific language, while `zxx` is reserved for non-linguistic content
+ *   such as instrumental music or binary data
  * - Language maps are conceptually equivalent to an array of language-tagged strings, which idiomatic JSON
  *   doesn't directly support
  *
  * @see {@link https://www.rfc-editor.org/rfc/rfc5646.html RFC 5646 - Tags for Identifying Languages}
- * @see {@link https://iso639-3.sil.org/code/zxx ISO 639-3 zxx - No Linguistic Content}
+ * @see {@link https://iso639-3.sil.org/code/und ISO 639 und - Undetermined Language}
  */
 export type Local =
+	| string
 	| { readonly [tag: Tag]: string }
 
 /**
- * Multi-valued language-tagged map for internationalised text.
+ * Multi-valued language-tagged text or language map for internationalised text.
  *
  * Maps language {@link Tag | tags} to multiple localised text values per language.
  *
+ * A plain string array is accepted as shorthand for language-neutral values tagged with `und`:
+ * `["a", "b"]` is equivalent to `{ und: ["a", "b"] }`. Consumers are responsible for normalising
+ * shorthand values to the canonical object form.
+ *
  * @remarks
  *
- * - The `@none` key for non-localised values is not supported; for mixed content use `readonly string[] | Locals`
- *   union types or the `zxx` tag
+ * - The `@none` key for non-localised values is not supported; use the `und` tag or the plain string array
+ *   shorthand for language-neutral values
+ * - The `und` (Undetermined) tag is preferred over `zxx` (No Linguistic Content) for language-neutral text:
+ *   `und` denotes text not bound to a specific language, while `zxx` is reserved for non-linguistic content
+ *   such as instrumental music or binary data
  * - Language maps are conceptually equivalent to an array of language-tagged strings, which idiomatic JSON
  *   doesn't directly support
  *
  * @see {@link https://www.rfc-editor.org/rfc/rfc5646.html RFC 5646 - Tags for Identifying Languages}
- * @see {@link https://iso639-3.sil.org/code/zxx ISO 639-3 zxx - No Linguistic Content}
+ * @see {@link https://iso639-3.sil.org/code/und ISO 639 und - Undetermined Language}
  */
 export type Locals =
+	| readonly string[]
 	| { readonly [tag: Tag]: readonly string[] }
 
 
@@ -510,10 +526,10 @@ export function isReference(value: unknown): value is Reference {
  *
  * @param value The value to check
  *
- * @returns True if the value is a plain object with language tag keys and string values
+ * @returns True if the value is a string or a plain object with language tag keys and string values
  */
 export function isLocal(value: unknown): value is Local {
-	return isObject(value, (v, k) => isTag(k) && isString(v));
+	return isString(value) || isObject(value, (v, k) => isTag(k) && isString(v));
 }
 
 /**
@@ -523,10 +539,10 @@ export function isLocal(value: unknown): value is Local {
  *
  * @param value The value to check
  *
- * @returns True if the value is a plain object with language tag keys and string array values
+ * @returns True if the value is a string array or a plain object with language tag keys and string array values
  */
 export function isLocals(value: unknown): value is Locals {
-	return isObject(value, (v, k) => isTag(k) && isArray(v, isString));
+	return isArray(value, isString) || isObject(value, (v, k) => isTag(k) && isArray(v, isString));
 }
 
 

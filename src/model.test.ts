@@ -480,10 +480,14 @@ describe("guards", () => {
 				expect(isLocalModel(undefined)).toBeFalsy();
 			});
 
-			it("should reject primitives", async () => {
+			it("should accept plain string shorthand", async () => {
+				expect(isLocalModel("text")).toBeTruthy();
+				expect(isLocalModel("")).toBeTruthy();
+			});
+
+			it("should reject non-string primitives", async () => {
 				expect(isLocalModel(true)).toBeFalsy();
 				expect(isLocalModel(42)).toBeFalsy();
-				expect(isLocalModel("text")).toBeFalsy();
 			});
 
 			it("should reject multi-valued maps", async () => {
@@ -525,7 +529,12 @@ describe("guards", () => {
 				expect(isLocalsModel(undefined)).toBeFalsy();
 			});
 
-			it("should reject primitives", async () => {
+			it("should accept plain string array shorthand", async () => {
+				expect(isLocalsModel(["text"])).toBeTruthy();
+				expect(isLocalsModel([""])).toBeTruthy();
+			});
+
+			it("should reject non-array primitives", async () => {
 				expect(isLocalsModel(true)).toBeFalsy();
 				expect(isLocalsModel(42)).toBeFalsy();
 				expect(isLocalsModel("text")).toBeFalsy();

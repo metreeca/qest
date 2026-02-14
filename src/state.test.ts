@@ -278,8 +278,12 @@ describe("guards", () => {
 			expect(isLocal({ en: null })).toBeFalsy();
 		});
 
-		it("should reject primitives", async () => {
-			expect(isLocal("string")).toBeFalsy();
+		it("should accept plain string shorthand", async () => {
+			expect(isLocal("hello")).toBeTruthy();
+			expect(isLocal("")).toBeTruthy();
+		});
+
+		it("should reject non-string primitives", async () => {
 			expect(isLocal(42)).toBeFalsy();
 			expect(isLocal(null)).toBeFalsy();
 		});
@@ -314,7 +318,12 @@ describe("guards", () => {
 			expect(isLocals({ en: [null] })).toBeFalsy();
 		});
 
-		it("should reject primitives", async () => {
+		it("should accept plain string array shorthand", async () => {
+			expect(isLocals(["a", "b"])).toBeTruthy();
+			expect(isLocals([])).toBeTruthy();
+		});
+
+		it("should reject non-array primitives", async () => {
 			expect(isLocals("string")).toBeFalsy();
 			expect(isLocals(null)).toBeFalsy();
 		});

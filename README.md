@@ -9,6 +9,7 @@ non‑portable ways:
 
 - **Client-Driven**: clients specify what they need, retrieving complex envelopes in a single call
 - **Queryable**: advanced filtering and aggregation, supporting faceted search and analytics
+- **Localised**: full support for internationalised content with language-tagged text maps
 
 Developers seek these features in frameworks like GraphQL; **@metreeca/qest** brings them to REST/JSON, achieving:
 
@@ -17,6 +18,19 @@ Developers seek these features in frameworks like GraphQL; **@metreeca/qest** br
 - **Automated Servers**: model-driven development, dramatically reducing implementation effort
 - **Standard Caching**: compatibility with CDNs and browser caches using standard GET requests
 - **URL-Based Versioning**: standard REST versioning without field deprecation complexity
+
+# Ecosystem
+
+**@metreeca/qest** focuses on semantics and core data types, leaving applications free to handle validation, storage,
+and publishing as they see fit; its standardised data model is the foundation of an integrated ecosystem
+that delivers a powerful model-driven stack for rapid development of linked data applications:
+
+| Package                                                | Description                                                    |
+|--------------------------------------------------------|----------------------------------------------------------------|
+| **@metreeca/qest**                                     | Data types for client-driven, queryable REST/JSON APIs         |
+| [**@metreeca/blue**](https://github.com/metreeca/blue) | Declarative blueprints for model-driven linked data processing |
+| @metreeca/keep _(upcoming)_                            | Shape-driven storage framework with pluggable adapters         |
+| @metreeca/gate _(upcoming)_                            | Shape-driven REST/JSON API publishing                          |
 
 # Installation
 
@@ -243,22 +257,42 @@ A single call returns exactly what the client requested:
 }
 ```
 
-# Integrated Ecosystem
+## Localised Content
 
-> [!IMPORTANT]
->
-> **@metreeca/qest** defines data types only; applications are absolutely free to handle validation, storage, and
-> publishing as they see fit.
+Resource properties can hold localised text using language maps, which map
+[BCP 47](https://www.rfc-editor.org/rfc/rfc5646.html) language tags to text values:
 
-**@metreeca/qest** is also the foundation of an integrated ecosystem for rapid development of linked data applications,
-turning those same types into a complete model-driven stack:
+```json
+{
+  "id": "https://data.example.com/products/123",
+  "name": {
+    "en": "Widget",
+    "fr": "Bidule"
+  },
+  "description": {
+    "en": [
+      "Compact",
+      "Durable"
+    ],
+    "fr": [
+      "Compact",
+      "Résistant"
+    ]
+  }
+}
+```
 
-| Package                                                | Description                                                    |
-|--------------------------------------------------------|----------------------------------------------------------------|
-| **@metreeca/qest**                                     | Data types for client-driven, queryable REST/JSON APIs         |
-| [**@metreeca/blue**](https://github.com/metreeca/blue) | Declarative blueprints for model-driven linked data processing |
-| @metreeca/keep _(upcoming)_                            | Shape-driven storage framework with pluggable adapters         |
-| @metreeca/gate _(upcoming)_                            | Shape-driven REST/JSON API publishing                          |
+A [`Local`](https://metreeca.github.io/qest/types/state.Local.html) map holds a single text value per language; a
+[`Locals`](https://metreeca.github.io/qest/types/state.Locals.html) map holds multiple values per language. Plain
+strings and string arrays are accepted as shorthands for language-neutral values, equivalent to tagging them with the [
+`und`](https://iso639-3.sil.org/code/und) (Undetermined) language tag:
+
+```js
+({
+    name: "Widget",              // equivalent to { und: "Widget" }
+    tags: ["compact", "durable"] // equivalent to { und: ["compact", "durable"] }
+});
+```
 
 # JSON-LD Foundations
 
@@ -277,26 +311,22 @@ This controlled subset is specified by:
 
 - [compacted documents](https://www.w3.org/TR/json-ld11/#compacted-document-form) with short property names and nested
   objects, just like regular JSON
-
 - [ECMAScript identifiers](https://262.ecma-international.org/15.0/#sec-names-and-keywords) as property names
   ([terms](https://www.w3.org/TR/json-ld11/#terms)), enabling dot notation access;
   [JSON-LD keywords](https://www.w3.org/TR/json-ld11/#keywords) (`@id`, `@type`, etc.) and
   [blank node identifiers](https://www.w3.org/TR/json-ld11/#identifying-blank-nodes) are not allowed and must be mapped
   to identifiers via an application-provided [`@context`](https://www.w3.org/TR/json-ld11/#the-context) (for instance,
   `"id": "@id"`); `@context` must also maps property names to IRIs for semantic interoperability
-
 - native JSON primitives (`boolean`, `number`, `string`) as values;
   [typed literals](https://www.w3.org/TR/json-ld11/#typed-values) with arbitrary datatypes are not allowed and must be
   represented as strings with [datatype coercion](https://www.w3.org/TR/json-ld11/#type-coercion) declared in `@context`
-
 - [language maps](https://www.w3.org/TR/json-ld11/#language-indexing) for localised text; [
   `@none`](https://www.w3.org/TR/json-ld11/#dfn-none) keys for non-localised values in language maps are not allowed and
-  must be handled using `string | Local` union types or the [`zxx`](https://iso639-3.sil.org/code/zxx) language tag
-
+  must be handled using the [`und`](https://iso639-3.sil.org/code/und) language tag or plain string / string array
+  shorthands, which are equivalent to `{ und: value }`
 - [index maps](https://www.w3.org/TR/json-ld11/#data-indexing) for key-indexed property values; indexed semantics must
   be signalled by application-provided `@context` declarations, as indexed values are otherwise indistinguishable from
   nested resources
-
 - [IRI references](https://www.w3.org/TR/json-ld11/#node-identifiers) for linking resources across systems and domains;
   data structures require absolute IRIs; codec functions handle conversion to/from root-relative forms
 

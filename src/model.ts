@@ -89,16 +89,25 @@
  *
  * ## Localized Content
  *
- * For multilingual properties, use {@link TagRange} keys to select language tags to retrieve:
+ * For multilingual properties, use {@link TagRange} keys to select language tags to retrieve.
+ *
+ * Plain string or string array shorthands select language-neutral projections; if specified,
+ * the retrieved value should use the same shorthand form:
  *
  * ```typescript
  * const model: Model = {
  *   id: "",
- *   name: { "*": "" },                   // all available languages
- *   description: { "en": "", "fr": "" }, // English or French
- *   keywords: { "en": [""], "fr": [""] } // multi-valued, English or French
+ *   name: "",                             // language-neutral shorthand
+ *   title: { "*": "" },                   // all available languages
+ *   description: { "en": "", "fr": "" },  // English or French
+ *   keywords: { "en": [""], "fr": [""] }  // multi-valued, English or French
  * };
  * ```
+ *
+ * > [!IMPORTANT]
+ * > The `@none` key for non-localised values is not supported; use the `und` tag for language-neutral
+ * > values or plain string / string array shorthands, which are equivalent to `{ und: value }` and
+ * > select language-neutral projections.
  *
  * ## Computed Properties
  *
@@ -495,6 +504,11 @@ export type Query = Model & {
 	 * Stemmed word search filter (`"~expression": value`).
 	 *
 	 * Includes resources where at least one expression value contains all word stems from the search string.
+	 * Applicable to both plain string and {@link Local | localised text} properties.
+	 *
+	 * > [!WARNING]
+	 * > When targeting a localised property, the target language must be communicated to the server
+	 * > through an application-specific channel (e.g., `Accept-Language` header or request context).
 	 */
 	readonly [like: `~${Expression}`]: string
 
@@ -527,6 +541,10 @@ export type Query = Model & {
 	 * Orders results by expression value; the sign gives direction (positive for ascending, negative for descending);
 	 * the absolute value gives 1-based precedence (1 is highest priority); zero is ignored; `"asc"` and `"desc"` are
 	 * shorthands for `±1`.
+	 *
+	 * > [!WARNING]
+	 * > When targeting a localised property, the target language must be communicated to the server
+	 * > through an application-specific channel (e.g., `Accept-Language` header or request context).
 	 */
 	readonly [order: `^${Expression}`]: "asc" | "desc" | number
 
@@ -556,7 +574,9 @@ export type Query = Model & {
  * - {@link Literal} — Primitive value (`boolean`, `number`, `string`)
  * - {@link Reference} — IRI reference to a linked resource
  * - {@link Model} — Nested projection for expanding linked resources
+ * - `string` — Language-neutral single-valued shorthand (see {@link LocalModel})
  * - `{ [TagRange]: string }` — Single-valued language-tagged text map
+ * - `readonly [string]` — Language-neutral multi-valued shorthand (see {@link LocalsModel})
  * - `{ [TagRange]: readonly [string] }` — Multi-valued language-tagged text map
  * - `readonly [Literal]` — Array of primitive values
  * - `readonly [Reference]` — Array of IRI references
@@ -594,9 +614,20 @@ export type ValueModel =
  *
  * Maps language {@link TagRange | tag ranges} to a single localised text placeholder per language.
  *
- * @see {@link Local} for state values
+ * A plain string is accepted as shorthand for a language-neutral projection: `""` is equivalent to `{ und: "" }`.
+ * Consumers are responsible for normalising shorthand values to the canonical object form, including shorthand
+ * {@link Local} values within {@link Options} constraints.
+ *
+ * > [!NOTE]
+ * > If the model specifies a string shorthand, the retrieved value should use the same shorthand form.
+ *
+ * The `@none` key for non-localised values is not supported; use the `und` tag or the plain string
+ * shorthand for language-neutral values.
+ *
+ * @see {@link Local} for additional details on language tag semantics
  */
 export type LocalModel =
+	| string
 	| { readonly [range: TagRange]: string };
 
 /**
@@ -604,9 +635,20 @@ export type LocalModel =
  *
  * Maps language {@link TagRange | tag ranges} to multiple localised text placeholders per language.
  *
- * @see {@link Locals} for state values
+ * A plain string array is accepted as shorthand for a language-neutral projection: `[""]` is equivalent to `{ und:
+ * [""] }`. Consumers are responsible for normalising shorthand values to the canonical object form, including
+ * shorthand {@link Locals} values within {@link Options} constraints.
+ *
+ * > [!NOTE]
+ * > If the model specifies a string array shorthand, the retrieved value should use the same shorthand form.
+ *
+ * The `@none` key for non-localised values is not supported; use the `und` tag or the plain string array
+ * shorthand for language-neutral values.
+ *
+ * @see {@link Locals} for additional details on language tag semantics
  */
 export type LocalsModel =
+	| readonly [string]
 	| { readonly [range: TagRange]: readonly [string] };
 
 
@@ -872,10 +914,10 @@ export function isValueModel(value: unknown): value is ValueModel {
  *
  * @param value The value to check
  *
- * @returns True if the value is a single-valued language-tagged map
+ * @returns True if the value is a string or a single-valued language-tagged map
  */
 export function isLocalModel(value: unknown): value is LocalModel {
-	return isObject(value, (v, k) => isTagRange(k) && isString(v));
+	return isString(value) || isObject(value, (v, k) => isTagRange(k) && isString(v));
 }
 
 /**
@@ -885,10 +927,10 @@ export function isLocalModel(value: unknown): value is LocalModel {
  *
  * @param value The value to check
  *
- * @returns True if the value is a multi-valued language-tagged map
+ * @returns True if the value is a singleton string array or a multi-valued language-tagged map
  */
 export function isLocalsModel(value: unknown): value is LocalsModel {
-	return isObject(value, (v, k) => isTagRange(k) && isArray(v, [isString]));
+	return isArray(value, [isString]) || isObject(value, (v, k) => isTagRange(k) && isArray(v, [isString]));
 }
 
 
