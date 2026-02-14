@@ -722,6 +722,11 @@ export type Expression =
  * > operators always work against a set of candidate values. Singular forms are accepted as shorthands
  * > for single-element sets.
  *
+ * > [!IMPORTANT]
+ * > Consumers must accept both {@link Local} and {@link Locals} when filtering or constraining on localised
+ * > properties, regardless of the target property's cardinality: codec roundtrips may normalise between the two
+ * > forms (see {@link decodeQuery}).
+ *
  * - {@link Option} — Shorthand for a single-element option set
  * - {@link Local} — Shorthand for a single-valued language-tagged option set
  * - {@link Locals} — Multi-valued language-tagged option set
@@ -1206,7 +1211,9 @@ export function encodeQuery(
  * - Double-quoted strings (canonical): `name="widget"`
  * - Unquoted strings (shorthand): `name=widget`
  *
- * Tagged strings always require the canonical `"value"@tag` format.
+ * Tagged strings always require the canonical `"value"@tag` format. Tagged values are always reconstructed
+ * as {@link Locals} (never {@link Local}), since {@link Options} are inherently multi-valued and `Local`/`Locals`
+ * are indistinguishable in form encoding.
  *
  * @example
  *

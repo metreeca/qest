@@ -44,17 +44,47 @@
     );
   }
 
+  // tagged value marker for localized strings parsed from "text"@tag form parameters
+
+  class Tagged {
+    constructor(text, tag) {
+      this.text = text;
+      this.tag = tag;
+    }
+  }
+
   function parseValue(str) {
     const decoded = decodeValue(str);
     const localized = decoded.match(LocalizedPattern);
 
-    return localized ? [parseJsonString(localized[1]), localized[2]]
+    return localized ? new Tagged(parseJsonString(localized[1]), localized[2])
       : decoded.startsWith('"') && decoded.endsWith('"') ? parseJsonString(decoded.slice(1, -1))
       : decoded === "true" ? true
       : decoded === "false" ? false
       : decoded === "null" ? null
       : NumberPattern.test(decoded) ? Number(decoded)
       : decoded;
+  }
+
+  // reconstruct Tagged values into Locals objects ({ tag: [texts] });
+  // always produces Locals (never Local): Options are inherently multi-valued,
+  // so Local/Locals are indistinguishable in form encoding (see Options docs)
+
+  function mergeTagged(values) {
+    return values.reduce((obj, { text, tag }) => ({
+      ...obj,
+      [tag]: tag in obj ? [...obj[tag], text] : [text]
+    }), {});
+  }
+
+  function resolveTagged(value) {
+    if (value instanceof Tagged) {
+      return { [value.tag]: [value.text] };
+    } else if (Array.isArray(value) && value.length > 0 && value.every(v => v instanceof Tagged)) {
+      return mergeTagged(value);
+    } else {
+      return value;
+    }
   }
 
   function mergePairs(pairs) {
@@ -89,7 +119,10 @@
       ])
     );
 
-    return { ...operators, ...equality };
+    return Object.fromEntries(
+      Object.entries({ ...operators, ...equality })
+        .map(([key, value]) => [key, resolveTagged(value)])
+    );
   }
 
 }

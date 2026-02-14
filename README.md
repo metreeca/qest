@@ -22,8 +22,8 @@ Developers seek these features in frameworks like GraphQL; **@metreeca/qest** br
 # Ecosystem
 
 **@metreeca/qest** focuses on semantics and core data types, leaving applications free to handle validation, storage,
-and publishing as they see fit; its standardised data model is the foundation of an integrated ecosystem
-that delivers a powerful model-driven stack for rapid development of linked data applications:
+and publishing as they see fit; its standardised data model is the foundation of an integrated ecosystem that delivers a
+powerful model-driven stack for rapid development of linked data applications:
 
 | Package                                                | Description                                                    |
 |--------------------------------------------------------|----------------------------------------------------------------|

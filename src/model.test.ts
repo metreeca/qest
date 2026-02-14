@@ -1750,6 +1750,45 @@ describe("codecs", () => {
 
 			});
 
+			describe("local/locals roundtrip", () => {
+
+				it("should reconstruct single-tag Local as Locals", async () => {
+					const query = { "?name": { "en": "Widget" } } as Query;
+					const encoded = encodeQuery(query, { mode: "form" });
+					const decoded = decodeQuery(encoded);
+
+					// Local normalizes to Locals (form mode is lossy for Local vs Locals)
+					expect(decoded).toEqual({ "?name": { "en": ["Widget"] } });
+				});
+
+				it("should reconstruct multi-tag Local as Locals", async () => {
+					const query = { "?name": { "en": "Widget", "fr": "Gadget" } } as Query;
+					const encoded = encodeQuery(query, { mode: "form" });
+					const decoded = decodeQuery(encoded);
+
+					// Local normalizes to Locals (form mode is lossy for Local vs Locals)
+					expect(decoded).toEqual({ "?name": { "en": ["Widget"], "fr": ["Gadget"] } });
+				});
+
+				it("should roundtrip single-element Locals", async () => {
+					const query: Query = { "?name": { "en": ["Widget"] } };
+					const encoded = encodeQuery(query, { mode: "form" });
+					const decoded = decodeQuery(encoded);
+
+					expect(decoded).toEqual(query);
+				});
+
+				it("should roundtrip multi-value Locals", async () => {
+					// @ts-expect-error Testing multi-value language maps in filtering constraints
+					const query: Query = { "?name": { "en": ["Widget", "Gadget"], "fr": ["Bidule"] } };
+					const encoded = encodeQuery(query, { mode: "form" });
+					const decoded = decodeQuery(encoded);
+
+					expect(decoded).toEqual(query);
+				});
+
+			});
+
 		});
 
 	});
@@ -2402,17 +2441,31 @@ describe("codecs", () => {
 				});
 
 				it("should decode localized string", async () => {
-					// "Hello"@en
+					// "Hello"@en → always reconstructed as Locals (Options are multi-valued)
 					const decoded = decodeQuery("label=%22Hello%22%40en") as Record<string, unknown>;
 
-					expect(decoded["?label"]).toEqual(["Hello", "en"]);
+					expect(decoded["?label"]).toEqual({ "en": ["Hello"] });
 				});
 
 				it("should decode localized string with region", async () => {
-					// "Colour"@en-GB
+					// "Colour"@en-GB → always reconstructed as Locals (Options are multi-valued)
 					const decoded = decodeQuery("label=%22Colour%22%40en-GB") as Record<string, unknown>;
 
-					expect(decoded["?label"]).toEqual(["Colour", "en-GB"]);
+					expect(decoded["?label"]).toEqual({ "en-GB": ["Colour"] });
+				});
+
+				it("should decode multiple tagged values into Locals object", async () => {
+					// ?name="Widget"@en&?name="Gadget"@fr → always Locals
+					const decoded = decodeQuery("%3Fname=%22Widget%22%40en&%3Fname=%22Gadget%22%40fr") as Record<string, unknown>;
+
+					expect(decoded["?name"]).toEqual({ "en": ["Widget"], "fr": ["Gadget"] });
+				});
+
+				it("should decode multiple values per tag into Locals object", async () => {
+					// ?name="Widget"@en&?name="Gadget"@en&?name="Bidule"@fr
+					const decoded = decodeQuery("%3Fname=%22Widget%22%40en&%3Fname=%22Gadget%22%40en&%3Fname=%22Bidule%22%40fr") as Record<string, unknown>;
+
+					expect(decoded["?name"]).toEqual({ "en": ["Widget", "Gadget"], "fr": ["Bidule"] });
 				});
 
 			});
@@ -2578,7 +2631,10 @@ describe("codecs", () => {
 				{ "^price": 1, "^name": -2 },
 				{ "@": 0, "#": 25 },
 				{ "vendorName=vendor.name": "" },
-				{ "total=count:": 0 }
+				{ "total=count:": 0 },
+				{ name: { "*": "" } },
+				{ name: { "en": "hello", "fr": "bonjour" } },
+				{ keywords: { "en": [""], "fr": [""] } }
 			];
 
 			it.each(testQueries.map((q, i) => [i, q] as const))(

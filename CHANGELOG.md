@@ -10,6 +10,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 
 - Replace `zxx` language tag with `und` for language-neutral values
+
+### Fixed
+
+- Fix form codec to reconstruct `Local`/`Locals` objects from tagged form parameters during decoding
 - Accept plain strings as `Local`/`LocalModel` shorthand and plain string arrays as `Locals`/`LocalsModel` shorthand for
   language-neutral values
 
