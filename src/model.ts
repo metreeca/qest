@@ -180,6 +180,26 @@
  * // → { items: [{ count: 284 }] }
  * ```
  *
+ * # Value Ordering
+ *
+ * Comparison (`<`, `>`, `<=`, `>=`) and sorting (`^`) operators rely on a total ordering over
+ * {@link Literal} values defined by the
+ * {@link https://www.w3.org/TR/xpath-functions/#comparison-operators XPath comparison operators},
+ * which are in turn based on
+ * {@link https://www.w3.org/TR/xmlschema11-2/#rf-order XSD ordered value spaces}:
+ *
+ * - `null` — undefined values sort before all defined values
+ * - `boolean` — `false` < `true`
+ * - `number` — {@link https://www.w3.org/TR/xpath-functions/#func-numeric-less-than standard numeric} ordering;
+ *   `NaN` is unordered
+ * - `string` — {@link https://www.w3.org/TR/xpath-functions/#func-compare Unicode codepoint} collation
+ * - {@link https://metreeca.github.io/core/types/resource.IRI.html IRI} references and nested {@link Model}
+ *   resources — ordered by their IRI identifier using the same string collation
+ *
+ * > [!WARNING]
+ * > Cross-type comparisons and values that fall outside these rules produce
+ * > unpredictable, system-dependent results.
+ *
  * # Model Serialization
  *
  * Multiple formats are supported for transmission as URL query strings in GET requests:
@@ -475,28 +495,32 @@ export type Query = Model & {
 	/**
 	 * Less-than filter (`"<expression": value`).
 	 *
-	 * Includes resources where at least one expression value is less than the literal.
+	 * Includes resources where at least one expression value is strictly less than the literal
+	 * under {@link model | value ordering} rules.
 	 */
 	readonly [lt: `<${Expression}`]: Literal
 
 	/**
 	 * Greater-than filter (`">expression": value`).
 	 *
-	 * Includes resources where at least one expression value is greater than the literal.
+	 * Includes resources where at least one expression value is strictly greater than the literal
+	 * under {@link model | value ordering} rules.
 	 */
 	readonly [gt: `>${Expression}`]: Literal
 
 	/**
 	 * Less-than-or-equal filter (`"<=expression": value`).
 	 *
-	 * Includes resources where at least one expression value is less than or equal to the literal.
+	 * Includes resources where at least one expression value is less than or equal to the literal
+	 * under {@link model | value ordering} rules.
 	 */
 	readonly [lte: `<=${Expression}`]: Literal
 
 	/**
 	 * Greater-than-or-equal filter (`">=expression": value`).
 	 *
-	 * Includes resources where at least one expression value is greater than or equal to the literal.
+	 * Includes resources where at least one expression value is greater than or equal to the literal
+	 * under {@link model | value ordering} rules.
 	 */
 	readonly [gte: `>=${Expression}`]: Literal
 
@@ -538,9 +562,9 @@ export type Query = Model & {
 	/**
 	 * Sort ordering (`"^expression": priority`).
 	 *
-	 * Orders results by expression value; the sign gives direction (positive for ascending, negative for descending);
-	 * the absolute value gives 1-based precedence (1 is highest priority); zero is ignored; `"asc"` and `"desc"` are
-	 * shorthands for `±1`.
+	 * Orders results by expression value according to {@link model | value ordering} rules; the sign gives direction
+	 * (positive for ascending, negative for descending); the absolute value gives 1-based precedence (1 is highest
+	 * priority); zero is ignored; `"asc"` and `"desc"` are shorthands for `±1`.
 	 *
 	 * > [!WARNING]
 	 * > When targeting a localised property, the target language must be communicated to the server
