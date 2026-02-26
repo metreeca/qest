@@ -11,6 +11,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Replace `zxx` language tag with `und` for language-neutral values
 
+### Removed
+
+- Remove `Patch` type, `isPatch` guard, `encodePatch`/`decodePatch` codecs
+
 ### Fixed
 
 - Fix form codec to reconstruct `Local`/`Locals` objects from tagged form parameters during decoding
@@ -37,7 +41,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Rename `query` module to `model` (export path `./query` → `./model`)
 - Migrate validators to composable `is*()` type guard pattern
 - Remove `ascending`/`descending` sort direction values (use `asc`/`desc` instead)
-- Extend `Resource` and `Patch` types to support `Indexed` property values
+- Extend `Resource` type to support `Indexed` property values
 - Extend `ValuesModel` type to support indexed model containers
 - Rename `Text`/`Texts` types to `Local`/`Locals` for language-tagged text maps
 - Upgrade `@metreeca/core` dependency to `^0.9.18`

@@ -17,19 +17,15 @@
 import { describe, expect, it } from "vitest";
 import { defaultBase } from "./index.js";
 import {
-	decodePatch,
 	decodeResource,
-	encodePatch,
 	encodeResource,
 	isLiteral,
 	isLocal,
 	isLocals,
-	isPatch,
 	isReference,
 	isResource,
 	isValue,
 	isValues,
-	type Patch,
 	type Resource
 } from "./state.js";
 
@@ -79,35 +75,6 @@ describe("guards", () => {
 		it("should reject arrays", async () => {
 			expect(isResource([])).toBeFalsy();
 			expect(isResource([{ id: "/test" }])).toBeFalsy();
-		});
-
-	});
-
-	describe("isPatch", () => {
-
-		it("should accept empty object", async () => {
-			expect(isPatch({})).toBeTruthy();
-		});
-
-		it("should accept object with primitive properties", async () => {
-			expect(isPatch({ name: "Test", count: 42 })).toBeTruthy();
-		});
-
-		it("should accept object with null deletions", async () => {
-			expect(isPatch({ name: null, description: null })).toBeTruthy();
-		});
-
-		it("should accept mixed updates and deletions", async () => {
-			expect(isPatch({ name: "Updated", description: null, count: 42 })).toBeTruthy();
-		});
-
-		it("should reject null", async () => {
-			expect(isPatch(null)).toBeFalsy();
-		});
-
-		it("should reject primitives", async () => {
-			expect(isPatch("string")).toBeFalsy();
-			expect(isPatch(42)).toBeFalsy();
 		});
 
 	});
@@ -618,224 +585,5 @@ describe("codecs", () => {
 
 	});
 
-
-	describe("encodePatch", () => {
-
-		describe("base option", () => {
-
-			it("should accept absolute hierarchical IRI base", async () => {
-				const patch: Patch = { vendor: "https://example.com/vendors/acme" };
-
-				expect(() => encodePatch(patch, { base: "https://example.com/" })).not.toThrow();
-			});
-
-			it("should reject relative IRI base", async () => {
-				const patch: Patch = { vendor: "/vendors/acme" };
-
-				expect(() => encodePatch(patch, { base: "/relative/path" })).toThrow(TypeError);
-			});
-
-			it("should accept path-absolute IRI base", async () => {
-				const patch: Patch = { vendor: "app:/vendors/acme" };
-
-				expect(encodePatch(patch, { base: defaultBase }))
-					.toBe(JSON.stringify({ vendor: "/vendors/acme" }));
-			});
-
-			it("should internalize absolute IRI to root-relative", async () => {
-				const patch: Patch = { vendor: "https://example.com/vendors/acme" };
-
-				expect(encodePatch(patch, { base: "https://example.com/" }))
-					.toBe(JSON.stringify({ vendor: "/vendors/acme" }));
-			});
-
-			it("should preserve absolute IRI with different origin", async () => {
-				const patch: Patch = { vendor: "https://other.com/vendors/acme" };
-
-				expect(encodePatch(patch, { base: "https://example.com/" }))
-					.toBe(JSON.stringify({ vendor: "https://other.com/vendors/acme" }));
-			});
-
-			it("should internalize IRIs recursively in nested structures", async () => {
-				const patch: Patch = {
-					vendor: {
-						id: "https://example.com/vendors/acme",
-						name: "Acme Corp"
-					},
-					categories: ["https://example.com/categories/electronics"]
-				};
-
-				expect(encodePatch(patch, { base: "https://example.com/" }))
-					.toBe(JSON.stringify({
-						vendor: {
-							id: "/vendors/acme",
-							name: "Acme Corp"
-						},
-						categories: ["/categories/electronics"]
-					}));
-			});
-
-		});
-
-		it("should use defaultBase when base option is omitted", async () => {
-			const patch: Patch = { vendor: "app:/vendors/acme" };
-
-			expect(encodePatch(patch))
-				.toBe(JSON.stringify({ vendor: "/vendors/acme" }));
-		});
-
-		it("should encode empty patch", async () => {
-			const patch: Patch = {};
-
-			expect(encodePatch(patch)).toBe(JSON.stringify(patch));
-		});
-
-		it("should encode patch with property updates", async () => {
-			const patch: Patch = {
-				price: 39.99,
-				available: true
-			};
-
-			expect(encodePatch(patch)).toBe(JSON.stringify(patch));
-		});
-
-		it("should encode patch with null deletions", async () => {
-			const patch: Patch = {
-				description: null,
-				price: 39.99
-			};
-
-			expect(encodePatch(patch)).toBe(JSON.stringify(patch));
-		});
-
-		it("should encode patch with empty array deletions", async () => {
-			const patch: Patch = {
-				categories: [],
-				price: 39.99
-			};
-
-			expect(encodePatch(patch)).toBe(JSON.stringify(patch));
-		});
-
-	});
-
-	describe("decodePatch", () => {
-
-		describe("base option", () => {
-
-			it("should accept absolute hierarchical IRI base", async () => {
-				const json = JSON.stringify({ vendor: "/vendors/acme" });
-
-				expect(() => decodePatch(json, { base: "https://example.com/" })).not.toThrow();
-			});
-
-			it("should reject relative IRI base", async () => {
-				const json = JSON.stringify({ vendor: "/vendors/acme" });
-
-				expect(() => decodePatch(json, { base: "/relative/path" })).toThrow(TypeError);
-			});
-
-			it("should accept path-absolute IRI base", async () => {
-				const json = JSON.stringify({ vendor: "/vendors/acme" });
-
-				expect(decodePatch(json, { base: defaultBase }))
-					.toEqual({ vendor: "app:/vendors/acme" });
-			});
-
-			it("should resolve root-relative IRI to absolute", async () => {
-				const json = JSON.stringify({ vendor: "/vendors/acme" });
-
-				expect(decodePatch(json, { base: "https://example.com/" }))
-					.toEqual({ vendor: "https://example.com/vendors/acme" });
-			});
-
-			it("should preserve absolute IRI", async () => {
-				const json = JSON.stringify({ vendor: "https://other.com/vendors/acme" });
-
-				expect(decodePatch(json, { base: "https://example.com/" }))
-					.toEqual({ vendor: "https://other.com/vendors/acme" });
-			});
-
-			it("should preserve non-root-relative IRIs and other strings", async () => {
-				const json = JSON.stringify({
-					relative: "../vendors/acme",
-					plain: "Acme Corp",
-					nested: { name: "Widget", path: "products/42" }
-				});
-
-				expect(decodePatch(json, { base: "https://example.com/" }))
-					.toEqual({
-						relative: "../vendors/acme",
-						plain: "Acme Corp",
-						nested: { name: "Widget", path: "products/42" }
-					});
-			});
-
-			it("should resolve IRIs recursively in nested structures", async () => {
-				const json = JSON.stringify({
-					vendor: {
-						id: "/vendors/acme",
-						name: "Acme Corp"
-					},
-					categories: ["/categories/electronics"]
-				});
-
-				expect(decodePatch(json, { base: "https://example.com/" }))
-					.toEqual({
-						vendor: {
-							id: "https://example.com/vendors/acme",
-							name: "Acme Corp"
-						},
-						categories: ["https://example.com/categories/electronics"]
-					});
-			});
-
-		});
-
-		it("should use defaultBase when base option is omitted", async () => {
-			const json = JSON.stringify({ vendor: "/vendors/acme" });
-
-			expect(decodePatch(json))
-				.toEqual({ vendor: "app:/vendors/acme" });
-		});
-
-		it("should decode empty patch", async () => {
-			const patch: Patch = {};
-
-			expect(decodePatch(JSON.stringify(patch))).toEqual(patch);
-		});
-
-		it("should decode patch with property updates", async () => {
-			const patch: Patch = {
-				price: 39.99,
-				available: true
-			};
-
-			expect(decodePatch(JSON.stringify(patch))).toEqual(patch);
-		});
-
-		it("should decode patch with null deletions", async () => {
-			const patch: Patch = {
-				description: null,
-				price: 39.99
-			};
-
-			expect(decodePatch(JSON.stringify(patch))).toEqual(patch);
-		});
-
-		it("should roundtrip with encodePatch", async () => {
-			const patch: Patch = {
-				price: 39.99,
-				description: null
-			};
-
-			expect(decodePatch(encodePatch(patch))).toEqual(patch);
-		});
-
-		it("should throw on invalid JSON", async () => {
-			expect(() => decodePatch("not valid json")).toThrow();
-		});
-
-	});
 
 });

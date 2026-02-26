@@ -21,7 +21,6 @@
  * with localised text support:
  *
  * - {@link Resource} — Complete resource state (HTTP GET/PUT)
- * - {@link Patch} — Partial resource updates (HTTP PATCH)
  * - {@link Values} — Property value sets
  * - {@link Value} — Individual property values
  * - {@link Literal} — Primitive data values
@@ -171,28 +170,6 @@
  * > State replacement is total — properties not included in the state are removed from the resource; empty arrays
  * > are treated as property deletions, following set semantics where an empty set is equivalent to absence.
  *
- * ## Patching
- *
- * A {@link Patch} serves as payload for HTTP PATCH operations. Properties can be set to new {@link Values | values}
- * or deleted using `null`; unlisted properties remain unchanged:
- *
- * ```http request
- * PATCH https://example.com/products/42
- * ```
- *
- * ```js
- * ({
- *   "price": 39.99,         // update
- *   "description": null,    // delete
- *   "available": true,      // update
- *   "categories": []        // delete
- * })
- * ```
- *
- * > [!IMPORTANT]
- * > Empty arrays are treated as property deletions, following set semantics where an empty set
- * > is equivalent to absence.
- *
  * ## Deleting
  *
  * HTTP DELETE operations remove the resource at the request URL (no payload is required):
@@ -203,7 +180,7 @@
  *
  * # Value Types
  *
- * Each property in a resource state or patch holds {@link Values}:
+ * Each property in a resource state holds {@link Values}:
  *
  * - a single {@link Value}
  * - a {@link Local} single-valued language-tagged text map
@@ -230,7 +207,7 @@
  * across systems and domains.
  *
  * > [!NOTE]
- * > Data structures require absolute IRIs. Codec functions ({@link encodeResource}, {@link decodeResource}, etc.)
+ * > Data structures require absolute IRIs. Codec functions ({@link encodeResource}, {@link decodeResource})
  * > convert between absolute and internal (root-relative) forms for serialization.
  *
  * ## Literals
@@ -268,7 +245,6 @@
  * @see {@link https://www.w3.org/TR/json-ld11/ JSON-LD 1.1}
  * @see {@link https://datatracker.ietf.org/doc/html/rfc9110#section-9.3.1 RFC 9110 - HTTP GET Method}
  * @see {@link https://datatracker.ietf.org/doc/html/rfc9110#section-9.3.4 RFC 9110 - HTTP PUT Method}
- * @see {@link https://datatracker.ietf.org/doc/html/rfc5789 RFC 5789 - HTTP PATCH Method}
  * @see {@link https://www.rfc-editor.org/rfc/rfc5646.html RFC 5646 - Tags for Identifying Languages}
  *
  *
@@ -286,7 +262,6 @@ import {
 	isArray,
 	isBoolean,
 	isIdentifier,
-	isNull,
 	isNumber,
 	isObject,
 	isString,
@@ -313,18 +288,6 @@ import { type CodecOpts, defaultBase, type Indexed, isCodecOpts, isIndexed } fro
  */
 export type Resource =
 	| { readonly [property: Identifier]: Values | Indexed<Values> }
-
-/**
- * Partial resource state update.
- *
- * A property map specifying incremental changes to a {@link Resource} state. Each property maps to
- * {@link Values} or {@link Indexed} to set, or `null` to delete; unlisted properties remain unchanged.
- * Empty arrays are equivalent to `null`.
- *
- * @see {@link https://datatracker.ietf.org/doc/html/rfc5789 RFC 5789 - HTTP PATCH Method}
- */
-export type Patch =
-	| { readonly [property: Identifier]: null | Values | Indexed<Values> }
 
 
 /**
@@ -450,20 +413,6 @@ export type Locals =
  */
 export function isResource(value: unknown): value is Resource {
 	return isObject(value, (v, k) => isIdentifier(k) && isUnion(v, [isValues, v => isIndexed(v, isValues)]));
-}
-
-/**
- * Checks if a value is a {@link Patch}.
- *
- * @group Guards
- *
- * @param value The value to check
- *
- * @returns True if the value is a plain object with identifier keys and `null`, {@link Values},
- *   or {@link Indexed} values
- */
-export function isPatch(value: unknown): value is Patch {
-	return isObject(value, (v, k) => isIdentifier(k) && isUnion(v, [isNull, isValues, v => isIndexed(v, isValues)]));
 }
 
 
@@ -634,86 +583,3 @@ export function decodeResource(json: string, opts: CodecOpts = {}): Resource {
 }
 
 
-/**
- * Encodes a patch as a JSON string.
- *
- * If `base` is provided, converts absolute IRIs (matching `isIRI(value, "absolute")`) to
- * internal IRIs using {@link internalize}, recursively throughout the patch structure.
- * Otherwise, performs plain JSON serialization.
- *
- * @group Codecs
- *
- * @param patch The patch to encode
- * @param opts Encoding options
- *
- * @returns The JSON string, with internalized IRIs if `base` is provided
- *
- * @throws {TypeError} If `patch` is not a valid {@link Patch} or `opts` is not a valid {@link CodecOpts}
- *
- * @example
- *
- * ```typescript
- * encodePatch(
- *   { vendor: "https://example.com/vendors/acme", description: null },
- *   { base: "https://example.com/" }
- * );
- * // → '{"vendor":"/vendors/acme","description":null}'
- * ```
- *
- * @see {@link decodePatch}
- */
-export function encodePatch(patch: Patch, opts: CodecOpts = {}): string {
-
-	const $patch = immutable(patch, isPatch);
-	const { base = defaultBase } = assert(opts, isCodecOpts);
-
-	return JSON.stringify($patch, (_key, value) =>
-		isIRI(value, "absolute")
-			? internalize(base, value)
-			: value
-	);
-
-}
-
-/**
- * Decodes a patch from a JSON string.
- *
- * If `base` is provided, resolves internal IRIs (matching `isIRI(value, "internal")`) to
- * absolute IRIs using `resolve()`, recursively throughout the patch structure. Otherwise,
- * performs plain JSON parsing.
- *
- * @group Codecs
- *
- * @param json The JSON-serialized {@link Patch}
- * @param opts Decoding options
- *
- * @returns The decoded patch, with resolved IRIs if `base` is provided
- *
- * @throws {TypeError} If `json` is not a string, not a valid {@link Patch}, or `opts` is not a valid {@link CodecOpts}
- *
- * @example
- *
- * ```typescript
- * decodePatch(
- *   '{"vendor":"/vendors/acme","description":null}',
- *   { base: "https://example.com/" }
- * );
- * // → { vendor: "https://example.com/vendors/acme", description: null }
- * ```
- *
- * @see {@link encodePatch}
- */
-export function decodePatch(json: string, opts: CodecOpts = {}): Patch {
-
-	const $json = assert(json, isString);
-	const { base = defaultBase } = assert(opts, isCodecOpts);
-
-	const patch = JSON.parse($json, (_key, value) =>
-		isIRI(value, "internal")
-			? resolve(base, value)
-			: value
-	);
-
-	return immutable(patch, isPatch, "malformed patch");
-
-}

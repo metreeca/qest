@@ -65,7 +65,6 @@ npm install @metreeca/qest
 | GET    | [Query][]    | Client-driven collection retrieval |
 | POST   | [Resource][] | Resource creation                  |
 | PUT    | [Resource][] | Complete resource state update     |
-| PATCH  | [Patch][]    | Partial resource state update      |
 | DELETE | [IRI][]      | Resource deletion                  |
 
 [Resource]: https://metreeca.github.io/qest/types/state.Resource.html
@@ -74,11 +73,9 @@ npm install @metreeca/qest
 
 [Query]: https://metreeca.github.io/qest/types/model.Query.html
 
-[Patch]: https://metreeca.github.io/qest/types/state.Patch.html
-
 [IRI]: https://metreeca.github.io/core/types/resource.IRI.html
 
-## Resources and Patches
+## Resources
 
 A [**Resource**](https://metreeca.github.io/qest/types/state.Resource.html) is a property map describing data returned
 by a REST endpoint, with optional links to other endpoints:
@@ -118,22 +115,6 @@ PUT https://data.example.com/products/123
     // inStock                     // not included → deleted
 });
 ```
-
-A [**Patch**](https://metreeca.github.io/qest/types/state.Patch.html) describes partial updates with the same effect:
-
-```http request
-PATCH https://data.example.com/products/123
-```
-
-```js
-({
-    tags: ["gadget", "premium"], // updated
-    price: 79.99, // updated
-    inStock: null, // deleted
-});
-```
-
-Properties set to `null` are deleted; properties not included are unchanged.
 
 ## Client-Driven Retrieval
 
