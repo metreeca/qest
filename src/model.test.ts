@@ -30,9 +30,9 @@ import {
 	isModel,
 	isOperator,
 	isOption,
+	isTransform,
 	isOptions,
 	isQuery,
-	isTransform,
 	isValueModel,
 	isValuesModel,
 	type Query
@@ -269,8 +269,8 @@ describe("guards", () => {
 			});
 
 			it("should accept multiple transforms without path", async () => {
-				expect(isExpression("a:b:")).toBeTruthy();
-				expect(isExpression("a:b:c:")).toBeTruthy();
+				expect(isExpression("round:avg:")).toBeTruthy();
+				expect(isExpression("round:floor:abs:")).toBeTruthy();
 			});
 
 			it("should accept transform with dotted path", async () => {
@@ -324,6 +324,13 @@ describe("guards", () => {
 
 			it("should reject dot before colon", async () => {
 				expect(isExpression("a.b:c")).toBeFalsy();
+			});
+
+			it("should reject unknown transform identifiers", async () => {
+				expect(isExpression("a:name")).toBeFalsy();
+				expect(isExpression("unknown:name")).toBeFalsy();
+				expect(isExpression("a:b:")).toBeFalsy();
+				expect(isExpression("a:b:c:")).toBeFalsy();
 			});
 
 			it("should reject invalid characters", async () => {
@@ -715,6 +722,11 @@ describe("guards", () => {
 				expect(isCriterion({ target: "name", pipe: "year", path: [] })).toBeFalsy();
 			});
 
+			it("should reject unknown transforms in pipe", async () => {
+				expect(isCriterion({ target: "name", pipe: ["unknown"], path: ["field"] })).toBeFalsy();
+				expect(isCriterion({ target: "name", pipe: ["year", "unknown"], path: ["field"] })).toBeFalsy();
+			});
+
 			it("should reject non-array path", async () => {
 				expect(isCriterion({ target: "name", pipe: [], path: "address" })).toBeFalsy();
 			});
@@ -782,58 +794,59 @@ describe("guards", () => {
 
 		describe("valid transforms", () => {
 
-			it("should accept minimal transform", async () => {
-				expect(isTransform({ name: "count" })).toBeTruthy();
+			it("should accept aggregate transforms", async () => {
+				expect(isTransform("count")).toBeTruthy();
+				expect(isTransform("min")).toBeTruthy();
+				expect(isTransform("max")).toBeTruthy();
+				expect(isTransform("sum")).toBeTruthy();
+				expect(isTransform("avg")).toBeTruthy();
+	
 			});
 
-			it("should accept transform with aggregate flag", async () => {
-				expect(isTransform({ name: "sum", aggregate: true })).toBeTruthy();
-				expect(isTransform({ name: "abs", aggregate: false })).toBeTruthy();
+			it("should accept numeric transforms", async () => {
+				expect(isTransform("abs")).toBeTruthy();
+				expect(isTransform("floor")).toBeTruthy();
+				expect(isTransform("ceil")).toBeTruthy();
+				expect(isTransform("round")).toBeTruthy();
 			});
 
-			it("should accept transform with datatype", async () => {
-				expect(isTransform({ name: "count", datatype: "number" })).toBeTruthy();
-				expect(isTransform({ name: "upper", datatype: "string" })).toBeTruthy();
+			it("should accept string transforms", async () => {
+				expect(isTransform("lower")).toBeTruthy();
+				expect(isTransform("upper")).toBeTruthy();
+				expect(isTransform("length")).toBeTruthy();
 			});
 
-			it("should accept complete transform", async () => {
-				expect(isTransform({ name: "avg", aggregate: true, datatype: "number" })).toBeTruthy();
+			it("should accept temporal transforms", async () => {
+				expect(isTransform("year")).toBeTruthy();
+				expect(isTransform("month")).toBeTruthy();
+				expect(isTransform("day")).toBeTruthy();
+				expect(isTransform("hours")).toBeTruthy();
+				expect(isTransform("minutes")).toBeTruthy();
+				expect(isTransform("seconds")).toBeTruthy();
 			});
 
 		});
 
 		describe("invalid transforms", () => {
 
-			it("should reject non-objects", async () => {
+			it("should reject non-string values", async () => {
 				expect(isTransform(null)).toBeFalsy();
 				expect(isTransform(undefined)).toBeFalsy();
-				expect(isTransform("count")).toBeFalsy();
 				expect(isTransform(123)).toBeFalsy();
-			});
-
-			it("should reject missing name", async () => {
 				expect(isTransform({})).toBeFalsy();
-				expect(isTransform({ aggregate: true })).toBeFalsy();
 			});
 
-			it("should reject non-string name", async () => {
-				expect(isTransform({ name: 123 })).toBeFalsy();
-				expect(isTransform({ name: null })).toBeFalsy();
-			});
-
-			it("should reject non-boolean aggregate", async () => {
-				expect(isTransform({ name: "sum", aggregate: "true" })).toBeFalsy();
-				expect(isTransform({ name: "sum", aggregate: 1 })).toBeFalsy();
-			});
-
-			it("should reject non-string datatype", async () => {
-				expect(isTransform({ name: "count", datatype: 123 })).toBeFalsy();
-				expect(isTransform({ name: "count", datatype: true })).toBeFalsy();
+			it("should reject unknown identifiers", async () => {
+				expect(isTransform("unknown")).toBeFalsy();
+				expect(isTransform("a")).toBeFalsy();
+				expect(isTransform("name")).toBeFalsy();
+				expect(isTransform("")).toBeFalsy();
 			});
 
 		});
 
 	});
+
 
 });
 
@@ -1208,7 +1221,7 @@ describe("codecs", () => {
 				it("should encode faceted search query", async () => {
 					const query = {
 						items: [{
-							"category=sample:category": "",
+							"category=min:category": "",
 							"count=count:": 0,
 							"^count": "desc"
 						}]
@@ -2710,19 +2723,19 @@ describe("codecs", () => {
 			});
 
 			it("should encode property with transform", async () => {
-				const criterion = { target: "releaseYear", pipe: ["year"], path: ["releaseDate"] };
+				const criterion = { target: "releaseYear", pipe: ["year"], path: ["releaseDate"] } as const;
 
 				expect(encodeCriterion(criterion)).toBe("releaseYear=year:releaseDate");
 			});
 
 			it("should encode property with transform pipeline", async () => {
-				const criterion = { target: "avgPrice", pipe: ["round", "avg"], path: ["price"] };
+				const criterion = { target: "avgPrice", pipe: ["round", "avg"], path: ["price"] } as const;
 
 				expect(encodeCriterion(criterion)).toBe("avgPrice=round:avg:price");
 			});
 
 			it("should encode aggregate without path", async () => {
-				const criterion = { target: "total", pipe: ["count"], path: [] };
+				const criterion = { target: "total", pipe: ["count"], path: [] } as const;
 
 				expect(encodeCriterion(criterion)).toBe("total=count:");
 			});
@@ -2804,7 +2817,7 @@ describe("codecs", () => {
 			});
 
 			it("should encode constraint with transform", async () => {
-				const criterion = { target: ">=", pipe: ["year"], path: ["releaseDate"] };
+				const criterion = { target: ">=", pipe: ["year"], path: ["releaseDate"] } as const;
 
 				expect(encodeCriterion(criterion)).toBe(">=year:releaseDate");
 			});
@@ -2946,7 +2959,7 @@ describe("codecs", () => {
 			});
 
 			it("should roundtrip aliased property with transform", async () => {
-				const criterion = { target: "avgPrice", pipe: ["round", "avg"], path: ["price"] };
+				const criterion = { target: "avgPrice", pipe: ["round", "avg"], path: ["price"] } as const;
 
 				expect(decodeCriterion(encodeCriterion(criterion))).toEqual(criterion);
 			});

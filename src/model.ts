@@ -20,12 +20,12 @@
  * Defines types for specifying what data to retrieve in REST/JSON APIs, including property selection, linked
  * resource expansion, and—for collections—filtering, ordering, and pagination:
  *
- * - {@link Model} — Resource projection
- * - {@link Query} — Collection query
- * - {@link ValuesModel} — Property projection specs
- * - {@link ValueModel} — Model value
- * - {@link LocalModel} — Single-valued language-tagged model
- * - {@link LocalsModel} — Multi-valued language-tagged model
+ * - {@link Model} — Resource retrieval model
+ * - {@link ValuesModel} — Property projection model
+ * - {@link ValueModel} — Literal property model
+ * - {@link LocalModel} — Language-tagged property model
+ * - {@link LocalsModel} — Language-tagged collection property model
+ * - {@link Query} — Collection retrieval model
  * - {@link Binding} — Named computed expression
  * - {@link Expression} — Computed expression
  * - {@link Options} — Constraint option set
@@ -35,11 +35,11 @@
  *
  * - {@link Criterion} — Query criterion
  * - {@link Operator} — Constraint operator symbols
+ * - {@link Transform} — Value transforms
  *
- * Defines value transformation infrastructure:
- *
- * - {@link Transforms} — Standard transformations registry
- * - {@link Transform} — Value transform
+ * Comparison and sorting operators rely on a total ordering over values defined by
+ * {@link https://www.w3.org/TR/xpath-functions-20/#comparison-operators XPath 2.0 comparison operators};
+ * see the {@link Query | Value Ordering} section for details.
  *
  * # Retrieval Patterns
  *
@@ -112,7 +112,7 @@
  * ## Computed Properties
  *
  * Models can define computed properties using {@link Expression | expressions} combining property paths
- * with {@link Transforms}.
+ * with {@link Transform}.
  *
  * Plain transforms operate on individual values:
  *
@@ -184,7 +184,7 @@
  *
  * Comparison (`<`, `>`, `<=`, `>=`) and sorting (`^`) operators rely on a total ordering over
  * {@link Literal} values defined by the
- * {@link https://www.w3.org/TR/xpath-functions/#comparison-operators XPath comparison operators},
+ * {@link https://www.w3.org/TR/xpath-functions-20/#comparison-operators XPath 2.0 comparison operators},
  * which are in turn based on
  * {@link https://www.w3.org/TR/xmlschema11-2/#rf-order XSD ordered value spaces}:
  *
@@ -262,7 +262,7 @@
  * ## Expressions
  *
  * Criterion keys identify properties or computed values combining an optional result name (forming a
- * {@link Binding}), a pipeline of {@link Transforms}, and a property path ({@link Expression}):
+ * {@link Binding}), a pipeline of {@link Transform}, and a property path ({@link Expression}):
  *
  * ```text
  * expression  = ( name '=' )? transform* path?
@@ -314,7 +314,6 @@
 import {
 	Identifier,
 	isArray,
-	isBoolean,
 	isIdentifier,
 	isLiteral as isLiteralValue,
 	isNull,
@@ -349,146 +348,121 @@ import {
 
 
 /**
- * Standard value transformations for computed {@link Expression | expressions}.
+ * Resource retrieval model.
  *
- * Each transform specifies:
- *
- * - `name` — Transform identifier used in {@link Expression | expressions}
- * - `aggregate` — Whether the transform operates on collections (`true`) or individual values (`false`)
- * - `datatype` — Optional result type; the expected type should match the final value of the transform pipe:
- *   - `"boolean"`, `"number"`, `"string"` — Transform produces specific primitive type
- *   - (omitted) — Transform preserves input type
- *
- * @remarks
- *
- * The expression parser accepts any valid identifier as a transform name, not just those defined
- * in this registry; this allows applications to extend the transform set without modifying the parser.
- *
- * @example
- *
- * ```typescript
- * "sum:items.price"      // sum of items.price values
- * "round:avg:scores"     // average of scores, rounded
- * ```
- */
-export const Transforms = transforms([
-
-	/**
-	 * Count of values in collection.
-	 */
-	{ name: "count", aggregate: true, datatype: "number" },
-
-	/**
-	 * Minimum value in collection.
-	 */
-	{ name: "min", aggregate: true },
-
-	/**
-	 * Maximum value in collection.
-	 */
-	{ name: "max", aggregate: true },
-
-	/**
-	 * Sum of values in collection.
-	 */
-	{ name: "sum", aggregate: true, datatype: "number" },
-
-	/**
-	 * Average of values in collection.
-	 */
-	{ name: "avg", aggregate: true, datatype: "number" },
-
-	/**
-	 * Arbitrary value from collection.
-	 */
-	{ name: "sample", aggregate: true },
-
-
-	/**
-	 * Absolute value.
-	 */
-	{ name: "abs", aggregate: false, datatype: "number" },
-
-	/**
-	 * Floor to the largest integer less than or equal to value.
-	 */
-	{ name: "floor", aggregate: false, datatype: "number" },
-
-	/**
-	 * Ceiling to the smallest integer greater than or equal to value.
-	 */
-	{ name: "ceil", aggregate: false, datatype: "number" },
-
-	/**
-	 * Round to nearest integer.
-	 */
-	{ name: "round", aggregate: false, datatype: "number" },
-
-
-	/**
-	 * Extract year component from calendrical values.
-	 */
-	{ name: "year", aggregate: false, datatype: "number" },
-
-	/**
-	 * Extract month component from calendrical values.
-	 */
-	{ name: "month", aggregate: false, datatype: "number" },
-
-	/**
-	 * Extract day component from calendrical values.
-	 */
-	{ name: "day", aggregate: false, datatype: "number" },
-
-	/**
-	 * Extract hours component from calendrical values.
-	 */
-	{ name: "hours", aggregate: false, datatype: "number" },
-
-	/**
-	 * Extract minutes component from calendrical values.
-	 */
-	{ name: "minutes", aggregate: false, datatype: "number" },
-
-	/**
-	 * Extract seconds component from calendrical values.
-	 */
-	{ name: "seconds", aggregate: false, datatype: "number" }
-
-]);
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-/**
- * Resource projection.
- *
- * A property map specifying which properties to retrieve from a {@link Resource}. Each property maps to
- * {@link ValuesModel} describing the expected value type and structure, or {@link Indexed} for union-typed or
- * dynamically-keyed properties. Indexed containers can only appear as top-level property values and cannot be nested.
+ * A recursively nested property map specifying which properties to retrieve from a {@link Resource} and how deeply
+ * to expand linked resources. Each property maps to {@link ValuesModel} describing the expected value type and
+ * structure, or {@link Indexed} for union-typed or dynamically-keyed properties. Indexed containers can only appear
+ * as top-level property values and cannot be nested.
  *
  * Models may define *computed* properties using the `{name}={expression}` syntax, where the value is computed
  * from an {@link Expression}. Scalar values serve as type placeholders; their actual value is immaterial.
  *
+ * > [!NOTE]
+ * > Aggregate transforms are formally legal also in top-level model expressions: they operate on the singleton set
+ * > containing the retrieved resource.
+ *
  * > [!WARNING]
  * > Model processors must reject models with an error if they reference undefined properties or provide projections
- * > of mismatched types for defined properties.
- *
- * @see {@link Query} for collection filtering, ordering, and pagination
+ * > of mismatched types for defined properties, including computed ones.
  */
 export type Model =
 	| { readonly [property: Identifier | Binding]: ValuesModel | Indexed<ValuesModel> }
 
+
 /**
- * Collection query.
+ * Property projection model.
  *
- * Extends {@link Model} with filtering, ordering, and pagination criteria for collections.
+ * Defines the expected type and structure for a {@link Model} property, mirroring {@link Values}:
  *
- * > [!WARNING]
- * > Query processors must reject queries with an error if they reference undefined properties or provide projections
- * > or constraints of mismatched types for defined properties.
+ * - {@link Literal} — Primitive value (`boolean`, `number`, `string`)
+ * - {@link Reference} — IRI reference to a linked resource
+ * - {@link Model} — Nested projection for expanding linked resources
+ * - `string` — Language-neutral single-valued shorthand (see {@link LocalModel})
+ * - `{ [TagRange]: string }` — Single-valued language-tagged text map
+ * - `readonly [string]` — Language-neutral multi-valued shorthand (see {@link LocalsModel})
+ * - `{ [TagRange]: readonly [string] }` — Multi-valued language-tagged text map
+ * - `readonly [Literal]` — Array of primitive values
+ * - `readonly [Reference]` — Array of IRI references
+ * - `readonly [Model]` — Collection projection with filtering, ordering, and pagination
  *
- * @see {@link Model} for resource projection
+ * @see {@link https://www.rfc-editor.org/rfc/rfc4647.html RFC 4647 - Matching of Language Tags}
+ */
+export type ValuesModel =
+	| ValueModel
+	| LocalModel
+	| LocalsModel
+	| readonly [Literal]
+	| readonly [Reference]
+	| readonly [Query]
+
+
+/**
+ * Literal property model.
+ *
+ * Represents property values in resource projection models:
+ *
+ * - {@link Literal}: primitive data placeholder (boolean, number, string)
+ * - {@link Reference}: IRI reference placeholder
+ * - {@link Model}: nested projection model
+ *
+ * @see {@link Value} for state values
+ */
+export type ValueModel =
+	| Literal
+	| Reference
+	| Model
+
+/**
+ * Language-tagged property model.
+ *
+ * Maps language {@link TagRange | tag ranges} to a single localised text placeholder per language.
+ *
+ * A plain string is accepted as shorthand for a language-neutral projection: `""` is equivalent to `{ und: "" }`.
+ * Consumers are responsible for normalising shorthand values to the canonical object form, including shorthand
+ * {@link Local} values within {@link Options} constraints.
+ *
+ * > [!NOTE]
+ * > If the model specifies a string shorthand, the retrieved value should use the same shorthand form.
+ *
+ * The `@none` key for non-localised values is not supported; use the `und` tag or the plain string
+ * shorthand for language-neutral values.
+ *
+ * @see {@link Local} for additional details on language tag semantics
+ */
+export type LocalModel =
+	| string
+	| { readonly [range: TagRange]: string };
+
+/**
+ * Language-tagged collection property model.
+ *
+ * Maps language {@link TagRange | tag ranges} to multiple localised text placeholders per language.
+ *
+ * A plain string array is accepted as shorthand for a language-neutral projection: `[""]` is equivalent to `{ und:
+ * [""] }`. Consumers are responsible for normalising shorthand values to the canonical object form, including
+ * shorthand {@link Locals} values within {@link Options} constraints.
+ *
+ * > [!NOTE]
+ * > If the model specifies a string array shorthand, the retrieved value should use the same shorthand form.
+ *
+ * The `@none` key for non-localised values is not supported; use the `und` tag or the plain string array
+ * shorthand for language-neutral values.
+ *
+ * @see {@link Locals} for additional details on language tag semantics
+ */
+export type LocalsModel =
+	| readonly [string]
+	| { readonly [range: TagRange]: readonly [string] };
+
+/**
+ * Collection retrieval model.
+ *
+ * Retrieval model for multi-valued collection properties, extending the {@link Model} envelope with filtering,
+ * ordering, and pagination criteria. Each criterion key uses a prefixed operator syntax to specify constraints,
+ * sort order, or pagination limits on the collection.
+ *
+ * @see {@link model | Value Ordering} for comparison and sorting semantics
  */
 export type Query = Model & {
 
@@ -591,92 +565,6 @@ export type Query = Model & {
 
 
 /**
- * Property projection specs.
- *
- * Defines the expected type and structure for a {@link Model} property, mirroring {@link Values}:
- *
- * - {@link Literal} — Primitive value (`boolean`, `number`, `string`)
- * - {@link Reference} — IRI reference to a linked resource
- * - {@link Model} — Nested projection for expanding linked resources
- * - `string` — Language-neutral single-valued shorthand (see {@link LocalModel})
- * - `{ [TagRange]: string }` — Single-valued language-tagged text map
- * - `readonly [string]` — Language-neutral multi-valued shorthand (see {@link LocalsModel})
- * - `{ [TagRange]: readonly [string] }` — Multi-valued language-tagged text map
- * - `readonly [Literal]` — Array of primitive values
- * - `readonly [Reference]` — Array of IRI references
- * - `readonly [Query]` — Collection projection with filtering, ordering, and pagination
- *
- * @see {@link https://www.rfc-editor.org/rfc/rfc4647.html RFC 4647 - Matching of Language Tags}
- */
-export type ValuesModel =
-	| ValueModel
-	| LocalModel
-	| LocalsModel
-	| readonly [Literal]
-	| readonly [Reference]
-	| readonly [Query]
-
-
-/**
- * Model value.
- *
- * Represents property values in resource projection models:
- *
- * - {@link Literal}: primitive data placeholder (boolean, number, string)
- * - {@link Reference}: IRI reference placeholder
- * - {@link Model}: nested projection model
- *
- * @see {@link Value} for state values
- */
-export type ValueModel =
-	| Literal
-	| Reference
-	| Model
-
-/**
- * Single-valued language-tagged model for internationalised text.
- *
- * Maps language {@link TagRange | tag ranges} to a single localised text placeholder per language.
- *
- * A plain string is accepted as shorthand for a language-neutral projection: `""` is equivalent to `{ und: "" }`.
- * Consumers are responsible for normalising shorthand values to the canonical object form, including shorthand
- * {@link Local} values within {@link Options} constraints.
- *
- * > [!NOTE]
- * > If the model specifies a string shorthand, the retrieved value should use the same shorthand form.
- *
- * The `@none` key for non-localised values is not supported; use the `und` tag or the plain string
- * shorthand for language-neutral values.
- *
- * @see {@link Local} for additional details on language tag semantics
- */
-export type LocalModel =
-	| string
-	| { readonly [range: TagRange]: string };
-
-/**
- * Multi-valued language-tagged model for internationalised text.
- *
- * Maps language {@link TagRange | tag ranges} to multiple localised text placeholders per language.
- *
- * A plain string array is accepted as shorthand for a language-neutral projection: `[""]` is equivalent to `{ und:
- * [""] }`. Consumers are responsible for normalising shorthand values to the canonical object form, including
- * shorthand {@link Locals} values within {@link Options} constraints.
- *
- * > [!NOTE]
- * > If the model specifies a string array shorthand, the retrieved value should use the same shorthand form.
- *
- * The `@none` key for non-localised values is not supported; use the `und` tag or the plain string array
- * shorthand for language-neutral values.
- *
- * @see {@link Locals} for additional details on language tag semantics
- */
-export type LocalsModel =
-	| readonly [string]
-	| { readonly [range: TagRange]: readonly [string] };
-
-
-/**
  * Named computed expression.
  *
  * Assigns a name to a computed {@link Expression} in {@link Model} projections using the
@@ -708,19 +596,16 @@ export type Binding =
  * - **transforms** is a sequence of transform names, each followed by a colon (e.g., `round:avg:`)
  *   and applied right-to-left (functional order)
  *
- * Both path steps and transform names follow {@link Identifier} rules (ECMAScript names).
+ * Path steps follow {@link Identifier} rules (ECMAScript names); transform names must be valid {@link Transform}
+ * values.
  *
  * > [!WARNING]
  * > This is a type alias for documentation purposes only; expression syntax is validated at runtime
  * > by query processors.
  *
  * > [!WARNING]
- * > Processors are expected to reject expressions with an error if they reference undefined properties or undefined
+ * > Processors are expected to reject expressions with an error if they reference undefined properties or unsupported
  * transforms.
- *
- * @remarks
- *
- * Compliant processors are expected to support all standard {@link Transforms}.
  *
  * @example
  *
@@ -809,7 +694,7 @@ export type Criterion = {
 	/**
 	 * Transform pipeline applied to the value, in application order.
 	 */
-	readonly pipe: readonly Identifier[];
+	readonly pipe: readonly Transform[];
 
 	/**
 	 * Property path segments to the target value.
@@ -822,6 +707,7 @@ export type Criterion = {
  * Constraint operator symbols for {@link Query} keys.
  *
  * @see {@link Query} for constraint semantics
+ * @see {@link model | Value Ordering} for comparison and sorting semantics
  */
 export type Operator =
 	| "<"
@@ -837,26 +723,124 @@ export type Operator =
 	| "#";
 
 /**
- * Value transform.
+ * Value transforms for computed {@link Expression | expressions}.
+ *
+ * Transforms are named functions applied to property values in expressions, forming pipelines that are applied
+ * right-to-left (functional composition order).
+ *
+ * ```typescript
+ * "sum:items.price"      // sum of items.price values
+ * "round:avg:scores"     // pipeline: avg applied first, then round
+ * ```
+ *
+ * > [!WARNING]
+ * >
+ * > The set of supported transforms is closed: only the names listed below are valid.
+ * > Expressions and criteria referencing unknown transforms are rejected by
+ * > `isExpression` and `isCriterion`.
+ *
+ * ## Type Mapping
+ *
+ * Transforms operate on JSON values but their semantics are defined in terms
+ * of [XPath 2.0](https://www.w3.org/TR/xpath-functions/) / [XSD 1.0](https://www.w3.org/TR/xmlschema-2/) types.
+ * The domain and range columns in the table below use the following type shorthands:
+ *
+ * - **numeric** — `xsd:integer` | `xsd:decimal` | `xsd:float` | `xsd:double`; mapped to JSON `number`
+ * (IEEE 754 double), which can only represent a subset of `xsd:integer` and `xsd:decimal` values
+ * - **temporal** — `xsd:dateTime` | `xsd:date` | `xsd:time` | `xsd:duration` where applicable; mapped to JSON `string`
+ *
+ * String-to-string transform pipes (for example `lower`, `upper`) may also be applied to {@link Local} and
+ * {@link Locals} values: the pipe is applied individually to each string value in the language map.
+ *
+ * | Transform      | Definition                                                        | Domain       | Range
+ * |
+ * |----------------|-------------------------------------------------------------------|--------------|---------------|
+ * | **aggregates** | Summarise a set of values                                         |              |
+ * |
+ * | `count`        | Count values; `0` for empty sets                                  | any          | `xsd:integer`
+ * |
+ * | `min`          | Select minimum value under {@link model | value ordering} rules; `null` for empty sets | any |
+ * same as input |
+ * | `max`          | Select maximum value under {@link model | value ordering} rules; `null` for empty sets | any |
+ * same as input |
+ * | `sum`          | Sum numeric values; `0` for empty sets                            | numeric      | same as input
+ * |
+ * | `avg`          | Average numeric values; `null` for empty sets                     | numeric      | `xsd:decimal`
+ * |
+ * | **numeric**    | Transform numeric values                                          |              |
+ * |
+ * | `abs`          | Compute absolute value of a number                                | numeric      | same as input
+ * |
+ * | `floor`        | Floor to largest integer less than or equal to value              | numeric      | same as input
+ * |
+ * | `ceil`         | Ceiling to smallest integer greater than or equal to value        | numeric      | same as input
+ * |
+ * | `round`        | Round to nearest integer                                          | numeric      | same as input
+ * |
+ * | **textual**    | Transform string values                                           |              |
+ * |
+ * | `lower`        | Convert string value to lowercase                                 | `xsd:string` | `xsd:string`
+ * |
+ * | `upper`        | Convert string value to uppercase                                 | `xsd:string` | `xsd:string`
+ * |
+ * | `length`       | Compute character length of a string                              | `xsd:string` | `xsd:integer`
+ * |
+ * | **temporal**   | Extract components from ISO 8601 date, time, and duration strings |              |
+ * |
+ * | `year`         | Extract year component                                            | temporal     | `xsd:integer`
+ * |
+ * | `month`        | Extract month component                                           | temporal     | `xsd:integer`
+ * |
+ * | `day`          | Extract day component                                             | temporal     | `xsd:integer`
+ * |
+ * | `hours`        | Extract hours component                                           | temporal     | `xsd:integer`
+ * |
+ * | `minutes`      | Extract minutes component                                         | temporal     | `xsd:integer`
+ * |
+ * | `seconds`      | Extract seconds component                                         | temporal     | `xsd:decimal`
+ * |
+ *
+ * ## Error Handling
+ *
+ * - Aggregate transforms silently skip null/undefined/invalid values before computing the result.
+ * - Scalar transforms produce `null` for null/undefined values and for values outside the declared domain.
+ *
+ * ## Design Rationale
+ *
+ * The data model defined by **@metreeca/qest** is grounded in [JSON-LD 1.1](https://www.w3.org/TR/json-ld11/),
+ * which together with [SPARQL 1.1](https://www.w3.org/TR/sparql11-query/) references
+ * [XSD 1.0](https://www.w3.org/TR/xmlschema-2/) / [XPath 2.0](https://www.w3.org/TR/xpath-functions/)
+ * for its type system and operator semantics: transform semantics follow the same foundation.
+ *
+ * However, a critical requirement is that transforms must be implementable across a wide range of storage backends.
+ * Both the supported set and its semantics are therefore restricted to the intersection of well-defined counterparts
+ * across XPath 2.0, SPARQL 1.1, SQL, and GQL/Cypher. Different storage engines handle type errors and null/undefined
+ * values in incompatible ways, but uniformly mapping them to `null` in the JSON output ensures consistent semantics
+ * across them.
  */
-export type Transform = {
+export type Transform =
 
-	/**
-	 * Transform name.
-	 */
-	name: Identifier;
+	| "count"
+	| "min"
+	| "max"
+	| "sum"
+	| "avg"
 
-	/**
-	 * Whether the transform operates on collections (`true`) or individual values (`false`).
-	 */
-	aggregate?: boolean;
+	| "abs"
+	| "floor"
+	| "ceil"
+	| "round"
 
-	/**
-	 * Result type of the transform; when omitted, the transform preserves the input type.
-	 */
-	datatype?: "boolean" | "number" | "string";
+	| "lower"
+	| "upper"
+	| "length"
 
-}
+	| "year"
+	| "month"
+	| "day"
+	| "hours"
+	| "minutes"
+	| "seconds";
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -998,7 +982,7 @@ export function isExpression(value: unknown): value is Expression {
 		const segments = value.split(":");
 		const path = segments.at(-1) ?? "";
 
-		return segments.slice(0, -1).every(isIdentifier)
+		return segments.slice(0, -1).every(isTransform)
 			&& (path === "" || path.split(".").every(isIdentifier));
 
 	})();
@@ -1044,7 +1028,7 @@ export function isOption(value: unknown): value is Option {
 export function isCriterion(value: unknown): value is Criterion {
 	return isObject(value, {
 		target: v => isIdentifier(v) || isOperator(v),
-		pipe: (v: unknown) => isArray(v, isIdentifier),
+		pipe: (v: unknown) => isArray(v, isTransform),
 		path: (v: unknown) => isArray(v, isIdentifier)
 	});
 }
@@ -1069,14 +1053,15 @@ export function isOperator(value: unknown): value is Operator {
  *
  * @param value The value to check
  *
- * @returns True if the value is a valid transform definition
+ * @returns True if the value is a valid transform name
  */
 export function isTransform(value: unknown): value is Transform {
-	return isObject(value, {
-		name: isIdentifier,
-		aggregate: v => isOptional(v, isBoolean),
-		datatype: v => isOptional(v, v => isLiteralValue(v, ["boolean", "number", "string"]))
-	});
+	return isLiteralValue(value, [
+		"count", "min", "max", "sum", "avg",
+		"abs", "floor", "ceil", "round",
+		"lower", "upper", "length",
+		"year", "month", "day", "hours", "minutes", "seconds"
+	]);
 }
 
 
@@ -1399,28 +1384,5 @@ export function decodeCriterion(key: string): Criterion {
 	} catch ( cause ) {
 		throw new Error(`invalid criterion <${key}>`, { cause });
 	}
-
-}
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-/**
- * Creates a typed transform registry from transform definitions.
- *
- * Validates each transform definition and builds a type-safe record mapping transform names to their definitions.
- * Used internally to construct the {@link Transforms} registry.
- *
- * @internal
- *
- * @typeParam T The tuple type of transform definitions preserving literal name types
- *
- * @param transforms The array of transform definitions to register
- *
- * @returns A record mapping each transform name to its definition
- */
-function transforms<const T extends readonly Transform[]>(transforms: T): { readonly [name: Identifier]: Transform; } {
-
-	return immutable(Object.fromEntries(transforms.map(t => [t.name, t])));
 
 }

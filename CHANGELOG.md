@@ -7,12 +7,19 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unpublished](https://github.com/metreeca/qest/compare/v0.9.2...HEAD)
 
+### Added
+
+- Add `lower`, `upper`, `length` string transforms to `Transform` enum
+
 ### Changed
 
 - Replace `zxx` language tag with `und` for language-neutral values
+- Replace `Transform` enum with closed string union type
+- Close transform set: `Criterion.pipe` now typed as `Transform[]` and validated by `isTransform`
 
 ### Removed
 
+- Remove `sample` aggregate transform from `Transform` set
 - Remove `Patch` type, `isPatch` guard, `encodePatch`/`decodePatch` codecs
 
 ### Fixed
