@@ -21,10 +21,9 @@
  * resource expansion, and—for collections—filtering, ordering, and pagination:
  *
  * - {@link Model} — Resource retrieval model
- * - {@link ValuesModel} — Property projection model
- * - {@link ValueModel} — Literal property model
- * - {@link LocalModel} — Language-tagged property model
- * - {@link LocalsModel} — Language-tagged collection property model
+ * - {@link Template} — Property value template
+ * - {@link Locale} — Single-valued locale placeholder
+ * - {@link Locales} — Multi-valued locale placeholder
  * - {@link Query} — Collection retrieval model
  * - {@link Binding} — Named computed expression
  * - {@link Expression} — Computed expression
@@ -342,7 +341,6 @@ import {
 	Locals,
 	Reference,
 	Resource,
-	Value,
 	Values
 } from "./state.js";
 
@@ -351,7 +349,7 @@ import {
  * Resource retrieval model.
  *
  * A recursively nested property map specifying which properties to retrieve from a {@link Resource} and how deeply
- * to expand linked resources. Each property maps to {@link ValuesModel} describing the expected value type and
+ * to expand linked resources. Each property maps to {@link Template} describing the expected value type and
  * structure, or {@link Indexed} for union-typed or dynamically-keyed properties. Indexed containers can only appear
  * as top-level property values and cannot be nested.
  *
@@ -367,54 +365,37 @@ import {
  * > of mismatched types for defined properties, including computed ones.
  */
 export type Model =
-	| { readonly [property: Identifier | Binding]: ValuesModel | Indexed<ValuesModel> }
+	| { readonly [property: Identifier | Binding]: Template | Indexed<Template> }
 
 
 /**
- * Property projection model.
+ * Property value template.
  *
- * Defines the expected type and structure for a {@link Model} property, mirroring {@link Values}:
+ * Defines the expected type and structure for a {@link Model} property value, mirroring {@link Values}:
  *
  * - {@link Literal} — Primitive value (`boolean`, `number`, `string`)
  * - {@link Reference} — IRI reference to a linked resource
  * - {@link Model} — Nested projection for expanding linked resources
- * - `string` — Language-neutral single-valued shorthand (see {@link LocalModel})
- * - `{ [TagRange]: string }` — Single-valued language-tagged text map
- * - `readonly [string]` — Language-neutral multi-valued shorthand (see {@link LocalsModel})
- * - `{ [TagRange]: readonly [string] }` — Multi-valued language-tagged text map
+ * - {@link Locale} — Single-valued language-tagged text
+ * - {@link Locales} — Multi-valued language-tagged text
  * - `readonly [Literal]` — Array of primitive values
  * - `readonly [Reference]` — Array of IRI references
- * - `readonly [Model]` — Collection projection with filtering, ordering, and pagination
+ * - `readonly [Query]` — Collection projection with filtering, ordering, and pagination
  *
  * @see {@link https://www.rfc-editor.org/rfc/rfc4647.html RFC 4647 - Matching of Language Tags}
  */
-export type ValuesModel =
-	| ValueModel
-	| LocalModel
-	| LocalsModel
+export type Template =
+	| Literal
+	| Reference
+	| Model
+	| Locale
+	| Locales
 	| readonly [Literal]
 	| readonly [Reference]
 	| readonly [Query]
 
-
 /**
- * Literal property model.
- *
- * Represents property values in resource projection models:
- *
- * - {@link Literal}: primitive data placeholder (boolean, number, string)
- * - {@link Reference}: IRI reference placeholder
- * - {@link Model}: nested projection model
- *
- * @see {@link Value} for state values
- */
-export type ValueModel =
-	| Literal
-	| Reference
-	| Model
-
-/**
- * Language-tagged property model.
+ * Single-valued locale placeholder.
  *
  * Maps language {@link TagRange | tag ranges} to a single localised text placeholder per language.
  *
@@ -430,12 +411,12 @@ export type ValueModel =
  *
  * @see {@link Local} for additional details on language tag semantics
  */
-export type LocalModel =
+export type Locale =
 	| string
 	| { readonly [range: TagRange]: string };
 
 /**
- * Language-tagged collection property model.
+ * Multi-valued locale placeholder.
  *
  * Maps language {@link TagRange | tag ranges} to multiple localised text placeholders per language.
  *
@@ -451,7 +432,7 @@ export type LocalModel =
  *
  * @see {@link Locals} for additional details on language tag semantics
  */
-export type LocalsModel =
+export type Locales =
 	| readonly [string]
 	| { readonly [range: TagRange]: readonly [string] };
 
@@ -856,8 +837,57 @@ export type Transform =
  */
 export function isModel(value: unknown): value is Model {
 	return isObject(value, (v, k) =>
-		(isIdentifier(k) || isBinding(k)) && (isValuesModel(v) || isIndexed(v, isValuesModel))
+		(isIdentifier(k) || isBinding(k)) && (isTemplate(v) || isIndexed(v, isTemplate))
 	);
+}
+
+
+/**
+ * Checks if a value is a {@link Template}.
+ *
+ * @group Guards
+ *
+ * @param value The value to check
+ *
+ * @returns True if the value is a valid property value template
+ */
+export function isTemplate(value: unknown): value is Template {
+	return isUnion(value, [
+		isLiteral,
+		isReference,
+		isModel,
+		isLocale,
+		isLocales,
+		v => isArray(v, [isLiteral]),
+		v => isArray(v, [isReference]),
+		v => isArray(v, [isQuery])
+	]);
+}
+
+/**
+ * Checks if a value is a {@link Locale}.
+ *
+ * @group Guards
+ *
+ * @param value The value to check
+ *
+ * @returns True if the value is a valid single-valued locale placeholder
+ */
+export function isLocale(value: unknown): value is Locale {
+	return isString(value) || isObject(value, (v, k) => isTagRange(k) && isString(v));
+}
+
+/**
+ * Checks if a value is a {@link Locales}.
+ *
+ * @group Guards
+ *
+ * @param value The value to check
+ *
+ * @returns True if the value is a valid multi-valued locale placeholder
+ */
+export function isLocales(value: unknown): value is Locales {
+	return isArray(value, [isString]) || isObject(value, (v, k) => isTagRange(k) && isArray(v, [isString]));
 }
 
 /**
@@ -874,7 +904,7 @@ export function isQuery(value: unknown): value is Query {
 
 		// projection
 
-		if ( (isIdentifier(k) || isBinding(k)) as boolean ) { return isValuesModel(v) || isIndexed(v, isValuesModel); }
+		if ( (isIdentifier(k) || isBinding(k)) as boolean ) { return isTemplate(v) || isIndexed(v, isTemplate); }
 
 		// filtering
 
@@ -889,66 +919,6 @@ export function isQuery(value: unknown): value is Query {
 		else if ( k === "@" || k === "#" ) { return isNumber(v); } else { return false; }
 
 	});
-}
-
-
-/**
- * Checks if a value is a {@link ValuesModel}.
- *
- * @group Guards
- *
- * @param value The value to check
- *
- * @returns True if the value is a valid property projection spec
- */
-export function isValuesModel(value: unknown): value is ValuesModel {
-	return isUnion(value, [
-		isValueModel,
-		isLocalModel,
-		isLocalsModel,
-		v => isArray(v, [isLiteral]),
-		v => isArray(v, [isReference]),
-		v => isArray(v, [isQuery])
-	]);
-}
-
-/**
- * Checks if a value is a {@link ValueModel}.
- *
- * @group Guards
- *
- * @param value The value to check
- *
- * @returns True if the value is a literal, reference, or nested model
- */
-export function isValueModel(value: unknown): value is ValueModel {
-	return isLiteral(value) || isReference(value) || isModel(value);
-}
-
-/**
- * Checks if a value is a {@link LocalModel}.
- *
- * @group Guards
- *
- * @param value The value to check
- *
- * @returns True if the value is a string or a single-valued language-tagged map
- */
-export function isLocalModel(value: unknown): value is LocalModel {
-	return isString(value) || isObject(value, (v, k) => isTagRange(k) && isString(v));
-}
-
-/**
- * Checks if a value is a {@link LocalsModel}.
- *
- * @group Guards
- *
- * @param value The value to check
- *
- * @returns True if the value is a singleton string array or a multi-valued language-tagged map
- */
-export function isLocalsModel(value: unknown): value is LocalsModel {
-	return isArray(value, [isString]) || isObject(value, (v, k) => isTagRange(k) && isArray(v, [isString]));
 }
 
 

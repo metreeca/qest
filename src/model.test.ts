@@ -25,16 +25,15 @@ import {
 	isBinding,
 	isCriterion,
 	isExpression,
-	isLocalModel,
-	isLocalsModel,
+	isLocale,
+	isLocales,
 	isModel,
 	isOperator,
 	isOption,
 	isTransform,
 	isOptions,
 	isQuery,
-	isValueModel,
-	isValuesModel,
+	isTemplate,
 	type Query
 } from "./model.js";
 
@@ -343,52 +342,52 @@ describe("guards", () => {
 	});
 
 
-	describe("isValuesModel", () => {
+	describe("isTemplate", () => {
 
 		describe("valid model values", () => {
 
 			it("should accept literals", async () => {
-				expect(isValuesModel(true)).toBeTruthy();
-				expect(isValuesModel(false)).toBeTruthy();
-				expect(isValuesModel(0)).toBeTruthy();
-				expect(isValuesModel(42)).toBeTruthy();
-				expect(isValuesModel("")).toBeTruthy();
-				expect(isValuesModel("text")).toBeTruthy();
+				expect(isTemplate(true)).toBeTruthy();
+				expect(isTemplate(false)).toBeTruthy();
+				expect(isTemplate(0)).toBeTruthy();
+				expect(isTemplate(42)).toBeTruthy();
+				expect(isTemplate("")).toBeTruthy();
+				expect(isTemplate("text")).toBeTruthy();
 			});
 
 			it("should accept references", async () => {
-				expect(isValuesModel("/products/42")).toBeTruthy();
-				expect(isValuesModel("https://example.com/resource")).toBeTruthy();
+				expect(isTemplate("/products/42")).toBeTruthy();
+				expect(isTemplate("https://example.com/resource")).toBeTruthy();
 			});
 
 			it("should accept nested models", async () => {
-				expect(isValuesModel({ id: "", name: "" })).toBeTruthy();
-				expect(isValuesModel({ vendor: { id: "" } })).toBeTruthy();
+				expect(isTemplate({ id: "", name: "" })).toBeTruthy();
+				expect(isTemplate({ vendor: { id: "" } })).toBeTruthy();
 			});
 
 			it("should accept single-valued language maps", async () => {
-				expect(isValuesModel({ "*": "" })).toBeTruthy();
-				expect(isValuesModel({ "en": "text" })).toBeTruthy();
-				expect(isValuesModel({ "en": "hello", "fr": "bonjour" })).toBeTruthy();
+				expect(isTemplate({ "*": "" })).toBeTruthy();
+				expect(isTemplate({ "en": "text" })).toBeTruthy();
+				expect(isTemplate({ "en": "hello", "fr": "bonjour" })).toBeTruthy();
 			});
 
 			it("should accept multi-valued language maps", async () => {
-				expect(isValuesModel({ "en": [""] })).toBeTruthy();
-				expect(isValuesModel({ "en": ["hello"], "fr": ["bonjour"] })).toBeTruthy();
+				expect(isTemplate({ "en": [""] })).toBeTruthy();
+				expect(isTemplate({ "en": ["hello"], "fr": ["bonjour"] })).toBeTruthy();
 			});
 
 			it("should accept literal arrays", async () => {
-				expect(isValuesModel([true])).toBeTruthy();
-				expect(isValuesModel([0])).toBeTruthy();
-				expect(isValuesModel([""])).toBeTruthy();
+				expect(isTemplate([true])).toBeTruthy();
+				expect(isTemplate([0])).toBeTruthy();
+				expect(isTemplate([""])).toBeTruthy();
 			});
 
 			it("should accept reference arrays", async () => {
-				expect(isValuesModel(["/products/42"])).toBeTruthy();
+				expect(isTemplate(["/products/42"])).toBeTruthy();
 			});
 
 			it("should accept query arrays", async () => {
-				expect(isValuesModel([{ id: "", name: "" }])).toBeTruthy();
+				expect(isTemplate([{ id: "", name: "" }])).toBeTruthy();
 			});
 
 		});
@@ -396,86 +395,39 @@ describe("guards", () => {
 		describe("invalid model values", () => {
 
 			it("should reject null and undefined", async () => {
-				expect(isValuesModel(null)).toBeFalsy();
-				expect(isValuesModel(undefined)).toBeFalsy();
+				expect(isTemplate(null)).toBeFalsy();
+				expect(isTemplate(undefined)).toBeFalsy();
 			});
 
 			it("should reject empty arrays", async () => {
-				expect(isValuesModel([])).toBeFalsy();
+				expect(isTemplate([])).toBeFalsy();
 			});
 
 			it("should reject arrays with multiple elements", async () => {
-				expect(isValuesModel(["/a", "/b"])).toBeFalsy();
-				expect(isValuesModel([{ id: "" }, { id: "" }])).toBeFalsy();
+				expect(isTemplate(["/a", "/b"])).toBeFalsy();
+				expect(isTemplate([{ id: "" }, { id: "" }])).toBeFalsy();
 			});
 
 		});
 
 	});
 
-	describe("isValueModel", () => {
-
-		describe("valid value models", () => {
-
-			it("should accept literals", async () => {
-				expect(isValueModel(true)).toBeTruthy();
-				expect(isValueModel(false)).toBeTruthy();
-				expect(isValueModel(0)).toBeTruthy();
-				expect(isValueModel(42)).toBeTruthy();
-				expect(isValueModel("")).toBeTruthy();
-				expect(isValueModel("text")).toBeTruthy();
-			});
-
-			it("should accept references", async () => {
-				expect(isValueModel("/products/42")).toBeTruthy();
-				expect(isValueModel("https://example.com/resource")).toBeTruthy();
-			});
-
-			it("should accept nested models", async () => {
-				expect(isValueModel({ id: "", name: "" })).toBeTruthy();
-				expect(isValueModel({ vendor: { id: "" } })).toBeTruthy();
-			});
-
-		});
-
-		describe("invalid value models", () => {
-
-			it("should reject null and undefined", async () => {
-				expect(isValueModel(null)).toBeFalsy();
-				expect(isValueModel(undefined)).toBeFalsy();
-			});
-
-			it("should reject arrays", async () => {
-				expect(isValueModel([])).toBeFalsy();
-				expect(isValueModel([true])).toBeFalsy();
-				expect(isValueModel(["/a"])).toBeFalsy();
-			});
-
-			it("should accept objects that are valid models", async () => {
-				// { "en": ["hello"] } is a valid Model (identifier key with literal array value)
-				expect(isValueModel({ "en": ["hello"] })).toBeTruthy();
-			});
-
-		});
-
-	});
-
-	describe("isLocalModel", () => {
+	describe("isLocale", () => {
 
 		describe("valid local models", () => {
 
 			it("should accept wildcard tag", async () => {
-				expect(isLocalModel({ "*": "" })).toBeTruthy();
-				expect(isLocalModel({ "*": "text" })).toBeTruthy();
+				expect(isLocale({ "*": "" })).toBeTruthy();
+				expect(isLocale({ "*": "text" })).toBeTruthy();
 			});
 
 			it("should accept language tags", async () => {
-				expect(isLocalModel({ "en": "hello" })).toBeTruthy();
-				expect(isLocalModel({ "fr": "bonjour" })).toBeTruthy();
+				expect(isLocale({ "en": "hello" })).toBeTruthy();
+				expect(isLocale({ "fr": "bonjour" })).toBeTruthy();
 			});
 
 			it("should accept multiple language tags", async () => {
-				expect(isLocalModel({ "en": "hello", "fr": "bonjour" })).toBeTruthy();
+				expect(isLocale({ "en": "hello", "fr": "bonjour" })).toBeTruthy();
 			});
 
 		});
@@ -483,48 +435,48 @@ describe("guards", () => {
 		describe("invalid local models", () => {
 
 			it("should reject null and undefined", async () => {
-				expect(isLocalModel(null)).toBeFalsy();
-				expect(isLocalModel(undefined)).toBeFalsy();
+				expect(isLocale(null)).toBeFalsy();
+				expect(isLocale(undefined)).toBeFalsy();
 			});
 
 			it("should accept plain string shorthand", async () => {
-				expect(isLocalModel("text")).toBeTruthy();
-				expect(isLocalModel("")).toBeTruthy();
+				expect(isLocale("text")).toBeTruthy();
+				expect(isLocale("")).toBeTruthy();
 			});
 
 			it("should reject non-string primitives", async () => {
-				expect(isLocalModel(true)).toBeFalsy();
-				expect(isLocalModel(42)).toBeFalsy();
+				expect(isLocale(true)).toBeFalsy();
+				expect(isLocale(42)).toBeFalsy();
 			});
 
 			it("should reject multi-valued maps", async () => {
-				expect(isLocalModel({ "en": ["hello"] })).toBeFalsy();
+				expect(isLocale({ "en": ["hello"] })).toBeFalsy();
 			});
 
 			it("should reject invalid tag keys", async () => {
-				expect(isLocalModel({ "invalid tag": "text" })).toBeFalsy();
+				expect(isLocale({ "invalid tag": "text" })).toBeFalsy();
 			});
 
 		});
 
 	});
 
-	describe("isLocalsModel", () => {
+	describe("isLocales", () => {
 
 		describe("valid locals models", () => {
 
 			it("should accept wildcard tag", async () => {
-				expect(isLocalsModel({ "*": [""] })).toBeTruthy();
-				expect(isLocalsModel({ "*": ["text"] })).toBeTruthy();
+				expect(isLocales({ "*": [""] })).toBeTruthy();
+				expect(isLocales({ "*": ["text"] })).toBeTruthy();
 			});
 
 			it("should accept language tags", async () => {
-				expect(isLocalsModel({ "en": ["hello"] })).toBeTruthy();
-				expect(isLocalsModel({ "fr": ["bonjour"] })).toBeTruthy();
+				expect(isLocales({ "en": ["hello"] })).toBeTruthy();
+				expect(isLocales({ "fr": ["bonjour"] })).toBeTruthy();
 			});
 
 			it("should accept multiple language tags", async () => {
-				expect(isLocalsModel({ "en": ["hello"], "fr": ["bonjour"] })).toBeTruthy();
+				expect(isLocales({ "en": ["hello"], "fr": ["bonjour"] })).toBeTruthy();
 			});
 
 		});
@@ -532,27 +484,27 @@ describe("guards", () => {
 		describe("invalid locals models", () => {
 
 			it("should reject null and undefined", async () => {
-				expect(isLocalsModel(null)).toBeFalsy();
-				expect(isLocalsModel(undefined)).toBeFalsy();
+				expect(isLocales(null)).toBeFalsy();
+				expect(isLocales(undefined)).toBeFalsy();
 			});
 
 			it("should accept plain string array shorthand", async () => {
-				expect(isLocalsModel(["text"])).toBeTruthy();
-				expect(isLocalsModel([""])).toBeTruthy();
+				expect(isLocales(["text"])).toBeTruthy();
+				expect(isLocales([""])).toBeTruthy();
 			});
 
 			it("should reject non-array primitives", async () => {
-				expect(isLocalsModel(true)).toBeFalsy();
-				expect(isLocalsModel(42)).toBeFalsy();
-				expect(isLocalsModel("text")).toBeFalsy();
+				expect(isLocales(true)).toBeFalsy();
+				expect(isLocales(42)).toBeFalsy();
+				expect(isLocales("text")).toBeFalsy();
 			});
 
 			it("should reject single-valued maps", async () => {
-				expect(isLocalsModel({ "en": "hello" })).toBeFalsy();
+				expect(isLocales({ "en": "hello" })).toBeFalsy();
 			});
 
 			it("should reject invalid tag keys", async () => {
-				expect(isLocalsModel({ "invalid tag": ["text"] })).toBeFalsy();
+				expect(isLocales({ "invalid tag": ["text"] })).toBeFalsy();
 			});
 
 		});

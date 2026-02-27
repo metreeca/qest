@@ -16,6 +16,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Replace `zxx` language tag with `und` for language-neutral values
 - Replace `Transform` enum with closed string union type
 - Close transform set: `Criterion.pipe` now typed as `Transform[]` and validated by `isTransform`
+- Rename `ValuesModel` to `Template`, `LocalModel` to `Locale`, `LocalsModel` to `Locales`
+- Inline `ValueModel` into `Template` union; remove `isValueModel` guard
 
 ### Removed
 
@@ -25,7 +27,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Fixed
 
 - Fix form codec to reconstruct `Local`/`Locals` objects from tagged form parameters during decoding
-- Accept plain strings as `Local`/`LocalModel` shorthand and plain string arrays as `Locals`/`LocalsModel` shorthand for
+- Accept plain strings as `Local`/`Locale` shorthand and plain string arrays as `Locals`/`Locales` shorthand for
   language-neutral values
 
 ## [0.9.2](https://github.com/metreeca/qest/releases/tag/v0.9.2) - 2026-02-09
