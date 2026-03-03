@@ -32,13 +32,17 @@
  *
  * Defines structures for programmatic query key handling:
  *
- * - {@link Criterion} — Query criterion
+ * - {@link Probe} — Parsed query probe
  * - {@link Operator} — Constraint operator symbols
  * - {@link Transform} — Value transforms
  *
  * Comparison and sorting operators rely on a total ordering over values defined by
  * {@link https://www.w3.org/TR/xpath-functions-20/#comparison-operators XPath 2.0 comparison operators};
  * see the {@link Query | Value Ordering} section for details.
+ *
+ * > [!NOTE]
+ * > The {@link model | Model Design} companion document covers the design rationale for the client-driven
+ * > retrieval approach, including cross-backend semantics and query normalisation strategies.
  *
  * # Retrieval Patterns
  *
@@ -125,7 +129,8 @@
  * };
  * ```
  *
- * Aggregate transforms operate on collections:
+ * Aggregate transforms operate on collections; non-aggregate bindings implicitly define the grouping key,
+ * analogous to SQL `GROUP BY` (see {@link model | Aggregate Transforms} for details):
  *
  * ```typescript
  * const model: Model = {
@@ -146,7 +151,7 @@
  *
  * const categoryFacet: Model = {
  *   items: [{
- *     "category=sample:category": "",
+ *     "category=min:category": "",
  *     "count=count:": 0,
  *     "^count": "desc"
  *   }]
@@ -260,7 +265,7 @@
  *
  * ## Expressions
  *
- * Criterion keys identify properties or computed values combining an optional result name (forming a
+ * Probe keys identify properties or computed values combining an optional result name (forming a
  * {@link Binding}), a pipeline of {@link Transform}, and a property path ({@link Expression}):
  *
  * ```text
@@ -307,6 +312,8 @@
  * @groupDescription Codecs
  * Functions for converting between serialized and structured representations.
  *
+ * @document ./model.md
+ *
  * @module
  */
 
@@ -341,7 +348,7 @@ import {
 	Locals,
 	Reference,
 	Resource,
-	Values
+	type Value
 } from "./state.js";
 
 
@@ -360,18 +367,22 @@ import {
  * > Aggregate transforms are formally legal also in top-level model expressions: they operate on the singleton set
  * > containing the retrieved resource.
  *
+ * > [!NOTE]
+ * > References to undefined properties resolve to `undefined` in the JSON output, consistently across all
+ * > storage backends. When any path step is undefined, the entire path resolves to `undefined`.
+ *
  * > [!WARNING]
- * > Model processors must reject models with an error if they reference undefined properties or provide projections
- * > of mismatched types for defined properties, including computed ones.
+ * > Model processors must reject models with an error if they provide {@link Template | templates} of
+ * > mismatched types for defined {@link Binding | bindings}, including computed ones.
  */
 export type Model =
-	| { readonly [property: Identifier | Binding]: Template | Indexed<Template> }
+	| { readonly [property: Binding]: Template | Indexed<Template> }
 
 
 /**
  * Property value template.
  *
- * Defines the expected type and structure for a {@link Model} property value, mirroring {@link Values}:
+ * Defines the expected type and structure for a {@link Model} property value, mirroring {@link Value}:
  *
  * - {@link Literal} — Primitive value (`boolean`, `number`, `string`)
  * - {@link Reference} — IRI reference to a linked resource
@@ -395,9 +406,10 @@ export type Template =
 	| readonly [Query]
 
 /**
- * Single-valued locale placeholder.
+ * Single-valued locale template.
  *
- * Maps language {@link TagRange | tag ranges} to a single localised text placeholder per language.
+ * Specifies via {@link TagRange | tag range} keys which locales are of interest and must be retrieved as
+ * {@link Local} values; string values are ignored as templates and serve only as type placeholders.
  *
  * A plain string is accepted as shorthand for a language-neutral projection: `""` is equivalent to `{ und: "" }`.
  * Consumers are responsible for normalising shorthand values to the canonical object form, including shorthand
@@ -416,9 +428,10 @@ export type Locale =
 	| { readonly [range: TagRange]: string };
 
 /**
- * Multi-valued locale placeholder.
+ * Multi-valued locale template.
  *
- * Maps language {@link TagRange | tag ranges} to multiple localised text placeholders per language.
+ * Specifies via {@link TagRange | tag range} keys which locales are of interest and must be retrieved as
+ * {@link Locals} values; string array values are ignored as templates and serve only as type placeholders.
  *
  * A plain string array is accepted as shorthand for a language-neutral projection: `[""]` is equivalent to `{ und:
  * [""] }`. Consumers are responsible for normalising shorthand values to the canonical object form, including
@@ -440,7 +453,7 @@ export type Locales =
  * Collection retrieval model.
  *
  * Retrieval model for multi-valued collection properties, extending the {@link Model} envelope with filtering,
- * ordering, and pagination criteria. Each criterion key uses a prefixed operator syntax to specify constraints,
+ * ordering, and pagination probes. Each probe key uses a prefixed operator syntax to specify constraints,
  * sort order, or pagination limits on the collection.
  *
  * @see {@link model | Value Ordering} for comparison and sorting semantics
@@ -548,20 +561,23 @@ export type Query = Model & {
 /**
  * Named computed expression.
  *
- * Assigns a name to a computed {@link Expression} in {@link Model} projections using the
- * `{name}={expression}` syntax.
+ * Assigns a name to a computed {@link Expression} in {@link Model} projections, either as a plain
+ * {@link Identifier} or using the `{name}={expression}` syntax. A plain {@link Identifier} is a shorthand for
+ * `{name}={name}`.
  *
  * @example
  *
  * ```typescript
  * const model: Model = {
- *   "vendorName=vendor.name": "",     // path binding
- *   "releaseYear=year:releaseDate": 0 // transform binding
+ *   "name": "",                        // property binding (shorthand for "name=name")
+ *   "vendorName=vendor.name": "",      // path binding
+ *   "releaseYear=year:releaseDate": 0  // transform binding
  * };
  * ```
  */
 export type Binding =
-	`${Identifier}=${Expression}`;
+	| Identifier
+	| `${Identifier}=${Expression}`;
 
 /**
  * Computed expression.
@@ -571,22 +587,22 @@ export type Binding =
  *
  * Expressions use the compact string syntax `[transform:]*[path]` where:
  *
- * - **path** is a dot-separated list of property names (e.g., `order.items.price`);
+ * - **path** is a dot-separated list of property names (for example, `order.items.price`);
  *   the empty path refers to the root value; path steps always refer to actual resource property names
  *   and not to projected computed properties defined by {@link Binding bindings}
- * - **transforms** is a sequence of transform names, each followed by a colon (e.g., `round:avg:`)
- *   and applied right-to-left (functional order)
+ * - **transforms** is a sequence of {@link Transform} names, each followed by a colon (for example, `round:avg:`)
+ *   and applied right-to-left (functional composition order)
  *
- * Path steps follow {@link Identifier} rules (ECMAScript names); transform names must be valid {@link Transform}
- * values.
+ * Path steps follow {@link Identifier} rules (ECMAScript names).
+ *
+ * Property path resolution semantics (including multi-valued and union properties) are defined in
+ * {@link model | Property Paths}; transform pipe composition rules (including valid/invalid combinations)
+ * are defined in {@link model | Transform Pipes}.
  *
  * > [!WARNING]
  * > This is a type alias for documentation purposes only; expression syntax is validated at runtime
- * > by query processors.
- *
- * > [!WARNING]
- * > Processors are expected to reject expressions with an error if they reference undefined properties or unsupported
- * transforms.
+ * > by query processors. Processors reject expressions that reference unsupported transforms; references to
+ * > undefined properties resolve to `undefined` in the output (see {@link model | Property Paths}).
  *
  * @example
  *
@@ -644,10 +660,10 @@ export type Option =
 
 
 /**
- * Query criterion.
+ * Parsed query probe.
  *
- * Represents a projection, filtering, ordering, or pagination criterion in a {@link Query}.
- * Query keys are encoded string representation of criteria.
+ * Represents a parsed projection, filtering, ordering, or pagination probe in a {@link Query}.
+ * Query keys are encoded string representations of probes.
  *
  * A unified target suffices as projections and constraints are easily
  * disambiguated after parsing using {@link isIdentifier}.
@@ -662,10 +678,10 @@ export type Option =
  * { target: ">=", pipe: ["year"], path: ["releaseDate"] }
  * ```
  *
- * @see {@link encodeCriterion}
- * @see {@link decodeCriterion}
+ * @see {@link encodeProbe}
+ * @see {@link decodeProbe}
  */
-export type Criterion = {
+export type Probe = {
 
 	/**
 	 * Property name for projections or constraint {@link Operator}.
@@ -716,9 +732,8 @@ export type Operator =
  *
  * > [!WARNING]
  * >
- * > The set of supported transforms is closed: only the names listed below are valid.
- * > Expressions and criteria referencing unknown transforms are rejected by
- * > `isExpression` and `isCriterion`.
+ * > The set of supported transforms is closed: only the names listed below are valid. Expressions and criteria
+ * > referencing unknown transforms are rejected by `isExpression` and `isProbe`.
  *
  * ## Type Mapping
  *
@@ -726,78 +741,49 @@ export type Operator =
  * of [XPath 2.0](https://www.w3.org/TR/xpath-functions/) / [XSD 1.0](https://www.w3.org/TR/xmlschema-2/) types.
  * The domain and range columns in the table below use the following type shorthands:
  *
- * - **numeric** — `xsd:integer` | `xsd:decimal` | `xsd:float` | `xsd:double`; mapped to JSON `number`
- * (IEEE 754 double), which can only represent a subset of `xsd:integer` and `xsd:decimal` values
- * - **temporal** — `xsd:dateTime` | `xsd:date` | `xsd:time` | `xsd:duration` where applicable; mapped to JSON `string`
+ * - **numeric** — `xsd:integer` | `xsd:decimal` | `xsd:float` | `xsd:double`, mapped to JSON `number`
+ * (IEEE 754 double); note that JSON numbers can only represent a subset of `xsd:integer` and `xsd:decimal` values
+ * - **temporal** — `xsd:dateTime` | `xsd:date` | `xsd:time` | `xsd:duration`, mapped to JSON `string`; note that
+ * temporal types may be accepted only by a specific subset of temporal transforms
  *
  * String-to-string transform pipes (for example `lower`, `upper`) may also be applied to {@link Local} and
  * {@link Locals} values: the pipe is applied individually to each string value in the language map.
  *
- * | Transform      | Definition                                                        | Domain       | Range
- * |
- * |----------------|-------------------------------------------------------------------|--------------|---------------|
- * | **aggregates** | Summarise a set of values                                         |              |
- * |
- * | `count`        | Count values; `0` for empty sets                                  | any          | `xsd:integer`
- * |
- * | `min`          | Select minimum value under {@link model | value ordering} rules; `null` for empty sets | any |
- * same as input |
- * | `max`          | Select maximum value under {@link model | value ordering} rules; `null` for empty sets | any |
- * same as input |
- * | `sum`          | Sum numeric values; `0` for empty sets                            | numeric      | same as input
- * |
- * | `avg`          | Average numeric values; `null` for empty sets                     | numeric      | `xsd:decimal`
- * |
- * | **numeric**    | Transform numeric values                                          |              |
- * |
- * | `abs`          | Compute absolute value of a number                                | numeric      | same as input
- * |
- * | `floor`        | Floor to largest integer less than or equal to value              | numeric      | same as input
- * |
- * | `ceil`         | Ceiling to smallest integer greater than or equal to value        | numeric      | same as input
- * |
- * | `round`        | Round to nearest integer                                          | numeric      | same as input
- * |
- * | **textual**    | Transform string values                                           |              |
- * |
- * | `lower`        | Convert string value to lowercase                                 | `xsd:string` | `xsd:string`
- * |
- * | `upper`        | Convert string value to uppercase                                 | `xsd:string` | `xsd:string`
- * |
- * | `length`       | Compute character length of a string                              | `xsd:string` | `xsd:integer`
- * |
- * | **temporal**   | Extract components from ISO 8601 date, time, and duration strings |              |
- * |
- * | `year`         | Extract year component                                            | temporal     | `xsd:integer`
- * |
- * | `month`        | Extract month component                                           | temporal     | `xsd:integer`
- * |
- * | `day`          | Extract day component                                             | temporal     | `xsd:integer`
- * |
- * | `hours`        | Extract hours component                                           | temporal     | `xsd:integer`
- * |
- * | `minutes`      | Extract minutes component                                         | temporal     | `xsd:integer`
- * |
- * | `seconds`      | Extract seconds component                                         | temporal     | `xsd:decimal`
- * |
+ * | Transform      | Definition                                                       | Domain       | Range         |
+ * |----------------|------------------------------------------------------------------|--------------|---------------|
+ * | **aggregates** | Summarise a set of values                                        |              |               |
+ * | `count`        | Count values; `0` for empty sets                                 | any          | `xsd:integer` |
+ * | `min`          | Select {@link model | minimum value}; `undefined` for empty sets | any          | same as input |
+ * | `max`          | Select {@link model | maximum value}; `undefined` for empty sets | any          | same as input |
+ * | `sum`          | Sum numeric values; `0` for empty sets                           | numeric      | same as input |
+ * | `avg`          | Average numeric values; `undefined` for empty sets               | numeric      | `xsd:decimal` |
+ * | **numeric**    | Transform numeric values                                         |              |               |
+ * | `abs`          | Compute absolute value                                           | numeric      | same as input |
+ * | `floor`        | Floor to largest integer ≤ value                                 | numeric      | same as input |
+ * | `ceil`         | Ceiling to smallest integer ≥ value                              | numeric      | same as input |
+ * | `round`        | Round to nearest integer                                         | numeric      | same as input |
+ * | **textual**    | Transform string values                                          |              |               |
+ * | `lower`        | Convert to lowercase                                             | `xsd:string` | same as input |
+ * | `upper`        | Convert to uppercase                                             | `xsd:string` | same as input |
+ * | `length`       | Compute character length                                         | `xsd:string` | `xsd:integer` |
+ * | **temporal**   | Extract components from ISO 8601 date/time/duration              |              |               |
+ * | `year`         | Extract year component                                           | temporal     | `xsd:integer` |
+ * | `month`        | Extract month component                                          | temporal     | `xsd:integer` |
+ * | `day`          | Extract day component                                            | temporal     | `xsd:integer` |
+ * | `hours`        | Extract hours component                                          | temporal     | `xsd:integer` |
+ * | `minutes`      | Extract minutes component                                        | temporal     | `xsd:integer` |
+ * | `seconds`      | Extract seconds component                                        | temporal     | `xsd:decimal` |
  *
  * ## Error Handling
  *
- * - Aggregate transforms silently skip null/undefined/invalid values before computing the result.
- * - Scalar transforms produce `null` for null/undefined values and for values outside the declared domain.
+ * Scalar transforms produce `undefined` for undefined inputs and domain violations (for example, `abs` on a string);
+ * aggregate transforms silently skip invalid values before computing the result. See {@link model | Scalar Transforms}
+ * and {@link model | Aggregate Transforms} for the full adopted semantics, including empty set behaviour, multi-valued
+ * properties, and type promotion rules.
  *
- * ## Design Rationale
- *
- * The data model defined by **@metreeca/qest** is grounded in [JSON-LD 1.1](https://www.w3.org/TR/json-ld11/),
- * which together with [SPARQL 1.1](https://www.w3.org/TR/sparql11-query/) references
- * [XSD 1.0](https://www.w3.org/TR/xmlschema-2/) / [XPath 2.0](https://www.w3.org/TR/xpath-functions/)
- * for its type system and operator semantics: transform semantics follow the same foundation.
- *
- * However, a critical requirement is that transforms must be implementable across a wide range of storage backends.
- * Both the supported set and its semantics are therefore restricted to the intersection of well-defined counterparts
- * across XPath 2.0, SPARQL 1.1, SQL, and GQL/Cypher. Different storage engines handle type errors and null/undefined
- * values in incompatible ways, but uniformly mapping them to `null` in the JSON output ensures consistent semantics
- * across them.
+ * The supported set is restricted to the intersection of well-defined counterparts across XPath 2.0, SPARQL 1.1,
+ * SQL:2011, and GQL:2024/openCypher; see the {@link model | Design Rationale} for the cross-backend design approach
+ * and {@link model | Query Normalisation} for backend-specific adjustments.
  */
 export type Transform =
 
@@ -837,7 +823,7 @@ export type Transform =
  */
 export function isModel(value: unknown): value is Model {
 	return isObject(value, (v, k) =>
-		(isIdentifier(k) || isBinding(k)) && (isTemplate(v) || isIndexed(v, isTemplate))
+		isBinding(k) && (isTemplate(v) || isIndexed(v, isTemplate))
 	);
 }
 
@@ -904,19 +890,55 @@ export function isQuery(value: unknown): value is Query {
 
 		// projection
 
-		if ( (isIdentifier(k) || isBinding(k)) as boolean ) { return isTemplate(v) || isIndexed(v, isTemplate); }
+		if ( isBinding(k) as boolean ) {
+
+			return isTemplate(v) || isIndexed(v, isTemplate);
+
+		}
 
 		// filtering
 
-		else if ( k.startsWith("<=") || k.startsWith(">=") ) { return isLiteral(v); } else if ( k.startsWith("<") || k.startsWith(">") ) { return isLiteral(v); } else if ( k.startsWith("~") ) { return isString(v); } else if ( k.startsWith("?") || k.startsWith("!") ) { return isOptions(v); }
+		else if ( k.startsWith("<=") || k.startsWith(">=") ) {
+
+			return isLiteral(v);
+
+		} else if ( k.startsWith("<") || k.startsWith(">") ) {
+
+			return isLiteral(v);
+
+		} else if ( k.startsWith("~") ) {
+
+			return isString(v);
+
+		} else if ( k.startsWith("?") || k.startsWith("!") ) {
+
+			return isOptions(v);
+
+		}
 
 		// ordering
 
-		else if ( k.startsWith("*") ) { return isOptions(v); } else if ( k.startsWith("^") ) { return isNumber(v) || isLiteralValue(v, ["asc", "desc"]); }
+		else if ( k.startsWith("*") ) {
+
+			return isOptions(v);
+
+		} else if ( k.startsWith("^") ) {
+
+			return isNumber(v) || isLiteralValue(v, ["asc", "desc"]);
+
+		}
 
 		// paging
 
-		else if ( k === "@" || k === "#" ) { return isNumber(v); } else { return false; }
+		else if ( k === "@" || k === "#" ) {
+
+			return isNumber(v);
+
+		} else {
+
+			return false;
+
+		}
 
 	});
 }
@@ -932,7 +954,7 @@ export function isQuery(value: unknown): value is Query {
  * @returns True if the value is a string matching the `{identifier}={expression}` syntax
  */
 export function isBinding(value: unknown): value is Binding {
-	return isString(value) && value.includes("=")
+	return isIdentifier(value) || isString(value) && value.includes("=")
 		&& isIdentifier(value.slice(0, value.indexOf("=")))
 		&& isExpression(value.slice(value.indexOf("=")+1));
 }
@@ -987,15 +1009,15 @@ export function isOption(value: unknown): value is Option {
 
 
 /**
- * Checks if a value is a {@link Criterion}.
+ * Checks if a value is a {@link Probe}.
  *
  * @group Guards
  *
  * @param value The value to check
  *
- * @returns True if the value is a valid parsed criterion
+ * @returns True if the value is a valid parsed probe
  */
-export function isCriterion(value: unknown): value is Criterion {
+export function isProbe(value: unknown): value is Probe {
 	return isObject(value, {
 		target: v => isIdentifier(v) || isOperator(v),
 		pipe: (v: unknown) => isArray(v, isTransform),
@@ -1036,6 +1058,89 @@ export function isTransform(value: unknown): value is Transform {
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * Encodes a model as a JSON string.
+ *
+ * Serializes a {@link Model} object into a JSON string. If `base` is provided, converts absolute IRIs
+ * (matching `isIRI(value, "absolute")`) to internal IRIs using {@link internalize}, recursively throughout
+ * the model structure. Otherwise, performs plain JSON serialization.
+ *
+ * @group Codecs
+ *
+ * @param model The model to encode
+ * @param opts Encoding options
+ *
+ * @returns The JSON string, with internalized IRIs if `base` is provided
+ *
+ * @throws {TypeError} If `model` is not a valid {@link Model} or `opts` is not a valid {@link CodecOpts}
+ *
+ * @example
+ *
+ * ```typescript
+ * encodeModel(
+ *   { id: "", name: "", vendor: { id: "https://example.com/vendors/acme", name: "" } },
+ *   { base: "https://example.com/" }
+ * );
+ * // → '{"id":"","name":"","vendor":{"id":"/vendors/acme","name":""}}'
+ * ```
+ *
+ * @see {@link decodeModel}
+ */
+export function encodeModel(model: Model, opts: CodecOpts = {}): string {
+
+	const $model = immutable(model, isModel);
+	const { base = defaultBase } = assert(opts, isCodecOpts);
+
+	return JSON.stringify($model, (_key, value) =>
+		isIRI(value, "absolute")
+			? internalize(base, value)
+			: value
+	);
+
+}
+
+/**
+ * Decodes a model from a JSON string.
+ *
+ * Parses a JSON string back into a {@link Model} object. If `base` is provided, resolves internal IRIs
+ * (matching `isIRI(value, "internal")`) to absolute IRIs using `resolve()`, recursively throughout
+ * the model structure. Otherwise, performs plain JSON parsing.
+ *
+ * @group Codecs
+ *
+ * @param json The JSON-serialized {@link Model}
+ * @param opts Decoding options
+ *
+ * @returns The decoded model, with resolved IRIs if `base` is provided
+ *
+ * @throws {TypeError} If `json` is not a string, not a valid {@link Model}, or `opts` is not a valid {@link CodecOpts}
+ *
+ * @example
+ *
+ * ```typescript
+ * decodeModel(
+ *   '{"id":"","name":"","vendor":{"id":"/vendors/acme","name":""}}',
+ *   { base: "https://example.com/" }
+ * );
+ * // → { id: "", name: "", vendor: { id: "https://example.com/vendors/acme", name: "" } }
+ * ```
+ *
+ * @see {@link encodeModel}
+ */
+export function decodeModel(json: string, opts: CodecOpts = {}): Model {
+
+	const $json = assert(json, isString);
+	const { base = defaultBase } = assert(opts, isCodecOpts);
+
+	const model = JSON.parse($json, (_key, value) =>
+		isIRI(value, "internal") ? resolve(base, value) : value
+	);
+
+	return immutable(model, isModel, "malformed model");
+
+}
+
 
 /**
  * Encodes a query as a URL-safe string.
@@ -1281,30 +1386,30 @@ export function decodeQuery(json: string, opts: CodecOpts = {}): Query {
 
 
 /**
- * Encodes a criterion as a {@link Query} key string.
+ * Encodes a probe as a {@link Query} key string.
  *
- * Serializes a parsed {@link Criterion} back into its compact string representation suitable for use as a Model key.
+ * Serializes a parsed {@link Probe} back into its compact string representation suitable for use as a Model key.
  *
  * @group Codecs
  *
- * @param criterion The criterion to encode
+ * @param probe The probe to encode
  *
  * @returns The encoded key string
  *
- * @throws TypeGuardError If `criterion` is not a valid {@link Criterion}
+ * @throws TypeGuardError If `probe` is not a valid {@link Probe}
  *
  * @example
  *
  * ```typescript
- * encodeCriterion({ target: ">=", pipe: ["year"], path: ["releaseDate"] });
+ * encodeProbe({ target: ">=", pipe: ["year"], path: ["releaseDate"] });
  * // → '>=year:releaseDate'
  * ```
  *
- * @see {@link decodeCriterion}
+ * @see {@link decodeProbe}
  */
-export function encodeCriterion(criterion: Criterion): string {
+export function encodeProbe(probe: Probe): string {
 
-	const { target, pipe, path } = immutable(criterion, isCriterion);
+	const { target, pipe, path } = immutable(probe, isProbe);
 
 	const pipeString = pipe.map(p => `${p}:`).join("");
 	const pathString = path.join(".");
@@ -1312,22 +1417,22 @@ export function encodeCriterion(criterion: Criterion): string {
 	const expression = pipeString+pathString;
 
 	return isIdentifier(target)
-		? expression.length > 0 ? `${target}=${expression}` : target
+		? expression === target ? target : `${target}=${expression}`
 		: `${target}${expression}`;
 
 }
 
 /**
- * Decodes a {@link Query} key string into a criterion.
+ * Decodes a {@link Query} key string into a probe.
  *
- * Parses a Model key string into its structural {@link Criterion} components, distinguishing projection keys
+ * Parses a Model key string into its structural {@link Probe} components, distinguishing projection keys
  * from constraint keys based on the presence of an {@link Operator} prefix.
  *
  * @group Codecs
  *
  * @param key The query key string to decode
  *
- * @returns The parsed criterion
+ * @returns The parsed probe
  *
  * @throws TypeGuardError If `key` is not a string
  * @throws {Error} If `key` is malformed or unparseable
@@ -1335,24 +1440,24 @@ export function encodeCriterion(criterion: Criterion): string {
  * @example
  *
  * ```typescript
- * decodeCriterion(">=year:releaseDate");
+ * decodeProbe(">=year:releaseDate");
  * // → { target: ">=", pipe: ["year"], path: ["releaseDate"] }
  * ```
  *
- * @see {@link encodeCriterion}
+ * @see {@link encodeProbe}
  */
-export function decodeCriterion(key: string): Criterion {
+export function decodeProbe(key: string): Probe {
 
 	const $key = assert(key, isString);
 
 	try {
 
-		const criterion = QueryParser.parse($key, { startRule: "Criterion" });
+		const probe = QueryParser.parse($key, { startRule: "Probe" });
 
-		return immutable(criterion, isCriterion, "malformed criterion");
+		return immutable(probe, isProbe, "malformed probe");
 
 	} catch ( cause ) {
-		throw new Error(`invalid criterion <${key}>`, { cause });
+		throw new Error(`invalid probe <${key}>`, { cause });
 	}
 
 }

@@ -18,12 +18,14 @@ import { describe, expect, it } from "vitest";
 import { decodeBase64 } from "./base64.js";
 import { defaultBase } from "./index.js";
 import {
-	decodeCriterion,
+	decodeModel,
+	decodeProbe,
 	decodeQuery,
-	encodeCriterion,
+	encodeModel,
+	encodeProbe,
 	encodeQuery,
 	isBinding,
-	isCriterion,
+	isProbe,
 	isExpression,
 	isLocale,
 	isLocales,
@@ -34,6 +36,7 @@ import {
 	isOptions,
 	isQuery,
 	isTemplate,
+	type Model,
 	type Query
 } from "./model.js";
 
@@ -222,8 +225,8 @@ describe("guards", () => {
 				expect(isBinding("=value")).toBeFalsy();
 			});
 
-			it("should reject missing equals sign", async () => {
-				expect(isBinding("name")).toBeFalsy();
+			it("should accept plain identifier as shorthand", async () => {
+				expect(isBinding("name")).toBeTruthy();
 			});
 
 			it("should reject invalid identifier", async () => {
@@ -608,39 +611,39 @@ describe("guards", () => {
 	});
 
 
-	describe("isCriterion", () => {
+	describe("isProbe", () => {
 
-		describe("valid criteria", () => {
+		describe("valid probes", () => {
 
-			it("should accept simple projection criterion", async () => {
-				expect(isCriterion({ target: "name", pipe: [], path: [] })).toBeTruthy();
+			it("should accept simple projection probe", async () => {
+				expect(isProbe({ target: "name", pipe: [], path: [] })).toBeTruthy();
 			});
 
-			it("should accept criterion with path", async () => {
-				expect(isCriterion({ target: "city", pipe: [], path: ["address"] })).toBeTruthy();
-				expect(isCriterion({ target: "city", pipe: [], path: ["customer", "address"] })).toBeTruthy();
+			it("should accept probe with path", async () => {
+				expect(isProbe({ target: "city", pipe: [], path: ["address"] })).toBeTruthy();
+				expect(isProbe({ target: "city", pipe: [], path: ["customer", "address"] })).toBeTruthy();
 			});
 
-			it("should accept criterion with pipe", async () => {
-				expect(isCriterion({ target: "releaseYear", pipe: ["year"], path: ["releaseDate"] })).toBeTruthy();
-				expect(isCriterion({ target: "avgPrice", pipe: ["round", "avg"], path: ["price"] })).toBeTruthy();
+			it("should accept probe with pipe", async () => {
+				expect(isProbe({ target: "releaseYear", pipe: ["year"], path: ["releaseDate"] })).toBeTruthy();
+				expect(isProbe({ target: "avgPrice", pipe: ["round", "avg"], path: ["price"] })).toBeTruthy();
 			});
 
-			it("should accept filtering criteria", async () => {
-				expect(isCriterion({ target: "<", pipe: [], path: ["price"] })).toBeTruthy();
-				expect(isCriterion({ target: ">=", pipe: [], path: ["price"] })).toBeTruthy();
-				expect(isCriterion({ target: "~", pipe: [], path: ["name"] })).toBeTruthy();
-				expect(isCriterion({ target: "?", pipe: [], path: ["category"] })).toBeTruthy();
+			it("should accept filtering probes", async () => {
+				expect(isProbe({ target: "<", pipe: [], path: ["price"] })).toBeTruthy();
+				expect(isProbe({ target: ">=", pipe: [], path: ["price"] })).toBeTruthy();
+				expect(isProbe({ target: "~", pipe: [], path: ["name"] })).toBeTruthy();
+				expect(isProbe({ target: "?", pipe: [], path: ["category"] })).toBeTruthy();
 			});
 
-			it("should accept ordering criteria", async () => {
-				expect(isCriterion({ target: "*", pipe: [], path: ["category"] })).toBeTruthy();
-				expect(isCriterion({ target: "^", pipe: [], path: ["price"] })).toBeTruthy();
+			it("should accept ordering probes", async () => {
+				expect(isProbe({ target: "*", pipe: [], path: ["category"] })).toBeTruthy();
+				expect(isProbe({ target: "^", pipe: [], path: ["price"] })).toBeTruthy();
 			});
 
 			it("should accept paging criteria", async () => {
-				expect(isCriterion({ target: "@", pipe: [], path: [] })).toBeTruthy();
-				expect(isCriterion({ target: "#", pipe: [], path: [] })).toBeTruthy();
+				expect(isProbe({ target: "@", pipe: [], path: [] })).toBeTruthy();
+				expect(isProbe({ target: "#", pipe: [], path: [] })).toBeTruthy();
 			});
 
 		});
@@ -648,43 +651,43 @@ describe("guards", () => {
 		describe("invalid criteria", () => {
 
 			it("should reject non-objects", async () => {
-				expect(isCriterion(null)).toBeFalsy();
-				expect(isCriterion(undefined)).toBeFalsy();
-				expect(isCriterion("string")).toBeFalsy();
-				expect(isCriterion(123)).toBeFalsy();
+				expect(isProbe(null)).toBeFalsy();
+				expect(isProbe(undefined)).toBeFalsy();
+				expect(isProbe("string")).toBeFalsy();
+				expect(isProbe(123)).toBeFalsy();
 			});
 
 			it("should reject missing target", async () => {
-				expect(isCriterion({ pipe: [], path: [] })).toBeFalsy();
+				expect(isProbe({ pipe: [], path: [] })).toBeFalsy();
 			});
 
 			it("should reject missing pipe", async () => {
-				expect(isCriterion({ target: "name", path: [] })).toBeFalsy();
+				expect(isProbe({ target: "name", path: [] })).toBeFalsy();
 			});
 
 			it("should reject missing path", async () => {
-				expect(isCriterion({ target: "name", pipe: [] })).toBeFalsy();
+				expect(isProbe({ target: "name", pipe: [] })).toBeFalsy();
 			});
 
 			it("should reject non-string target", async () => {
-				expect(isCriterion({ target: 123, pipe: [], path: [] })).toBeFalsy();
+				expect(isProbe({ target: 123, pipe: [], path: [] })).toBeFalsy();
 			});
 
 			it("should reject non-array pipe", async () => {
-				expect(isCriterion({ target: "name", pipe: "year", path: [] })).toBeFalsy();
+				expect(isProbe({ target: "name", pipe: "year", path: [] })).toBeFalsy();
 			});
 
 			it("should reject unknown transforms in pipe", async () => {
-				expect(isCriterion({ target: "name", pipe: ["unknown"], path: ["field"] })).toBeFalsy();
-				expect(isCriterion({ target: "name", pipe: ["year", "unknown"], path: ["field"] })).toBeFalsy();
+				expect(isProbe({ target: "name", pipe: ["unknown"], path: ["field"] })).toBeFalsy();
+				expect(isProbe({ target: "name", pipe: ["year", "unknown"], path: ["field"] })).toBeFalsy();
 			});
 
 			it("should reject non-array path", async () => {
-				expect(isCriterion({ target: "name", pipe: [], path: "address" })).toBeFalsy();
+				expect(isProbe({ target: "name", pipe: [], path: "address" })).toBeFalsy();
 			});
 
 			it("should reject unexpected properties", async () => {
-				expect(isCriterion({ target: "name", pipe: [], path: [], extra: "value" })).toBeFalsy();
+				expect(isProbe({ target: "name", pipe: [], path: [], extra: "value" })).toBeFalsy();
 			});
 
 		});
@@ -803,6 +806,282 @@ describe("guards", () => {
 });
 
 describe("codecs", () => {
+
+	describe("encodeModel()", () => {
+
+		describe("base option", () => {
+
+			it("should accept absolute hierarchical IRI base", async () => {
+				const model: Model = { id: "https://example.com/products/42" };
+
+				expect(() => encodeModel(model, { base: "https://example.com/" })).not.toThrow();
+			});
+
+			it("should reject relative IRI base", async () => {
+				const model: Model = { id: "/products/42" };
+
+				expect(() => encodeModel(model, { base: "/relative/path" })).toThrow(TypeError);
+			});
+
+			it("should accept path-absolute IRI base", async () => {
+				const model: Model = { id: "app:/products/42" };
+
+				expect(encodeModel(model, { base: defaultBase }))
+					.toBe(JSON.stringify({ id: "/products/42" }));
+			});
+
+			it("should internalize absolute IRI to root-relative", async () => {
+				const model: Model = { id: "https://example.com/products/42" };
+
+				expect(encodeModel(model, { base: "https://example.com/" }))
+					.toBe(JSON.stringify({ id: "/products/42" }));
+			});
+
+			it("should preserve absolute IRI with different origin", async () => {
+				const model: Model = { id: "https://other.com/products/42" };
+
+				expect(encodeModel(model, { base: "https://example.com/" }))
+					.toBe(JSON.stringify({ id: "https://other.com/products/42" }));
+			});
+
+			it("should preserve root-relative IRI", async () => {
+				const model: Model = { id: "/products/42" };
+
+				expect(encodeModel(model, { base: "https://example.com/" }))
+					.toBe(JSON.stringify({ id: "/products/42" }));
+			});
+
+			it("should internalize IRIs recursively in nested structures", async () => {
+				const model: Model = {
+					id: "",
+					vendor: {
+						id: "https://example.com/vendors/acme",
+						name: ""
+					}
+				};
+
+				expect(encodeModel(model, { base: "https://example.com/" }))
+					.toBe(JSON.stringify({
+						id: "",
+						vendor: {
+							id: "/vendors/acme",
+							name: ""
+						}
+					}));
+			});
+
+		});
+
+		it("should use defaultBase when base option is omitted", async () => {
+			const model: Model = { id: "app:/products/42" };
+
+			expect(encodeModel(model))
+				.toBe(JSON.stringify({ id: "/products/42" }));
+		});
+
+		it("should encode empty model", async () => {
+			expect(encodeModel({})).toBe(JSON.stringify({}));
+		});
+
+		it("should encode model with primitive templates", async () => {
+			const model: Model = {
+				id: "",
+				name: "",
+				price: 0,
+				available: true
+			};
+
+			expect(encodeModel(model)).toBe(JSON.stringify(model));
+		});
+
+		it("should encode model with nested model", async () => {
+			const model: Model = {
+				id: "",
+				vendor: { id: "", name: "" }
+			};
+
+			expect(encodeModel(model)).toBe(JSON.stringify(model));
+		});
+
+		it("should encode model with array templates", async () => {
+			const model: Model = {
+				id: "",
+				tags: [""]
+			};
+
+			expect(encodeModel(model)).toBe(JSON.stringify(model));
+		});
+
+		it("should encode model with locale templates", async () => {
+			const model: Model = {
+				id: "",
+				name: { en: "", fr: "" }
+			};
+
+			expect(encodeModel(model)).toBe(JSON.stringify(model));
+		});
+
+		it("should encode model with binding keys", async () => {
+			const model: Model = {
+				"vendorName=vendor.name": ""
+			};
+
+			expect(encodeModel(model)).toBe(JSON.stringify(model));
+		});
+
+		it("should encode model with collection query", async () => {
+			const model: Model = {
+				items: [{
+					id: "",
+					name: "",
+					">=price": 50,
+					"#": 25
+				}]
+			};
+
+			expect(encodeModel(model)).toBe(JSON.stringify(model));
+		});
+
+		it("should reject invalid model", async () => {
+			expect(() => encodeModel(null as unknown as Model)).toThrow(TypeError);
+			expect(() => encodeModel(42 as unknown as Model)).toThrow(TypeError);
+		});
+
+	});
+
+	describe("decodeModel()", () => {
+
+		describe("base option", () => {
+
+			it("should accept absolute hierarchical IRI base", async () => {
+				const json = JSON.stringify({ id: "/products/42" });
+
+				expect(() => decodeModel(json, { base: "https://example.com/" })).not.toThrow();
+			});
+
+			it("should reject relative IRI base", async () => {
+				const json = JSON.stringify({ id: "/products/42" });
+
+				expect(() => decodeModel(json, { base: "/relative/path" })).toThrow(TypeError);
+			});
+
+			it("should accept path-absolute IRI base", async () => {
+				const json = JSON.stringify({ id: "/products/42" });
+
+				expect(decodeModel(json, { base: defaultBase }))
+					.toEqual({ id: "app:/products/42" });
+			});
+
+			it("should resolve root-relative IRI to absolute", async () => {
+				const json = JSON.stringify({ id: "/products/42" });
+
+				expect(decodeModel(json, { base: "https://example.com/" }))
+					.toEqual({ id: "https://example.com/products/42" });
+			});
+
+			it("should preserve absolute IRI", async () => {
+				const json = JSON.stringify({ id: "https://other.com/products/42" });
+
+				expect(decodeModel(json, { base: "https://example.com/" }))
+					.toEqual({ id: "https://other.com/products/42" });
+			});
+
+			it("should resolve IRIs recursively in nested structures", async () => {
+				const json = JSON.stringify({
+					id: "",
+					vendor: {
+						id: "/vendors/acme",
+						name: ""
+					}
+				});
+
+				expect(decodeModel(json, { base: "https://example.com/" }))
+					.toEqual({
+						id: "",
+						vendor: {
+							id: "https://example.com/vendors/acme",
+							name: ""
+						}
+					});
+			});
+
+		});
+
+		it("should use defaultBase when base option is omitted", async () => {
+			const json = JSON.stringify({ id: "/products/42" });
+
+			expect(decodeModel(json))
+				.toEqual({ id: "app:/products/42" });
+		});
+
+		it("should decode empty model", async () => {
+			expect(decodeModel(JSON.stringify({}))).toEqual({});
+		});
+
+		it("should decode model with primitive templates", async () => {
+			const json = JSON.stringify({
+				id: "",
+				name: "",
+				price: 0,
+				available: true
+			});
+
+			expect(decodeModel(json)).toEqual({
+				id: "",
+				name: "",
+				price: 0,
+				available: true
+			});
+		});
+
+		it("should decode model with nested model", async () => {
+			const json = JSON.stringify({
+				id: "",
+				vendor: {
+					id: "/vendors/acme",
+					name: ""
+				}
+			});
+
+			expect(decodeModel(json)).toEqual({
+				id: "",
+				vendor: {
+					id: "app:/vendors/acme",
+					name: ""
+				}
+			});
+		});
+
+		it("should decode model with binding keys", async () => {
+			const json = JSON.stringify({
+				"vendorName=vendor.name": ""
+			});
+
+			expect(decodeModel(json)).toEqual({
+				"vendorName=vendor.name": ""
+			});
+		});
+
+		it("should roundtrip with encodeModel", async () => {
+			const model: Model = {
+				id: "",
+				name: "",
+				price: 0,
+				vendor: { id: "app:/vendors/acme", name: "" }
+			};
+
+			expect(decodeModel(encodeModel(model))).toEqual(model);
+		});
+
+		it("should throw on invalid JSON", async () => {
+			expect(() => decodeModel("not valid json")).toThrow();
+		});
+
+		it("should throw on non-model JSON", async () => {
+			expect(() => decodeModel(JSON.stringify([1, 2, 3]))).toThrow(TypeError);
+		});
+
+	});
 
 	describe("encodeQuery()", () => {
 
@@ -2652,44 +2931,44 @@ describe("codecs", () => {
 	});
 
 
-	describe("encodeCriterion()", () => {
+	describe("encodeProbe()", () => {
 
 		describe("projection keys", () => {
 
 			it("should encode simple property", async () => {
-				const criterion = { target: "name", pipe: [], path: [] };
+				const probe = { target: "name", pipe: [], path: ["name"] };
 
-				expect(encodeCriterion(criterion)).toBe("name");
+				expect(encodeProbe(probe)).toBe("name");
 			});
 
 			it("should encode aliased property", async () => {
-				const criterion = { target: "city", pipe: [], path: ["address"] };
+				const probe = { target: "city", pipe: [], path: ["address"] };
 
-				expect(encodeCriterion(criterion)).toBe("city=address");
+				expect(encodeProbe(probe)).toBe("city=address");
 			});
 
 			it("should encode aliased property with deep path", async () => {
-				const criterion = { target: "city", pipe: [], path: ["customer", "address"] };
+				const probe = { target: "city", pipe: [], path: ["customer", "address"] };
 
-				expect(encodeCriterion(criterion)).toBe("city=customer.address");
+				expect(encodeProbe(probe)).toBe("city=customer.address");
 			});
 
 			it("should encode property with transform", async () => {
-				const criterion = { target: "releaseYear", pipe: ["year"], path: ["releaseDate"] } as const;
+				const probe = { target: "releaseYear", pipe: ["year"], path: ["releaseDate"] } as const;
 
-				expect(encodeCriterion(criterion)).toBe("releaseYear=year:releaseDate");
+				expect(encodeProbe(probe)).toBe("releaseYear=year:releaseDate");
 			});
 
 			it("should encode property with transform pipeline", async () => {
-				const criterion = { target: "avgPrice", pipe: ["round", "avg"], path: ["price"] } as const;
+				const probe = { target: "avgPrice", pipe: ["round", "avg"], path: ["price"] } as const;
 
-				expect(encodeCriterion(criterion)).toBe("avgPrice=round:avg:price");
+				expect(encodeProbe(probe)).toBe("avgPrice=round:avg:price");
 			});
 
 			it("should encode aggregate without path", async () => {
-				const criterion = { target: "total", pipe: ["count"], path: [] } as const;
+				const probe = { target: "total", pipe: ["count"], path: [] } as const;
 
-				expect(encodeCriterion(criterion)).toBe("total=count:");
+				expect(encodeProbe(probe)).toBe("total=count:");
 			});
 
 		});
@@ -2697,125 +2976,125 @@ describe("codecs", () => {
 		describe("constraint keys", () => {
 
 			it("should encode less than constraint", async () => {
-				const criterion = { target: "<", pipe: [], path: ["price"] };
+				const probe = { target: "<", pipe: [], path: ["price"] };
 
-				expect(encodeCriterion(criterion)).toBe("<price");
+				expect(encodeProbe(probe)).toBe("<price");
 			});
 
 			it("should encode less than or equal constraint", async () => {
-				const criterion = { target: "<=", pipe: [], path: ["price"] };
+				const probe = { target: "<=", pipe: [], path: ["price"] };
 
-				expect(encodeCriterion(criterion)).toBe("<=price");
+				expect(encodeProbe(probe)).toBe("<=price");
 			});
 
 			it("should encode greater than constraint", async () => {
-				const criterion = { target: ">", pipe: [], path: ["price"] };
+				const probe = { target: ">", pipe: [], path: ["price"] };
 
-				expect(encodeCriterion(criterion)).toBe(">price");
+				expect(encodeProbe(probe)).toBe(">price");
 			});
 
 			it("should encode greater than or equal constraint", async () => {
-				const criterion = { target: ">=", pipe: [], path: ["price"] };
+				const probe = { target: ">=", pipe: [], path: ["price"] };
 
-				expect(encodeCriterion(criterion)).toBe(">=price");
+				expect(encodeProbe(probe)).toBe(">=price");
 			});
 
 			it("should encode search constraint", async () => {
-				const criterion = { target: "~", pipe: [], path: ["name"] };
+				const probe = { target: "~", pipe: [], path: ["name"] };
 
-				expect(encodeCriterion(criterion)).toBe("~name");
+				expect(encodeProbe(probe)).toBe("~name");
 			});
 
 			it("should encode disjunctive constraint", async () => {
-				const criterion = { target: "?", pipe: [], path: ["category"] };
+				const probe = { target: "?", pipe: [], path: ["category"] };
 
-				expect(encodeCriterion(criterion)).toBe("?category");
+				expect(encodeProbe(probe)).toBe("?category");
 			});
 
 			it("should encode conjunctive constraint", async () => {
-				const criterion = { target: "!", pipe: [], path: ["tags"] };
+				const probe = { target: "!", pipe: [], path: ["tags"] };
 
-				expect(encodeCriterion(criterion)).toBe("!tags");
+				expect(encodeProbe(probe)).toBe("!tags");
 			});
 
 			it("should encode focus constraint", async () => {
-				const criterion = { target: "*", pipe: [], path: ["category"] };
+				const probe = { target: "*", pipe: [], path: ["category"] };
 
-				expect(encodeCriterion(criterion)).toBe("*category");
+				expect(encodeProbe(probe)).toBe("*category");
 			});
 
 			it("should encode order constraint", async () => {
-				const criterion = { target: "^", pipe: [], path: ["price"] };
+				const probe = { target: "^", pipe: [], path: ["price"] };
 
-				expect(encodeCriterion(criterion)).toBe("^price");
+				expect(encodeProbe(probe)).toBe("^price");
 			});
 
 			it("should encode offset constraint", async () => {
-				const criterion = { target: "@", pipe: [], path: [] };
+				const probe = { target: "@", pipe: [], path: [] };
 
-				expect(encodeCriterion(criterion)).toBe("@");
+				expect(encodeProbe(probe)).toBe("@");
 			});
 
 			it("should encode limit constraint", async () => {
-				const criterion = { target: "#", pipe: [], path: [] };
+				const probe = { target: "#", pipe: [], path: [] };
 
-				expect(encodeCriterion(criterion)).toBe("#");
+				expect(encodeProbe(probe)).toBe("#");
 			});
 
 			it("should encode constraint with path", async () => {
-				const criterion = { target: ">=", pipe: [], path: ["vendor", "rating"] };
+				const probe = { target: ">=", pipe: [], path: ["vendor", "rating"] };
 
-				expect(encodeCriterion(criterion)).toBe(">=vendor.rating");
+				expect(encodeProbe(probe)).toBe(">=vendor.rating");
 			});
 
 			it("should encode constraint with transform", async () => {
-				const criterion = { target: ">=", pipe: ["year"], path: ["releaseDate"] } as const;
+				const probe = { target: ">=", pipe: ["year"], path: ["releaseDate"] } as const;
 
-				expect(encodeCriterion(criterion)).toBe(">=year:releaseDate");
+				expect(encodeProbe(probe)).toBe(">=year:releaseDate");
 			});
 
 		});
 
 	});
 
-	describe("decodeCriterion()", () => {
+	describe("decodeProbe()", () => {
 
 		describe("projection keys", () => {
 
 			it("should decode simple property", async () => {
-				const expected = { target: "name", pipe: [], path: [] };
+				const expected = { target: "name", pipe: [], path: ["name"] };
 
-				expect(decodeCriterion("name")).toEqual(expected);
+				expect(decodeProbe("name")).toEqual(expected);
 			});
 
 			it("should decode aliased property", async () => {
 				const expected = { target: "city", pipe: [], path: ["address"] };
 
-				expect(decodeCriterion("city=address")).toEqual(expected);
+				expect(decodeProbe("city=address")).toEqual(expected);
 			});
 
 			it("should decode aliased property with deep path", async () => {
 				const expected = { target: "city", pipe: [], path: ["customer", "address"] };
 
-				expect(decodeCriterion("city=customer.address")).toEqual(expected);
+				expect(decodeProbe("city=customer.address")).toEqual(expected);
 			});
 
 			it("should decode property with transform", async () => {
 				const expected = { target: "releaseYear", pipe: ["year"], path: ["releaseDate"] };
 
-				expect(decodeCriterion("releaseYear=year:releaseDate")).toEqual(expected);
+				expect(decodeProbe("releaseYear=year:releaseDate")).toEqual(expected);
 			});
 
 			it("should decode property with transform pipeline", async () => {
 				const expected = { target: "avgPrice", pipe: ["round", "avg"], path: ["price"] };
 
-				expect(decodeCriterion("avgPrice=round:avg:price")).toEqual(expected);
+				expect(decodeProbe("avgPrice=round:avg:price")).toEqual(expected);
 			});
 
 			it("should decode aggregate without path", async () => {
 				const expected = { target: "total", pipe: ["count"], path: [] };
 
-				expect(decodeCriterion("total=count:")).toEqual(expected);
+				expect(decodeProbe("total=count:")).toEqual(expected);
 			});
 
 		});
@@ -2825,101 +3104,107 @@ describe("codecs", () => {
 			it("should decode less than constraint", async () => {
 				const expected = { target: "<", pipe: [], path: ["price"] };
 
-				expect(decodeCriterion("<price")).toEqual(expected);
+				expect(decodeProbe("<price")).toEqual(expected);
 			});
 
 			it("should decode less than or equal constraint", async () => {
 				const expected = { target: "<=", pipe: [], path: ["price"] };
 
-				expect(decodeCriterion("<=price")).toEqual(expected);
+				expect(decodeProbe("<=price")).toEqual(expected);
 			});
 
 			it("should decode greater than constraint", async () => {
 				const expected = { target: ">", pipe: [], path: ["price"] };
 
-				expect(decodeCriterion(">price")).toEqual(expected);
+				expect(decodeProbe(">price")).toEqual(expected);
 			});
 
 			it("should decode greater than or equal constraint", async () => {
 				const expected = { target: ">=", pipe: [], path: ["price"] };
 
-				expect(decodeCriterion(">=price")).toEqual(expected);
+				expect(decodeProbe(">=price")).toEqual(expected);
 			});
 
 			it("should decode search constraint", async () => {
 				const expected = { target: "~", pipe: [], path: ["name"] };
 
-				expect(decodeCriterion("~name")).toEqual(expected);
+				expect(decodeProbe("~name")).toEqual(expected);
 			});
 
 			it("should decode disjunctive constraint", async () => {
 				const expected = { target: "?", pipe: [], path: ["category"] };
 
-				expect(decodeCriterion("?category")).toEqual(expected);
+				expect(decodeProbe("?category")).toEqual(expected);
 			});
 
 			it("should decode conjunctive constraint", async () => {
 				const expected = { target: "!", pipe: [], path: ["tags"] };
 
-				expect(decodeCriterion("!tags")).toEqual(expected);
+				expect(decodeProbe("!tags")).toEqual(expected);
 			});
 
 			it("should decode focus constraint", async () => {
 				const expected = { target: "*", pipe: [], path: ["category"] };
 
-				expect(decodeCriterion("*category")).toEqual(expected);
+				expect(decodeProbe("*category")).toEqual(expected);
 			});
 
 			it("should decode order constraint", async () => {
 				const expected = { target: "^", pipe: [], path: ["price"] };
 
-				expect(decodeCriterion("^price")).toEqual(expected);
+				expect(decodeProbe("^price")).toEqual(expected);
 			});
 
 			it("should decode offset constraint", async () => {
 				const expected = { target: "@", pipe: [], path: [] };
 
-				expect(decodeCriterion("@")).toEqual(expected);
+				expect(decodeProbe("@")).toEqual(expected);
 			});
 
 			it("should decode limit constraint", async () => {
 				const expected = { target: "#", pipe: [], path: [] };
 
-				expect(decodeCriterion("#")).toEqual(expected);
+				expect(decodeProbe("#")).toEqual(expected);
 			});
 
 			it("should decode constraint with path", async () => {
 				const expected = { target: ">=", pipe: [], path: ["vendor", "rating"] };
 
-				expect(decodeCriterion(">=vendor.rating")).toEqual(expected);
+				expect(decodeProbe(">=vendor.rating")).toEqual(expected);
 			});
 
 			it("should decode constraint with transform", async () => {
 				const expected = { target: ">=", pipe: ["year"], path: ["releaseDate"] };
 
-				expect(decodeCriterion(">=year:releaseDate")).toEqual(expected);
+				expect(decodeProbe(">=year:releaseDate")).toEqual(expected);
 			});
 
 		});
 
 		describe("roundtrip", () => {
 
-			it("should roundtrip simple property", async () => {
-				const criterion = { target: "name", pipe: [], path: [] };
+			it("should roundtrip simple property shorthand", async () => {
+				const probe = { target: "name", pipe: [], path: ["name"] };
 
-				expect(decodeCriterion(encodeCriterion(criterion))).toEqual(criterion);
+				expect(decodeProbe(encodeProbe(probe))).toEqual(probe);
+			});
+
+			it("should roundtrip simple property explicit form", async () => {
+				const expected = { target: "name", pipe: [], path: ["name"] };
+
+				expect(decodeProbe("name=name")).toEqual(expected);
 			});
 
 			it("should roundtrip aliased property with transform", async () => {
-				const criterion = { target: "avgPrice", pipe: ["round", "avg"], path: ["price"] } as const;
+				const probe = { target: "avgPrice", pipe: ["round", "avg"], path: ["price"] } as const;
 
-				expect(decodeCriterion(encodeCriterion(criterion))).toEqual(criterion);
+				expect(decodeProbe(encodeProbe(probe))).toEqual(probe);
 			});
 
 			it("should roundtrip constraint with path", async () => {
-				const criterion = { target: ">=", pipe: [], path: ["vendor", "rating"] };
+				const probe = { target: ">=", pipe: [], path: ["vendor", "rating"] };
 
-				expect(decodeCriterion(encodeCriterion(criterion))).toEqual(criterion);
+				expect(decodeProbe(encodeProbe(probe))).toEqual(probe);
 			});
 
 		});
@@ -2927,11 +3212,11 @@ describe("codecs", () => {
 		describe("error handling", () => {
 
 			it("should reject path without target", async () => {
-				expect(() => decodeCriterion("address.city")).toThrow();
+				expect(() => decodeProbe("address.city")).toThrow();
 			});
 
 			it("should reject empty string", async () => {
-				expect(() => decodeCriterion("")).toThrow();
+				expect(() => decodeProbe("")).toThrow();
 			});
 
 		});

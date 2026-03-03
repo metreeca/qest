@@ -9,14 +9,18 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Add `encodeModel`/`decodeModel` codecs for `Model` serialization with IRI internalization/resolution
 - Add `lower`, `upper`, `length` string transforms to `Transform` enum
 
 ### Changed
 
 - Replace `zxx` language tag with `und` for language-neutral values
 - Replace `Transform` enum with closed string union type
-- Close transform set: `Criterion.pipe` now typed as `Transform[]` and validated by `isTransform`
+- Close transform set: `Probe.pipe` now typed as `Transform[]` and validated by `isTransform`
+- Extend `Binding` to accept plain `Identifier` as shorthand for `{id}={id}`
+- Align `decodeProbe`/`encodeProbe` with shorthand `Binding` semantics
 - Rename `ValuesModel` to `Template`, `LocalModel` to `Locale`, `LocalsModel` to `Locales`
+- Rename `Criterion` to `Probe`; rename `isCriterion`, `encodeCriterion`, `decodeCriterion` accordingly
 - Inline `ValueModel` into `Template` union; remove `isValueModel` guard
 
 ### Removed
@@ -74,4 +78,4 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Query types for client-driven REST/JSON APIs with property selection, filtering, ordering, and pagination
 - State types for JSON-LD compatible resource representations
 - Query string codecs supporting JSON and form-encoded formats
-- Criterion key codecs for encoding/decoding query operators
+- Probe key codecs for encoding/decoding query operators

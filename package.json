@@ -46,7 +46,6 @@
     "peggy": "npx peggy --dts --format es --allowed-start-rules '*' --output src/model.pegjs.js src/model.pegjs",
     "build": "rm -rf dist docs && npm run peggy && tsc -p tsconfig.build.json && cp src/*.pegjs.* dist && npx typedoc",
     "check": "npx vitest --typecheck run",
-    "watch": "npx tsc --watch",
     "proof": "npx typedoc && (npx typedoc --watch & npx five-server docs --open)"
   },
   "dependencies": {

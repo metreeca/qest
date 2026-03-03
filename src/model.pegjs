@@ -253,38 +253,38 @@ Path
   = Identifier ("." Identifier)*
 
 
-/// Criterion //////////////////////////////////////////////////////////////////////////////////////////////////////////
+/// Probe //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-Criterion
-  = ConstraintCriterion
-  / ProjectionCriterion
+Probe
+  = ConstraintProbe
+  / ProjectionProbe
 
-ProjectionCriterion
-  = target:CriterionId "=" pipe:CriterionTransform+ !. {
+ProjectionProbe
+  = target:ProbeId "=" pipe:ProbeTransform+ !. {
       return { target, pipe, path: [] };
     }
-  / target:CriterionId "=" pipe:CriterionTransform* path:CriterionPath {
+  / target:ProbeId "=" pipe:ProbeTransform* path:ProbePath {
       return { target, pipe, path };
     }
-  / target:CriterionId {
-      return { target, pipe: [], path: [] };
+  / target:ProbeId {
+      return { target, pipe: [], path: [target] };
     }
 
-ConstraintCriterion
-  = op:CriterionOp pipe:CriterionTransform* path:CriterionPath? {
+ConstraintProbe
+  = op:ProbeOp pipe:ProbeTransform* path:ProbePath? {
       return { target: op, pipe, path: path ?? [] };
     }
 
-CriterionId
+ProbeId
   = id:$[^.=<>&:!?~^@#*\[\]]+ &{ return IdentifierPattern.test(id); } { return id; }
 
-CriterionTransform
-  = id:CriterionId ":" { return id; }
+ProbeTransform
+  = id:ProbeId ":" { return id; }
 
-CriterionPath
-  = first:CriterionId rest:("." id:CriterionId { return id; })* { return [first, ...rest]; }
+ProbePath
+  = first:ProbeId rest:("." id:ProbeId { return id; })* { return [first, ...rest]; }
 
-CriterionOp
+ProbeOp
   = "<=" / ">=" / "<" / ">" / "~" / "?" / "!" / "*" / "^" / "@" / "#"
 
 
