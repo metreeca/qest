@@ -1396,7 +1396,7 @@ export function decodeQuery(json: string, opts: CodecOpts = {}): Query {
  *
  * @returns The encoded key string
  *
- * @throws TypeGuardError If `probe` is not a valid {@link Probe}
+ * @throws {TypeError} If `probe` is not a valid {@link Probe}
  *
  * @example
  *
@@ -1434,7 +1434,7 @@ export function encodeProbe(probe: Probe): string {
  *
  * @returns The parsed probe
  *
- * @throws TypeGuardError If `key` is not a string
+ * @throws {TypeError} If `key` is not a valid string
  * @throws {Error} If `key` is malformed or unparseable
  *
  * @example
