@@ -16,18 +16,8 @@
 
 import { describe, expect, it } from "vitest";
 import { defaultBase } from "./index.js";
-import {
-	decodeResource,
-	encodeResource,
-	isLiteral,
-	isLocal,
-	isLocals,
-	isReference,
-	isResource,
-	isValue,
-	isValues,
-	type Resource
-} from "./state.js";
+import { decodeResource, encodeResource, type Resource } from "./state.js";
+import { isLiteral, isLocal, isLocals, isReference, isResource, isValue, isValues } from "./state.core.js";
 
 
 describe("guards", () => {
@@ -383,6 +373,52 @@ describe("codecs", () => {
 
 		});
 
+		describe("indent option", () => {
+
+			it("should not indent by default", async () => {
+				const resource: Resource = { id: "/products/42", name: "Widget" };
+
+				expect(encodeResource(resource))
+					.toBe(JSON.stringify(resource));
+			});
+
+			it("should indent with 2 spaces for true", async () => {
+				const resource: Resource = { id: "/products/42", name: "Widget" };
+
+				expect(encodeResource(resource, { indent: true }))
+					.toBe(JSON.stringify(resource, null, 2));
+			});
+
+			it("should indent with specified number of spaces", async () => {
+				const resource: Resource = { id: "/products/42", name: "Widget" };
+
+				expect(encodeResource(resource, { indent: 4 }))
+					.toBe(JSON.stringify(resource, null, 4));
+			});
+
+			it("should not indent for false", async () => {
+				const resource: Resource = { id: "/products/42", name: "Widget" };
+
+				expect(encodeResource(resource, { indent: false }))
+					.toBe(JSON.stringify(resource));
+			});
+
+			it("should not indent for zero", async () => {
+				const resource: Resource = { id: "/products/42", name: "Widget" };
+
+				expect(encodeResource(resource, { indent: 0 }))
+					.toBe(JSON.stringify(resource));
+			});
+
+			it("should not indent for negative numbers", async () => {
+				const resource: Resource = { id: "/products/42", name: "Widget" };
+
+				expect(encodeResource(resource, { indent: -1 }))
+					.toBe(JSON.stringify(resource));
+			});
+
+		});
+
 		it("should use defaultBase when base option is omitted", async () => {
 			const resource: Resource = { id: "app:/products/42" };
 
@@ -581,6 +617,22 @@ describe("codecs", () => {
 
 		it("should throw on invalid JSON", async () => {
 			expect(() => decodeResource("not valid json")).toThrow();
+		});
+
+		describe("lenient option", () => {
+
+			it("should throw on structurally invalid input by default", async () => {
+				expect(() => decodeResource(JSON.stringify([1, 2, 3]))).toThrow(TypeError);
+			});
+
+			it("should skip structural validation when lenient", async () => {
+				expect(() => decodeResource(JSON.stringify([1, 2, 3]), { lenient: true })).not.toThrow();
+			});
+
+			it("should still throw on syntax errors when lenient", async () => {
+				expect(() => decodeResource("not valid json", { lenient: true })).toThrow();
+			});
+
 		});
 
 	});

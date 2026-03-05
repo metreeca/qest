@@ -18,24 +18,26 @@ import { describe, expect, it } from "vitest";
 import { decodeBase64 } from "./base64.js";
 import { defaultBase } from "./index.js";
 import {
-	decodeModel,
-	decodeProbe,
-	decodeQuery,
-	encodeModel,
-	encodeProbe,
-	encodeQuery,
 	isBinding,
-	isProbe,
 	isExpression,
 	isLocale,
 	isLocales,
 	isModel,
 	isOperator,
 	isOption,
-	isTransform,
 	isOptions,
+	isProbe,
 	isQuery,
 	isTemplate,
+	isTransform
+} from "./model.core.js";
+import {
+	decodeModel,
+	decodeProbe,
+	decodeQuery,
+	encodeModel,
+	encodeProbe,
+	encodeQuery,
 	type Model,
 	type Query
 } from "./model.js";
@@ -872,6 +874,52 @@ describe("codecs", () => {
 
 		});
 
+		describe("indent option", () => {
+
+			it("should not indent by default", async () => {
+				const model: Model = { id: "", name: "" };
+
+				expect(encodeModel(model))
+					.toBe(JSON.stringify(model));
+			});
+
+			it("should indent with 2 spaces for true", async () => {
+				const model: Model = { id: "", name: "" };
+
+				expect(encodeModel(model, { indent: true }))
+					.toBe(JSON.stringify(model, null, 2));
+			});
+
+			it("should indent with specified number of spaces", async () => {
+				const model: Model = { id: "", name: "" };
+
+				expect(encodeModel(model, { indent: 4 }))
+					.toBe(JSON.stringify(model, null, 4));
+			});
+
+			it("should not indent for false", async () => {
+				const model: Model = { id: "", name: "" };
+
+				expect(encodeModel(model, { indent: false }))
+					.toBe(JSON.stringify(model));
+			});
+
+			it("should not indent for zero", async () => {
+				const model: Model = { id: "", name: "" };
+
+				expect(encodeModel(model, { indent: 0 }))
+					.toBe(JSON.stringify(model));
+			});
+
+			it("should not indent for negative numbers", async () => {
+				const model: Model = { id: "", name: "" };
+
+				expect(encodeModel(model, { indent: -1 }))
+					.toBe(JSON.stringify(model));
+			});
+
+		});
+
 		it("should use defaultBase when base option is omitted", async () => {
 			const model: Model = { id: "app:/products/42" };
 
@@ -940,11 +988,6 @@ describe("codecs", () => {
 			};
 
 			expect(encodeModel(model)).toBe(JSON.stringify(model));
-		});
-
-		it("should reject invalid model", async () => {
-			expect(() => encodeModel(null as unknown as Model)).toThrow(TypeError);
-			expect(() => encodeModel(42 as unknown as Model)).toThrow(TypeError);
 		});
 
 	});
@@ -1079,6 +1122,22 @@ describe("codecs", () => {
 
 		it("should throw on non-model JSON", async () => {
 			expect(() => decodeModel(JSON.stringify([1, 2, 3]))).toThrow(TypeError);
+		});
+
+		describe("lenient option", () => {
+
+			it("should throw on structurally invalid input by default", async () => {
+				expect(() => decodeModel(JSON.stringify([1, 2, 3]))).toThrow(TypeError);
+			});
+
+			it("should skip structural validation when lenient", async () => {
+				expect(() => decodeModel(JSON.stringify([1, 2, 3]), { lenient: true })).not.toThrow();
+			});
+
+			it("should still throw on syntax errors when lenient", async () => {
+				expect(() => decodeModel("not valid json", { lenient: true })).toThrow();
+			});
+
 		});
 
 	});
@@ -2900,6 +2959,20 @@ describe("codecs", () => {
 					expect(decoded).toEqual(query);
 				}
 			);
+
+		});
+
+		describe("lenient option", () => {
+
+			it("should skip structural validation when lenient", async () => {
+				const json = encodeURIComponent(JSON.stringify({ "!invalid": true }));
+
+				expect(() => decodeQuery(json, { lenient: true })).not.toThrow();
+			});
+
+			it("should still throw on syntax errors when lenient", async () => {
+				expect(() => decodeQuery(encodeURIComponent("{invalid"), { lenient: true })).toThrow();
+			});
 
 		});
 

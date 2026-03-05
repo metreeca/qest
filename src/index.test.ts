@@ -14,35 +14,38 @@
  * limitations under the License.
  */
 
-import { isString } from "@metreeca/core";
+import { isAny, isString } from "@metreeca/core";
 import { describe, expect, it } from "vitest";
-import { isIndexed } from "./index.js";
+import { isIndexed } from "./index.core.js";
 
-const isAny = (_: unknown): _ is unknown => true;
 
-describe("isIndexed", () => {
+describe("guards", () => {
 
-	it("should accept object with matching values", async () => {
-		expect(isIndexed({ key1: "value1", key2: "value2" }, isString)).toBeTruthy();
-	});
+	describe("isIndexed", () => {
 
-	it("should reject object with non-matching values", async () => {
-		expect(isIndexed({ str: "value", num: 42 }, isString)).toBeFalsy();
-	});
+		it("should accept object with matching values", async () => {
+			expect(isIndexed({ key1: "value1", key2: "value2" }, isString)).toBeTruthy();
+		});
 
-	it("should accept empty object", async () => {
-		expect(isIndexed({}, isString)).toBeTruthy();
-	});
+		it("should reject object with non-matching values", async () => {
+			expect(isIndexed({ str: "value", num: 42 }, isString)).toBeFalsy();
+		});
 
-	it("should reject primitives", async () => {
-		expect(isIndexed("string", isAny)).toBeFalsy();
-		expect(isIndexed(42, isAny)).toBeFalsy();
-		expect(isIndexed(null, isAny)).toBeFalsy();
-	});
+		it("should accept empty object", async () => {
+			expect(isIndexed({}, isString)).toBeTruthy();
+		});
 
-	it("should reject arrays", async () => {
-		expect(isIndexed([], isAny)).toBeFalsy();
-		expect(isIndexed(["a", "b"], isAny)).toBeFalsy();
+		it("should reject primitives", async () => {
+			expect(isIndexed("string", isAny)).toBeFalsy();
+			expect(isIndexed(42, isAny)).toBeFalsy();
+			expect(isIndexed(null, isAny)).toBeFalsy();
+		});
+
+		it("should reject arrays", async () => {
+			expect(isIndexed([], isAny)).toBeFalsy();
+			expect(isIndexed(["a", "b"], isAny)).toBeFalsy();
+		});
+
 	});
 
 });

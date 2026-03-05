@@ -11,9 +11,13 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Add `encodeModel`/`decodeModel` codecs for `Model` serialization with IRI internalization/resolution
 - Add `lower`, `upper`, `length` string transforms to `Transform` enum
+- Add `indent` option to `EncoderOpts` for pretty-printing encoded JSON output
+- Add `lenient` option to `DecoderOpts` to skip structural validation in decoders
 
 ### Changed
 
+- Split `CodecOpts` into separate `EncoderOpts` and `DecoderOpts` types
+- Extract type guards into companion `.core.ts` modules
 - Replace `zxx` language tag with `und` for language-neutral values
 - Replace `Transform` enum with closed string union type
 - Close transform set: `Probe.pipe` now typed as `Transform[]` and validated by `isTransform`

@@ -15,16 +15,13 @@
  */
 
 /**
- * Shared values, types, and guards.
+ * Shared values and types.
  *
  * @module index
- *
- * @groupDescription Guards
- * Type guards for runtime validation of shared types.
  */
 
-import { Identifier, isAny, isIdentifier, isObject, isOptional, key } from "@metreeca/core";
-import { asIRI, type IRI, isIRI } from "@metreeca/core/resource";
+import { Identifier } from "@metreeca/core";
+import { asIRI, type IRI } from "@metreeca/core/resource";
 
 
 /**
@@ -69,60 +66,59 @@ export const defaultBase: IRI = asIRI("app:/");
 export type Indexed<T> =
 	| { readonly [key: Identifier]: T }
 
+
 /**
- * Shared configuration options for codec operations.
- *
- * Controls IRI rewriting behaviour during encoding and decoding. When a base IRI is provided, absolute IRIs are
- * converted to root-relative form during encoding and resolved back to absolute form during decoding.
+ * Configuration options for encoding operations.
  */
-export type CodecOpts = {
+export type EncoderOpts = {
 
 	/**
-	 * Base IRI for IRI resolution (must be absolute and hierarchical).
+	 * Base IRI for IRI internalization (must be absolute and hierarchical).
 	 *
-	 * - **Encoding**: Converts absolute IRIs to internal (root-relative) form
-	 * - **Decoding**: Resolves internal IRIs to absolute form
+	 * Converts absolute IRIs to internal (root-relative) form.
 	 *
 	 * If omitted, no IRI rewriting is performed.
 	 */
 	readonly base?: IRI
 
-}
+	/**
+	 * Indentation level for pretty-printing encoded output.
+	 *
+	 * - When `true`, uses default indentation
+	 * - When a positive number, indents with that many spaces
+	 * - When `false` or a number less than or equal to `0`, disables indentation
+	 *
+	 * If omitted, output is not indented.
+	 */
+	readonly indent? : boolean | number
 
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-/**
- * Checks if a value is an {@link Indexed}.
- *
- * @group Guards
- *
- * @typeParam T The expected type of values in the container
- *
- * @param value The value to check
- * @param is Type guard for validating container values
- *
- * @returns True if the value is a plain object with identifier keys and values satisfying the type guard
- */
-export function isIndexed<T>(value: unknown, is: (value: unknown) => value is T): value is Indexed<T> {
-	return isObject(value, (v, k) => isIdentifier(k) && is(v));
 }
 
 /**
- * Checks if a value is a valid {@link CodecOpts} object.
- *
- * Validates that `value` is an object with an optional `base` property containing a hierarchical IRI. Additional
- * properties are permitted.
- *
- * @group Guards
- *
- * @param value The value to check
- *
- * @returns True if `value` conforms to {@link CodecOpts}; false otherwise
+ * Configuration options for decoding operations.
  */
-export function isCodecOpts(value: unknown): value is CodecOpts {
-	return isObject(value, {
-		base: v => isOptional(v, v => isIRI(v, "hierarchical")),
-		[key]: isAny
-	});
+export type DecoderOpts = {
+
+	/**
+	 * Base IRI for IRI resolution (must be absolute and hierarchical).
+	 *
+	 * Resolves internal IRIs to absolute form.
+	 *
+	 * If omitted, no IRI rewriting is performed.
+	 */
+	readonly base?: IRI
+
+	/**
+	 * Disables structural validation after decoding.
+	 *
+	 * Allows the caller to handle validation independently using more advanced or specialised tools, for example
+	 * for improved error reporting.
+	 *
+	 * - When `true`, structural checks are skipped and only syntax errors are reported through exceptions
+	 * - When `false`, both syntax and structural errors are reported through exceptions
+	 *
+	 * If omitted, decoders apply internal structural validators to the input.
+	 */
+	readonly lenient? : boolean
+
 }

@@ -41,7 +41,7 @@
  * see the {@link Query | Value Ordering} section for details.
  *
  * > [!NOTE]
- * > The {@link model | Model Design} companion document covers the design rationale for the client-driven
+ * > The [Model Design](./model.md) companion document covers the design rationale for the client-driven
  * > retrieval approach, including cross-backend semantics and query normalisation strategies.
  *
  * # Retrieval Patterns
@@ -130,7 +130,7 @@
  * ```
  *
  * Aggregate transforms operate on collections; non-aggregate bindings implicitly define the grouping key,
- * analogous to SQL `GROUP BY` (see {@link model | Aggregate Transforms} for details):
+ * analogous to SQL `GROUP BY` (see [Aggregate Transforms](./model.md#aggregate-transforms) for details):
  *
  * ```typescript
  * const model: Model = {
@@ -306,50 +306,22 @@
  * >
  * > Numeric-looking values like `123` are parsed as numbers unless quoted.
  *
- * @groupDescription Guards
- * Type guards for runtime validation of query and value types.
- *
- * @groupDescription Codecs
- * Functions for converting between serialized and structured representations.
- *
  * @document ./model.md
  *
  * @module
  */
 
-import {
-	Identifier,
-	isArray,
-	isIdentifier,
-	isLiteral as isLiteralValue,
-	isNull,
-	isNumber,
-	isObject,
-	isOptional,
-	isString,
-	isUnion,
-	key
-} from "@metreeca/core";
-import { assert, error } from "@metreeca/core/error";
-import { isTagRange, TagRange } from "@metreeca/core/language";
+import { Identifier, isArray, isIdentifier, isObject, isString } from "@metreeca/core";
+import { error } from "@metreeca/core/error";
+import { TagRange } from "@metreeca/core/language";
 import { immutable } from "@metreeca/core/nested";
 import type { IRI } from "@metreeca/core/resource";
 import { internalize, isIRI, resolve } from "@metreeca/core/resource";
 import { decodeBase64, encodeBase64 } from "./base64.js";
-import { type CodecOpts, defaultBase, Indexed, isCodecOpts, isIndexed } from "./index.js";
+import { type DecoderOpts, defaultBase, type EncoderOpts, Indexed } from "./index.js";
+import { isModel, isProbe, isQuery } from "./model.core.js";
 import * as QueryParser from "./model.pegjs.js";
-import {
-	isLiteral,
-	isLocal,
-	isLocals,
-	isReference,
-	Literal,
-	Local,
-	Locals,
-	Reference,
-	Resource,
-	type Value
-} from "./state.js";
+import { Literal, Local, Locals, Reference, Resource, type Value } from "./state.js";
 
 
 /**
@@ -456,7 +428,7 @@ export type Locales =
  * ordering, and pagination probes. Each probe key uses a prefixed operator syntax to specify constraints,
  * sort order, or pagination limits on the collection.
  *
- * @see {@link model | Value Ordering} for comparison and sorting semantics
+ * @see [Value Ordering](./model.md#comparison-and-collation) for comparison and sorting semantics
  */
 export type Query = Model & {
 
@@ -464,7 +436,7 @@ export type Query = Model & {
 	 * Less-than filter (`"<expression": value`).
 	 *
 	 * Includes resources where at least one expression value is strictly less than the literal
-	 * under {@link model | value ordering} rules.
+	 * under [value ordering](./model.md#comparison-and-collation) rules.
 	 */
 	readonly [lt: `<${Expression}`]: Literal
 
@@ -472,7 +444,7 @@ export type Query = Model & {
 	 * Greater-than filter (`">expression": value`).
 	 *
 	 * Includes resources where at least one expression value is strictly greater than the literal
-	 * under {@link model | value ordering} rules.
+	 * under [value ordering](./model.md#comparison-and-collation) rules.
 	 */
 	readonly [gt: `>${Expression}`]: Literal
 
@@ -480,7 +452,7 @@ export type Query = Model & {
 	 * Less-than-or-equal filter (`"<=expression": value`).
 	 *
 	 * Includes resources where at least one expression value is less than or equal to the literal
-	 * under {@link model | value ordering} rules.
+	 * under [value ordering](./model.md#comparison-and-collation) rules.
 	 */
 	readonly [lte: `<=${Expression}`]: Literal
 
@@ -488,7 +460,7 @@ export type Query = Model & {
 	 * Greater-than-or-equal filter (`">=expression": value`).
 	 *
 	 * Includes resources where at least one expression value is greater than or equal to the literal
-	 * under {@link model | value ordering} rules.
+	 * under [value ordering](./model.md#comparison-and-collation) rules.
 	 */
 	readonly [gte: `>=${Expression}`]: Literal
 
@@ -530,7 +502,8 @@ export type Query = Model & {
 	/**
 	 * Sort ordering (`"^expression": priority`).
 	 *
-	 * Orders results by expression value according to {@link model | value ordering} rules; the sign gives direction
+	 * Orders results by expression value according to [value ordering](./model.md#comparison-and-collation) rules; the
+	 * sign gives direction
 	 * (positive for ascending, negative for descending); the absolute value gives 1-based precedence (1 is highest
 	 * priority); zero is ignored; `"asc"` and `"desc"` are shorthands for `±1`.
 	 *
@@ -596,13 +569,13 @@ export type Binding =
  * Path steps follow {@link Identifier} rules (ECMAScript names).
  *
  * Property path resolution semantics (including multi-valued and union properties) are defined in
- * {@link model | Property Paths}; transform pipe composition rules (including valid/invalid combinations)
- * are defined in {@link model | Transform Pipes}.
+ * [Property Paths](./model.md#property-paths); transform pipe composition rules (including valid/invalid combinations)
+ * are defined in [Transform Pipes](./model.md#transform-pipes).
  *
  * > [!WARNING]
  * > This is a type alias for documentation purposes only; expression syntax is validated at runtime
  * > by query processors. Processors reject expressions that reference unsupported transforms; references to
- * > undefined properties resolve to `undefined` in the output (see {@link model | Property Paths}).
+ * > undefined properties resolve to `undefined` in the output (see [Property Paths](./model.md#property-paths)).
  *
  * @example
  *
@@ -704,7 +677,7 @@ export type Probe = {
  * Constraint operator symbols for {@link Query} keys.
  *
  * @see {@link Query} for constraint semantics
- * @see {@link model | Value Ordering} for comparison and sorting semantics
+ * @see [Value Ordering](./model.md#comparison-and-collation) for comparison and sorting semantics
  */
 export type Operator =
 	| "<"
@@ -753,8 +726,10 @@ export type Operator =
  * |----------------|------------------------------------------------------------------|--------------|---------------|
  * | **aggregates** | Summarise a set of values                                        |              |               |
  * | `count`        | Count values; `0` for empty sets                                 | any          | `xsd:integer` |
- * | `min`          | Select {@link model | minimum value}; `undefined` for empty sets | any          | same as input |
- * | `max`          | Select {@link model | maximum value}; `undefined` for empty sets | any          | same as input |
+ * | `min`          | Select [minimum value](./model.md#aggregate-transforms); `undefined` for empty sets | any
+ *  | same as input |
+ * | `max`          | Select [maximum value](./model.md#aggregate-transforms); `undefined` for empty sets | any
+ *  | same as input |
  * | `sum`          | Sum numeric values; `0` for empty sets                           | numeric      | same as input |
  * | `avg`          | Average numeric values; `undefined` for empty sets               | numeric      | `xsd:decimal` |
  * | **numeric**    | Transform numeric values                                         |              |               |
@@ -777,13 +752,13 @@ export type Operator =
  * ## Error Handling
  *
  * Scalar transforms produce `undefined` for undefined inputs and domain violations (for example, `abs` on a string);
- * aggregate transforms silently skip invalid values before computing the result. See {@link model | Scalar Transforms}
- * and {@link model | Aggregate Transforms} for the full adopted semantics, including empty set behaviour, multi-valued
- * properties, and type promotion rules.
+ * aggregate transforms silently skip invalid values before computing the result. See [Scalar
+ * Transforms](./model.md#scalar-transforms) and [Aggregate Transforms](./model.md#aggregate-transforms) for the full
+ * adopted semantics, including empty set behaviour, multi-valued properties, and type promotion rules.
  *
  * The supported set is restricted to the intersection of well-defined counterparts across XPath 2.0, SPARQL 1.1,
- * SQL:2011, and GQL:2024/openCypher; see the {@link model | Design Rationale} for the cross-backend design approach
- * and {@link model | Query Normalisation} for backend-specific adjustments.
+ * SQL:2011, and GQL:2024/openCypher; see the [Design Rationale](./model.md#design-rationale) for the cross-backend
+ * design approach and [Query Normalisation](./model.md#query-normalisation) for backend-specific adjustments.
  */
 export type Transform =
 
@@ -813,267 +788,19 @@ export type Transform =
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
- * Checks if a value is a {@link Model}.
- *
- * @group Guards
- *
- * @param value The value to check
- *
- * @returns True if the value is a valid projection model
- */
-export function isModel(value: unknown): value is Model {
-	return isObject(value, (v, k) =>
-		isBinding(k) && (isTemplate(v) || isIndexed(v, isTemplate))
-	);
-}
-
-
-/**
- * Checks if a value is a {@link Template}.
- *
- * @group Guards
- *
- * @param value The value to check
- *
- * @returns True if the value is a valid property value template
- */
-export function isTemplate(value: unknown): value is Template {
-	return isUnion(value, [
-		isLiteral,
-		isReference,
-		isModel,
-		isLocale,
-		isLocales,
-		v => isArray(v, [isLiteral]),
-		v => isArray(v, [isReference]),
-		v => isArray(v, [isQuery])
-	]);
-}
-
-/**
- * Checks if a value is a {@link Locale}.
- *
- * @group Guards
- *
- * @param value The value to check
- *
- * @returns True if the value is a valid single-valued locale placeholder
- */
-export function isLocale(value: unknown): value is Locale {
-	return isString(value) || isObject(value, (v, k) => isTagRange(k) && isString(v));
-}
-
-/**
- * Checks if a value is a {@link Locales}.
- *
- * @group Guards
- *
- * @param value The value to check
- *
- * @returns True if the value is a valid multi-valued locale placeholder
- */
-export function isLocales(value: unknown): value is Locales {
-	return isArray(value, [isString]) || isObject(value, (v, k) => isTagRange(k) && isArray(v, [isString]));
-}
-
-/**
- * Checks if a value is a {@link Query}.
- *
- * @group Guards
- *
- * @param value The value to check
- *
- * @returns True if the value is a valid query combining projection, filtering, ordering, and pagination
- */
-export function isQuery(value: unknown): value is Query {
-	return isObject(value, (v, k) => {
-
-		// projection
-
-		if ( isBinding(k) as boolean ) {
-
-			return isTemplate(v) || isIndexed(v, isTemplate);
-
-		}
-
-		// filtering
-
-		else if ( k.startsWith("<=") || k.startsWith(">=") ) {
-
-			return isLiteral(v);
-
-		} else if ( k.startsWith("<") || k.startsWith(">") ) {
-
-			return isLiteral(v);
-
-		} else if ( k.startsWith("~") ) {
-
-			return isString(v);
-
-		} else if ( k.startsWith("?") || k.startsWith("!") ) {
-
-			return isOptions(v);
-
-		}
-
-		// ordering
-
-		else if ( k.startsWith("*") ) {
-
-			return isOptions(v);
-
-		} else if ( k.startsWith("^") ) {
-
-			return isNumber(v) || isLiteralValue(v, ["asc", "desc"]);
-
-		}
-
-		// paging
-
-		else if ( k === "@" || k === "#" ) {
-
-			return isNumber(v);
-
-		} else {
-
-			return false;
-
-		}
-
-	});
-}
-
-
-/**
- * Checks if a value is a {@link Binding}.
- *
- * @group Guards
- *
- * @param value The value to check
- *
- * @returns True if the value is a string matching the `{identifier}={expression}` syntax
- */
-export function isBinding(value: unknown): value is Binding {
-	return isIdentifier(value) || isString(value) && value.includes("=")
-		&& isIdentifier(value.slice(0, value.indexOf("=")))
-		&& isExpression(value.slice(value.indexOf("=")+1));
-}
-
-/**
- * Checks if a value is an {@link Expression}.
- *
- * @group Guards
- *
- * @param value The value to check
- *
- * @returns True if the value matches expression syntax (transform pipeline and property path)
- */
-export function isExpression(value: unknown): value is Expression {
-	return isString(value) && (() => {
-
-		const segments = value.split(":");
-		const path = segments.at(-1) ?? "";
-
-		return segments.slice(0, -1).every(isTransform)
-			&& (path === "" || path.split(".").every(isIdentifier));
-
-	})();
-}
-
-
-/**
- * Checks if a value is an {@link Options}.
- *
- * @group Guards
- *
- * @param value The value to check
- *
- * @returns True if the value is an option, local, locals, or array of options
- */
-export function isOptions(value: unknown): value is Options {
-	return isUnion(value, [isOption, isLocal, isLocals, v => isArray(v, isOption)]);
-}
-
-/**
- * Checks if a value is an {@link Option}.
- *
- * @group Guards
- *
- * @param value The value to check
- *
- * @returns True if the value is null, a literal, or a reference
- */
-export function isOption(value: unknown): value is Option {
-	return isUnion(value, [isNull, isLiteral, isReference]);
-}
-
-
-/**
- * Checks if a value is a {@link Probe}.
- *
- * @group Guards
- *
- * @param value The value to check
- *
- * @returns True if the value is a valid parsed probe
- */
-export function isProbe(value: unknown): value is Probe {
-	return isObject(value, {
-		target: v => isIdentifier(v) || isOperator(v),
-		pipe: (v: unknown) => isArray(v, isTransform),
-		path: (v: unknown) => isArray(v, isIdentifier)
-	});
-}
-
-/**
- * Checks if a value is an {@link Operator}.
- *
- * @group Guards
- *
- * @param value The value to check
- *
- * @returns True if the value is a valid constraint operator symbol
- */
-export function isOperator(value: unknown): value is Operator {
-	return isLiteralValue(value, ["<", ">", "<=", ">=", "~", "?", "!", "*", "^", "@", "#"]);
-}
-
-/**
- * Checks if a value is a {@link Transform}.
- *
- * @group Guards
- *
- * @param value The value to check
- *
- * @returns True if the value is a valid transform name
- */
-export function isTransform(value: unknown): value is Transform {
-	return isLiteralValue(value, [
-		"count", "min", "max", "sum", "avg",
-		"abs", "floor", "ceil", "round",
-		"lower", "upper", "length",
-		"year", "month", "day", "hours", "minutes", "seconds"
-	]);
-}
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-/**
  * Encodes a model as a JSON string.
  *
  * Serializes a {@link Model} object into a JSON string. If `base` is provided, converts absolute IRIs
  * (matching `isIRI(value, "absolute")`) to internal IRIs using {@link internalize}, recursively throughout
  * the model structure. Otherwise, performs plain JSON serialization.
  *
- * @group Codecs
- *
  * @param model The model to encode
- * @param opts Encoding options
+ * @param base Base IRI for internalizing absolute IRIs
+ * @param indent Indentation level for pretty-printing output
  *
  * @returns The JSON string, with internalized IRIs if `base` is provided
  *
- * @throws {TypeError} If `model` is not a valid {@link Model} or `opts` is not a valid {@link CodecOpts}
+ * @throws {TypeError} If `base` is not a hierarchical IRI
  *
  * @example
  *
@@ -1087,16 +814,25 @@ export function isTransform(value: unknown): value is Transform {
  *
  * @see {@link decodeModel}
  */
-export function encodeModel(model: Model, opts: CodecOpts = {}): string {
+export function encodeModel(model: Model, {
 
-	const $model = immutable(model, isModel);
-	const { base = defaultBase } = assert(opts, isCodecOpts);
+	base = defaultBase,
+	indent
 
-	return JSON.stringify($model, (_key, value) =>
-		isIRI(value, "absolute")
+}: EncoderOpts = {}): string {
+
+	if ( base !== defaultBase && !isIRI(base, "hierarchical") ) {
+		throw new TypeError(`invalid non-hierarchical base IRI <${base}>`);
+	}
+
+	return JSON.stringify(model, replacer, indent === true ? 2 : indent || undefined);
+
+
+	function replacer(_key: string, value: unknown): unknown {
+		return isIRI(value, "absolute")
 			? internalize(base, value)
-			: value
-	);
+			: value;
+	}
 
 }
 
@@ -1107,14 +843,15 @@ export function encodeModel(model: Model, opts: CodecOpts = {}): string {
  * (matching `isIRI(value, "internal")`) to absolute IRIs using `resolve()`, recursively throughout
  * the model structure. Otherwise, performs plain JSON parsing.
  *
- * @group Codecs
- *
  * @param json The JSON-serialized {@link Model}
- * @param opts Decoding options
+ * @param base Base IRI for resolving internal IRIs
+ * @param lenient Disables structural validation when `true`
  *
  * @returns The decoded model, with resolved IRIs if `base` is provided
  *
- * @throws {TypeError} If `json` is not a string, not a valid {@link Model}, or `opts` is not a valid {@link CodecOpts}
+ * @throws {TypeError} If `base` is not a hierarchical IRI
+ * @throws {TypeError} If the decoded value fails structural validation (unless `lenient` is `true`)
+ * @throws {SyntaxError} If `json` is not valid JSON
  *
  * @example
  *
@@ -1128,16 +865,22 @@ export function encodeModel(model: Model, opts: CodecOpts = {}): string {
  *
  * @see {@link encodeModel}
  */
-export function decodeModel(json: string, opts: CodecOpts = {}): Model {
+export function decodeModel(json: string, {
 
-	const $json = assert(json, isString);
-	const { base = defaultBase } = assert(opts, isCodecOpts);
+	base = defaultBase,
+	lenient
 
-	const model = JSON.parse($json, (_key, value) =>
+}: DecoderOpts = {}): Model {
+
+	if ( base !== defaultBase && !isIRI(base, "hierarchical") ) {
+		throw new TypeError(`invalid non-hierarchical base IRI <${base}>`);
+	}
+
+	const model = JSON.parse(json, (_key, value) =>
 		isIRI(value, "internal") ? resolve(base, value) : value
 	);
 
-	return immutable(model, isModel, "malformed model");
+	return immutable(model, lenient ? (v): v is Model => true : isModel, "malformed model");
 
 }
 
@@ -1151,11 +894,9 @@ export function decodeModel(json: string, opts: CodecOpts = {}): Model {
  * If `base` is provided, converts absolute IRIs (matching `isIRI(value, "absolute")`) to root-relative IRIs
  * using {@link internalize}, recursively throughout the query structure. Otherwise, performs plain serialization.
  *
- * @group Codecs
- *
  * @param query The query object to encode
- * @param opts Encoding options
- * @param opts.mode The output format:
+ * @param base Base IRI for internalizing absolute IRIs
+ * @param mode The output format:
  *
  * - `"json"` (default) — [Percent-encoded](https://www.rfc-editor.org/rfc/rfc3986#section-2.1) JSON; human-readable
  *   but verbose; see [JSON Serialization](#json-serialization)
@@ -1165,8 +906,7 @@ export function decodeModel(json: string, opts: CodecOpts = {}): Model {
  *
  * @returns The encoded query string, with internalized IRIs if `base` is provided
  *
- * @throws {TypeError} If `query` is not a valid {@link Query}, `opts.mode` is not a supported format,
- *   or `opts.base` is not an absolute hierarchical IRI
+ * @throws {TypeError} If `base` is not a hierarchical IRI
  *
  * @remarks
  *
@@ -1192,28 +932,28 @@ export function decodeModel(json: string, opts: CodecOpts = {}): Model {
  *
  * @see {@link decodeQuery}
  */
-export function encodeQuery(
-	query: Query,
-	opts: CodecOpts & { readonly mode?: "json" | "base64" | "form" } = {}
-): string {
+export function encodeQuery(query: Query, {
 
-	const $query = immutable(query, isQuery);
-	const { base = defaultBase, mode = "json" } = assert(opts, isOpts);
+	base = defaultBase,
+	mode = "json"
 
-	const internalized = internalizeIRIs(base, $query);
+}: EncoderOpts & {
+
+	readonly mode?: "json" | "base64" | "form"
+
+} = {}): string {
+
+	if ( base !== defaultBase && !isIRI(base, "hierarchical") ) {
+		throw new TypeError(`invalid non-hierarchical base IRI <${base}>`);
+	}
+
+	const internalized = internalizeIRIs(base, query);
 
 	return mode === "json" ? encodeURIComponent(JSON.stringify(internalized))
 		: mode === "base64" ? encodeBase64(JSON.stringify(internalized))
 			: mode === "form" ? encodeFormQuery(internalized)
 				: error(new TypeError(`unsupported mode <${mode}>`));
 
-
-	function isOpts(value: unknown): value is typeof opts {
-		return isCodecOpts(value) && isObject(value, {
-			mode: v => isOptional(v, v => isLiteralValue(v, ["json", "base64", "form"])),
-			[key]: () => true
-		});
-	}
 
 
 	function internalizeIRIs(base: string, q: Query): Query {
@@ -1276,14 +1016,13 @@ export function encodeQuery(
  * If `base` is provided, resolves internal IRIs (matching `isIRI(value, "internal")`) to absolute IRIs
  * using `resolve()`, recursively throughout the query structure. Otherwise, performs plain parsing.
  *
- * @group Codecs
- *
  * @param json The URL-encoded {@link Query} string (JSON, base64, or form format)
- * @param opts Decoding options
+ * @param base Base IRI for resolving internal IRIs
+ * @param lenient Disables structural validation when `true`
  *
  * @returns The decoded query, with resolved IRIs if `base` is provided
  *
- * @throws {TypeError} If `json` is not a string, not a valid {@link Query}, or `opts` is not a valid {@link CodecOpts}
+ * @throws {TypeError} If `base` is not a hierarchical IRI
  * @throws {Error} If `json` is malformed or unparseable
  *
  * @remarks
@@ -1309,48 +1048,55 @@ export function encodeQuery(
  *
  * @see {@link encodeQuery}
  */
-export function decodeQuery(json: string, opts: CodecOpts = {}): Query {
+export function decodeQuery(json: string, {
 
-	const $json = assert(json, isString);
-	const { base = defaultBase } = assert(opts, isCodecOpts);
+	base = defaultBase,
+	lenient
 
-	try {
+}: DecoderOpts = {}): Query {
 
-		if ( $json === "" ) {
-
-			return immutable({}, isQuery, "malformed query");
-
-		} else if ( $json.startsWith("%7B") || $json.startsWith("{") ) {
-
-			// JSON format (starts with %7B which is encoded '{')
-
-			const query = parseJSON(base, decodeURIComponent($json));
-
-			return immutable(query, isQuery, "malformed query");
-
-		} else if ( /^e[A-Za-z0-9+/_-]*=*$/.test($json) ) {
-
-			// base64 format - JSON objects encode to base64 starting with 'e'
-
-			const query = parseJSON(base, decodeBase64($json));
-
-			return immutable(assert(query, isQuery, "malformed query"));
-
-		} else {
-
-			// form format (application/x-www-form-urlencoded) parsed via Peggy grammar
-			// decode keys separately while preserving encoded values for the parser's value handling
-
-			const query = resolveIRIs(base, QueryParser.parse(decodeFormKeys($json), { startRule: "Query" }));
-
-			return immutable(assert(query, isQuery, "malformed query"));
-
-		}
-
-	} catch ( cause ) {
-		throw new Error(`invalid query <${$json}>`, { cause });
+	if ( base !== defaultBase && !isIRI(base, "hierarchical") ) {
+		throw new TypeError(`invalid non-hierarchical base IRI <${base}>`);
 	}
 
+
+	return immutable(decode(), lenient ? (v): v is Query => true : isQuery, "malformed query");
+
+
+	function decode() {
+		try {
+
+			if ( json === "" ) {
+
+				return {};
+
+			} else if ( json.startsWith("%7B") || json.startsWith("{") ) {
+
+				// JSON format (starts with %7B which is encoded '{')
+
+				return parseJSON(base, decodeURIComponent(json));
+
+			} else if ( /^e[A-Za-z0-9+/_-]*=*$/.test(json) ) {
+
+				// base64 format - JSON objects encode to base64 starting with 'e'
+
+				return parseJSON(base, decodeBase64(json));
+
+			} else {
+
+				// form format (application/x-www-form-urlencoded) parsed via Peggy grammar
+				// decode keys separately while preserving encoded values for the parser's value handling
+
+				return resolveIRIs(base, QueryParser.parse(parseForm(json), { startRule: "Query" }));
+
+			}
+
+		} catch ( cause ) {
+
+			throw new Error(`invalid query <${json}>`, { cause });
+
+		}
+	}
 
 	function parseJSON(base: string, json: string): Query {
 		return JSON.parse(json, (_key, value) =>
@@ -1358,13 +1104,7 @@ export function decodeQuery(json: string, opts: CodecOpts = {}): Query {
 		);
 	}
 
-	function resolveIRIs(base: string, parsed: Query): Query {
-		return JSON.parse(JSON.stringify(parsed), (_key, value) =>
-			isIRI(value, "internal") ? resolve(base, value) : value
-		);
-	}
-
-	function decodeFormKeys(query: string): string {
+	function parseForm(query: string): string {
 
 		return query.split("&").map(pair => {
 
@@ -1382,6 +1122,13 @@ export function decodeQuery(json: string, opts: CodecOpts = {}): Query {
 
 	}
 
+
+	function resolveIRIs(base: string, parsed: Query): Query {
+		return JSON.parse(JSON.stringify(parsed), (_key, value) =>
+			isIRI(value, "internal") ? resolve(base, value) : value
+		);
+	}
+
 }
 
 
@@ -1390,13 +1137,9 @@ export function decodeQuery(json: string, opts: CodecOpts = {}): Query {
  *
  * Serializes a parsed {@link Probe} back into its compact string representation suitable for use as a Model key.
  *
- * @group Codecs
- *
  * @param probe The probe to encode
  *
  * @returns The encoded key string
- *
- * @throws {TypeError} If `probe` is not a valid {@link Probe}
  *
  * @example
  *
@@ -1409,7 +1152,7 @@ export function decodeQuery(json: string, opts: CodecOpts = {}): Query {
  */
 export function encodeProbe(probe: Probe): string {
 
-	const { target, pipe, path } = immutable(probe, isProbe);
+	const { target, pipe, path } = probe;
 
 	const pipeString = pipe.map(p => `${p}:`).join("");
 	const pathString = path.join(".");
@@ -1428,13 +1171,10 @@ export function encodeProbe(probe: Probe): string {
  * Parses a Model key string into its structural {@link Probe} components, distinguishing projection keys
  * from constraint keys based on the presence of an {@link Operator} prefix.
  *
- * @group Codecs
- *
  * @param key The query key string to decode
  *
  * @returns The parsed probe
  *
- * @throws {TypeError} If `key` is not a valid string
  * @throws {Error} If `key` is malformed or unparseable
  *
  * @example
@@ -1448,11 +1188,9 @@ export function encodeProbe(probe: Probe): string {
  */
 export function decodeProbe(key: string): Probe {
 
-	const $key = assert(key, isString);
-
 	try {
 
-		const probe = QueryParser.parse($key, { startRule: "Probe" });
+		const probe = QueryParser.parse(key, { startRule: "Probe" });
 
 		return immutable(probe, isProbe, "malformed probe");
 

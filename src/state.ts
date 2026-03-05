@@ -248,30 +248,15 @@
  * @see {@link https://www.rfc-editor.org/rfc/rfc5646.html RFC 5646 - Tags for Identifying Languages}
  *
  *
- * @groupDescription Guards
- * Type guards for runtime validation of resource and value types.
- *
- * @groupDescription Codecs
- * Functions for converting between serialized and structured representations.
- *
  * @module
  */
 
-import {
-	Identifier,
-	isArray,
-	isBoolean,
-	isIdentifier,
-	isNumber,
-	isObject,
-	isString,
-	isUnion
-} from "@metreeca/core";
-import { assert } from "@metreeca/core/error";
-import { isTag, Tag } from "@metreeca/core/language";
+import { Identifier } from "@metreeca/core";
+import { Tag } from "@metreeca/core/language";
 import { immutable } from "@metreeca/core/nested";
 import { internalize, IRI, isIRI, resolve } from "@metreeca/core/resource";
-import { type CodecOpts, defaultBase, type Indexed, isCodecOpts, isIndexed } from "./index.js";
+import { type DecoderOpts, defaultBase, type EncoderOpts, type Indexed } from "./index.js";
+import { isResource } from "./state.core.js";
 
 
 /**
@@ -403,115 +388,19 @@ export type Locals =
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
- * Checks if a value is a {@link Resource}.
- *
- * @group Guards
- *
- * @param value The value to check
- *
- * @returns True if the value is a plain object with identifier keys and {@link Values} or {@link Indexed} values
- */
-export function isResource(value: unknown): value is Resource {
-	return isObject(value, (v, k) => isIdentifier(k) && isUnion(v, [isValues, v => isIndexed(v, isValues)]));
-}
-
-
-/**
- * Checks if a value is a {@link Values}.
- *
- * @group Guards
- *
- * @param value The value to check
- *
- * @returns True if the value is a {@link Value}, {@link Local}, {@link Locals}, or array of values
- */
-export function isValues(value: unknown): value is Values {
-	return isUnion(value, [isValue, isLocal, isLocals, v => isArray(v, isValue)]);
-}
-
-/**
- * Checks if a value is a {@link Value}.
- *
- * @group Guards
- *
- * @param value The value to check
- *
- * @returns True if the value is a {@link Literal}, {@link Reference}, or {@link Resource}
- */
-export function isValue(value: unknown): value is Value {
-	return isUnion(value, [isLiteral, isReference, isResource]);
-}
-
-/**
- * Checks if a value is a {@link Literal}.
- *
- * @group Guards
- *
- * @param value The value to check
- *
- * @returns True if the value is a boolean, finite number, or string
- */
-export function isLiteral(value: unknown): value is Literal {
-	return isUnion(value, [isBoolean, isNumber, isString]);
-}
-
-/**
- * Checks if a value is a {@link Reference}.
- *
- * @group Guards
- *
- * @param value The value to check
- *
- * @returns True if the value is an absolute IRI
- */
-export function isReference(value: unknown): value is Reference {
-	return isIRI(value, "absolute");
-}
-
-/**
- * Checks if a value is a {@link Local}.
- *
- * @group Guards
- *
- * @param value The value to check
- *
- * @returns True if the value is a string or a plain object with language tag keys and string values
- */
-export function isLocal(value: unknown): value is Local {
-	return isString(value) || isObject(value, (v, k) => isTag(k) && isString(v));
-}
-
-/**
- * Checks if a value is a {@link Locals}.
- *
- * @group Guards
- *
- * @param value The value to check
- *
- * @returns True if the value is a string array or a plain object with language tag keys and string array values
- */
-export function isLocals(value: unknown): value is Locals {
-	return isArray(value, isString) || isObject(value, (v, k) => isTag(k) && isArray(v, isString));
-}
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-/**
  * Encodes a resource state as a JSON string.
  *
  * If `base` is provided, converts absolute IRIs (matching `isIRI(value, "absolute")`) to
  * internal IRIs using {@link internalize}, recursively throughout the resource structure.
  * Otherwise, performs plain JSON serialization.
  *
- * @group Codecs
- *
  * @param resource The resource state to encode
- * @param opts Encoding options
+ * @param base Base IRI for internalizing absolute IRIs
+ * @param indent Indentation level for pretty-printing output
  *
  * @returns The JSON string, with internalized IRIs if `base` is provided
  *
- * @throws {TypeError} If `resource` is not a valid {@link Resource} or `opts` is not a valid {@link CodecOpts}
+ * @throws {TypeError} If `base` is not a hierarchical IRI
  *
  * @example
  *
@@ -525,16 +414,25 @@ export function isLocals(value: unknown): value is Locals {
  *
  * @see {@link decodeResource}
  */
-export function encodeResource(resource: Resource, opts: CodecOpts = {}): string {
+export function encodeResource(resource: Resource, {
 
-	const $resource = immutable(resource, isResource);
-	const { base = defaultBase } = assert(opts, isCodecOpts);
+	base = defaultBase,
+	indent
 
-	return JSON.stringify($resource, (_key, value) =>
-		isIRI(value, "absolute")
+}: EncoderOpts = {}): string {
+
+	if ( base !== defaultBase && !isIRI(base, "hierarchical") ) {
+		throw new TypeError(`invalid non-hierarchical base IRI <${base}>`);
+	}
+
+	return JSON.stringify(resource, replacer, indent === true ? 2 : indent || undefined);
+
+
+	function replacer(_key: string, value: unknown): unknown {
+		return isIRI(value, "absolute")
 			? internalize(base, value)
-			: value
-	);
+			: value;
+	}
 
 }
 
@@ -545,15 +443,15 @@ export function encodeResource(resource: Resource, opts: CodecOpts = {}): string
  * absolute IRIs using `resolve()`, recursively throughout the json structure. Otherwise,
  * performs plain JSON parsing.
  *
- * @group Codecs
- *
  * @param json The JSON-serialized {@link Resource}
- * @param opts Decoding options
+ * @param base Base IRI for resolving internal IRIs
+ * @param lenient Disables structural validation when `true`
  *
  * @returns The decoded resource, with resolved IRIs if `base` is provided
  *
- * @throws {TypeError} If `json` is not a string, not a valid {@link Resource}, or `opts` is not a valid
- *   {@link CodecOpts}
+ * @throws {TypeError} If `base` is not a hierarchical IRI
+ * @throws {TypeError} If the decoded value fails structural validation (unless `lenient` is `true`)
+ * @throws {SyntaxError} If `json` is not valid JSON
  *
  * @example
  *
@@ -567,19 +465,23 @@ export function encodeResource(resource: Resource, opts: CodecOpts = {}): string
  *
  * @see {@link encodeResource}
  */
-export function decodeResource(json: string, opts: CodecOpts = {}): Resource {
+export function decodeResource(json: string, {
 
-	const $json = assert(json, isString);
-	const { base = defaultBase } = assert(opts, isCodecOpts);
+	base = defaultBase,
+	lenient
 
-	const resource = JSON.parse($json, (_key, value) =>
+}: DecoderOpts = {}): Resource {
+
+	if ( base !== defaultBase && !isIRI(base, "hierarchical") ) {
+		throw new TypeError(`invalid non-hierarchical base IRI <${base}>`);
+	}
+
+	const resource = JSON.parse(json, (_key, value) =>
 		isIRI(value, "internal")
 			? resolve(base, value)
 			: value
 	);
 
-	return immutable(resource, isResource, "malformed resource");
+	return immutable(resource, lenient ? (v): v is Resource => true : isResource, "malformed resource");
 
 }
-
-
