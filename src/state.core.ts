@@ -20,15 +20,7 @@
  * @module
  */
 
-import {
-	isArray,
-	isBoolean,
-	isIdentifier,
-	isNumber,
-	isObject,
-	isString,
-	isUnion
-} from "@metreeca/core";
+import { isArray, isBoolean, isIdentifier, isNumber, isObject, isString, isUnion } from "@metreeca/core";
 import { isTag } from "@metreeca/core/language";
 import { isIRI } from "@metreeca/core/resource";
 import { isIndexed } from "./index.core.js";

@@ -36,7 +36,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Fix form codec to reconstruct `Local`/`Locals` objects from tagged form parameters during decoding
 - Accept plain strings as `Local`/`Locale` shorthand and plain string arrays as `Locals`/`Locales` shorthand for
-  language-neutral values
+	language-neutral values
 
 ## [0.9.2](https://github.com/metreeca/qest/releases/tag/v0.9.2) - 2026-02-09
 

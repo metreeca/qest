@@ -955,7 +955,6 @@ export function encodeQuery(query: Query, {
 				: error(new TypeError(`unsupported mode <${mode}>`));
 
 
-
 	function internalizeIRIs(base: string, q: Query): Query {
 		return JSON.parse(JSON.stringify(q), (_key, value) =>
 			isIRI(value, "absolute") ? internalize(base, value) : value

@@ -6,18 +6,18 @@ description: Development guidelines and conventions for the @metreeca/qest packa
 # References
 
 - JSON-LD 1.1 W3C Recommendations:
-  - [Core](https://www.w3.org/TR/json-ld11/) - Syntax and data model
-  - [Processing API](https://www.w3.org/TR/json-ld11-api/) - Algorithms and number mapping
-  - [Framing](https://www.w3.org/TR/json-ld11-framing/) - Document reshaping
+	- [Core](https://www.w3.org/TR/json-ld11/) - Syntax and data model
+	- [Processing API](https://www.w3.org/TR/json-ld11-api/) - Algorithms and number mapping
+	- [Framing](https://www.w3.org/TR/json-ld11-framing/) - Document reshaping
 
 - Parsing:
-  - [Peggy](https://peggyjs.org/) - Parser generator for JavaScript
-  - [Peggy Documentation](https://peggyjs.org/documentation.html) - Grammar syntax and API
-  - [Parsing Expression Grammar (PEG)](https://en.wikipedia.org/wiki/Parsing_expression_grammar) - Formal grammar type
-  - [peggy npm](https://www.npmjs.com/package/peggy) - Package repository
+	- [Peggy](https://peggyjs.org/) - Parser generator for JavaScript
+	- [Peggy Documentation](https://peggyjs.org/documentation.html) - Grammar syntax and API
+	- [Parsing Expression Grammar (PEG)](https://en.wikipedia.org/wiki/Parsing_expression_grammar) - Formal grammar type
+	- [peggy npm](https://www.npmjs.com/package/peggy) - Package repository
 
 - Dependencies:
-  - [@metreeca/core](https://metreeca.github.io/core/) - Essential TypeScript abstractions
+	- [@metreeca/core](https://metreeca.github.io/core/) - Essential TypeScript abstractions
 
 # NPM Scripts
 

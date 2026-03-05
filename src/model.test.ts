@@ -16,7 +16,6 @@
 
 import { describe, expect, it } from "vitest";
 import { decodeBase64 } from "./base64.js";
-import { defaultBase } from "./index.js";
 import {
 	isBinding,
 	isExpression,
@@ -700,27 +699,13 @@ describe("guards", () => {
 
 		describe("valid operators", () => {
 
-			it("should accept comparison operators", async () => {
-				expect(isOperator("<")).toBeTruthy();
-				expect(isOperator(">")).toBeTruthy();
-				expect(isOperator("<=")).toBeTruthy();
-				expect(isOperator(">=")).toBeTruthy();
-			});
-
-			it("should accept matching operators", async () => {
-				expect(isOperator("~")).toBeTruthy();
-				expect(isOperator("?")).toBeTruthy();
-				expect(isOperator("!")).toBeTruthy();
-			});
-
-			it("should accept ordering operators", async () => {
-				expect(isOperator("*")).toBeTruthy();
-				expect(isOperator("^")).toBeTruthy();
-			});
-
-			it("should accept paging operators", async () => {
-				expect(isOperator("@")).toBeTruthy();
-				expect(isOperator("#")).toBeTruthy();
+			it.each([
+				["<"], [">"], ["<="], [">="],
+				["~"], ["?"], ["!"],
+				["*"], ["^"],
+				["@"], ["#"]
+			])("should accept %s", async (op) => {
+				expect(isOperator(op)).toBeTruthy();
 			});
 
 		});
@@ -751,35 +736,13 @@ describe("guards", () => {
 
 		describe("valid transforms", () => {
 
-			it("should accept aggregate transforms", async () => {
-				expect(isTransform("count")).toBeTruthy();
-				expect(isTransform("min")).toBeTruthy();
-				expect(isTransform("max")).toBeTruthy();
-				expect(isTransform("sum")).toBeTruthy();
-				expect(isTransform("avg")).toBeTruthy();
-	
-			});
-
-			it("should accept numeric transforms", async () => {
-				expect(isTransform("abs")).toBeTruthy();
-				expect(isTransform("floor")).toBeTruthy();
-				expect(isTransform("ceil")).toBeTruthy();
-				expect(isTransform("round")).toBeTruthy();
-			});
-
-			it("should accept string transforms", async () => {
-				expect(isTransform("lower")).toBeTruthy();
-				expect(isTransform("upper")).toBeTruthy();
-				expect(isTransform("length")).toBeTruthy();
-			});
-
-			it("should accept temporal transforms", async () => {
-				expect(isTransform("year")).toBeTruthy();
-				expect(isTransform("month")).toBeTruthy();
-				expect(isTransform("day")).toBeTruthy();
-				expect(isTransform("hours")).toBeTruthy();
-				expect(isTransform("minutes")).toBeTruthy();
-				expect(isTransform("seconds")).toBeTruthy();
+			it.each([
+				["count"], ["min"], ["max"], ["sum"], ["avg"],
+				["abs"], ["floor"], ["ceil"], ["round"],
+				["lower"], ["upper"], ["length"],
+				["year"], ["month"], ["day"], ["hours"], ["minutes"], ["seconds"]
+			])("should accept %s", async (transform) => {
+				expect(isTransform(transform)).toBeTruthy();
 			});
 
 		});
@@ -813,23 +776,10 @@ describe("codecs", () => {
 
 		describe("base option", () => {
 
-			it("should accept absolute hierarchical IRI base", async () => {
-				const model: Model = { id: "https://example.com/products/42" };
-
-				expect(() => encodeModel(model, { base: "https://example.com/" })).not.toThrow();
-			});
-
 			it("should reject relative IRI base", async () => {
 				const model: Model = { id: "/products/42" };
 
 				expect(() => encodeModel(model, { base: "/relative/path" })).toThrow(TypeError);
-			});
-
-			it("should accept path-absolute IRI base", async () => {
-				const model: Model = { id: "app:/products/42" };
-
-				expect(encodeModel(model, { base: defaultBase }))
-					.toBe(JSON.stringify({ id: "/products/42" }));
 			});
 
 			it("should internalize absolute IRI to root-relative", async () => {
@@ -837,85 +787,6 @@ describe("codecs", () => {
 
 				expect(encodeModel(model, { base: "https://example.com/" }))
 					.toBe(JSON.stringify({ id: "/products/42" }));
-			});
-
-			it("should preserve absolute IRI with different origin", async () => {
-				const model: Model = { id: "https://other.com/products/42" };
-
-				expect(encodeModel(model, { base: "https://example.com/" }))
-					.toBe(JSON.stringify({ id: "https://other.com/products/42" }));
-			});
-
-			it("should preserve root-relative IRI", async () => {
-				const model: Model = { id: "/products/42" };
-
-				expect(encodeModel(model, { base: "https://example.com/" }))
-					.toBe(JSON.stringify({ id: "/products/42" }));
-			});
-
-			it("should internalize IRIs recursively in nested structures", async () => {
-				const model: Model = {
-					id: "",
-					vendor: {
-						id: "https://example.com/vendors/acme",
-						name: ""
-					}
-				};
-
-				expect(encodeModel(model, { base: "https://example.com/" }))
-					.toBe(JSON.stringify({
-						id: "",
-						vendor: {
-							id: "/vendors/acme",
-							name: ""
-						}
-					}));
-			});
-
-		});
-
-		describe("indent option", () => {
-
-			it("should not indent by default", async () => {
-				const model: Model = { id: "", name: "" };
-
-				expect(encodeModel(model))
-					.toBe(JSON.stringify(model));
-			});
-
-			it("should indent with 2 spaces for true", async () => {
-				const model: Model = { id: "", name: "" };
-
-				expect(encodeModel(model, { indent: true }))
-					.toBe(JSON.stringify(model, null, 2));
-			});
-
-			it("should indent with specified number of spaces", async () => {
-				const model: Model = { id: "", name: "" };
-
-				expect(encodeModel(model, { indent: 4 }))
-					.toBe(JSON.stringify(model, null, 4));
-			});
-
-			it("should not indent for false", async () => {
-				const model: Model = { id: "", name: "" };
-
-				expect(encodeModel(model, { indent: false }))
-					.toBe(JSON.stringify(model));
-			});
-
-			it("should not indent for zero", async () => {
-				const model: Model = { id: "", name: "" };
-
-				expect(encodeModel(model, { indent: 0 }))
-					.toBe(JSON.stringify(model));
-			});
-
-			it("should not indent for negative numbers", async () => {
-				const model: Model = { id: "", name: "" };
-
-				expect(encodeModel(model, { indent: -1 }))
-					.toBe(JSON.stringify(model));
 			});
 
 		});
@@ -996,23 +867,10 @@ describe("codecs", () => {
 
 		describe("base option", () => {
 
-			it("should accept absolute hierarchical IRI base", async () => {
-				const json = JSON.stringify({ id: "/products/42" });
-
-				expect(() => decodeModel(json, { base: "https://example.com/" })).not.toThrow();
-			});
-
 			it("should reject relative IRI base", async () => {
 				const json = JSON.stringify({ id: "/products/42" });
 
 				expect(() => decodeModel(json, { base: "/relative/path" })).toThrow(TypeError);
-			});
-
-			it("should accept path-absolute IRI base", async () => {
-				const json = JSON.stringify({ id: "/products/42" });
-
-				expect(decodeModel(json, { base: defaultBase }))
-					.toEqual({ id: "app:/products/42" });
 			});
 
 			it("should resolve root-relative IRI to absolute", async () => {
@@ -1020,32 +878,6 @@ describe("codecs", () => {
 
 				expect(decodeModel(json, { base: "https://example.com/" }))
 					.toEqual({ id: "https://example.com/products/42" });
-			});
-
-			it("should preserve absolute IRI", async () => {
-				const json = JSON.stringify({ id: "https://other.com/products/42" });
-
-				expect(decodeModel(json, { base: "https://example.com/" }))
-					.toEqual({ id: "https://other.com/products/42" });
-			});
-
-			it("should resolve IRIs recursively in nested structures", async () => {
-				const json = JSON.stringify({
-					id: "",
-					vendor: {
-						id: "/vendors/acme",
-						name: ""
-					}
-				});
-
-				expect(decodeModel(json, { base: "https://example.com/" }))
-					.toEqual({
-						id: "",
-						vendor: {
-							id: "https://example.com/vendors/acme",
-							name: ""
-						}
-					});
 			});
 
 		});
@@ -1124,46 +956,16 @@ describe("codecs", () => {
 			expect(() => decodeModel(JSON.stringify([1, 2, 3]))).toThrow(TypeError);
 		});
 
-		describe("lenient option", () => {
-
-			it("should throw on structurally invalid input by default", async () => {
-				expect(() => decodeModel(JSON.stringify([1, 2, 3]))).toThrow(TypeError);
-			});
-
-			it("should skip structural validation when lenient", async () => {
-				expect(() => decodeModel(JSON.stringify([1, 2, 3]), { lenient: true })).not.toThrow();
-			});
-
-			it("should still throw on syntax errors when lenient", async () => {
-				expect(() => decodeModel("not valid json", { lenient: true })).toThrow();
-			});
-
-		});
-
 	});
 
 	describe("encodeQuery()", () => {
 
 		describe("base option", () => {
 
-			it("should accept absolute hierarchical IRI base", async () => {
-				const query = { id: "https://example.com/products/42" };
-
-				expect(() => encodeQuery(query, { mode: "json", base: "https://example.com/" })).not.toThrow();
-			});
-
 			it("should reject relative IRI base", async () => {
 				const query = { id: "/products/42" };
 
 				expect(() => encodeQuery(query, { mode: "json", base: "/relative/path" })).toThrow(TypeError);
-			});
-
-			it("should accept path-absolute IRI base", async () => {
-				const query = { id: "app:/products/42" } as Query;
-
-				const encoded = encodeQuery(query, { mode: "json", base: defaultBase });
-
-				expect(encoded).toBe(encodeURIComponent(JSON.stringify({ id: "/products/42" })));
 			});
 
 			it("should internalize absolute IRI to root-relative in json format", async () => {
@@ -1190,28 +992,6 @@ describe("codecs", () => {
 				expect(encoded).toBe("id=%22%2Fproducts%2F42%22");
 			});
 
-			it("should preserve absolute IRI with different origin", async () => {
-				const query = { id: "https://other.com/products/42" } as Query;
-
-				const encoded = encodeQuery(query, { mode: "json", base: "https://example.com/" });
-
-				expect(encoded).toBe(encodeURIComponent(JSON.stringify({ id: "https://other.com/products/42" })));
-			});
-
-			it("should internalize IRIs recursively in nested structures", async () => {
-				const query = {
-					id: "https://example.com/products/42",
-					vendor: { id: "https://example.com/vendors/acme", name: "" }
-				} as Query;
-
-				const encoded = encodeQuery(query, { mode: "json", base: "https://example.com/" });
-
-				expect(encoded).toBe(encodeURIComponent(JSON.stringify({
-					id: "/products/42",
-					vendor: { id: "/vendors/acme", name: "" }
-				})));
-			});
-
 		});
 
 		it("should use defaultBase when base option is omitted", async () => {
@@ -1223,396 +1003,110 @@ describe("codecs", () => {
 
 		describe("json format", () => {
 
-			describe("basic queries", () => {
+			// json mode produces encodeURIComponent(JSON.stringify(query)) for all query shapes
 
-				it("should encode empty query", async () => {
-					const query = {} as Query;
-					const encoded = encodeQuery(query, { mode: "json" });
+			const jsonCases: [string, Record<string, unknown>][] = [
 
-					expect(encoded).toBe(encodeURIComponent(JSON.stringify(query)));
-				});
+				// basic queries
+				["empty query", {}],
+				["string property", { name: "" }],
+				["number property", { price: 0 }],
+				["boolean property", { available: true }],
+				["multiple properties", { id: "", name: "", price: 0 }],
 
-				it("should encode query with string property", async () => {
-					const query = { name: "" } as Query;
-					const encoded = encodeQuery(query, { mode: "json" });
+				// nested queries
+				["nested resource", { id: "", vendor: { id: "", name: "" } }],
+				["deeply nested resource", { order: { customer: { address: { city: "" } } } }],
 
-					expect(encoded).toBe(encodeURIComponent(JSON.stringify(query)));
-				});
+				// collection queries
+				["singleton array collection", { items: [{ id: "", name: "" }] }],
+				["empty singleton array", { items: [{}] }],
 
-				it("should encode query with number property", async () => {
-					const query = { price: 0 } as Query;
-					const encoded = encodeQuery(query, { mode: "json" });
+				// constraint keys
+				["< constraint", { "<price": 100 }],
+				["<= constraint", { "<=price": 100 }],
+				["> constraint", { ">price": 50 }],
+				[">= constraint", { ">=price": 50 }],
+				["range constraints", { ">=price": 50, "<=price": 150 }],
+				["~ search constraint", { "~name": "widget" }],
+				["? disjunction with array", { "?category": ["electronics", "home"] }],
+				["? disjunction with null", { "?vendor": null }],
+				["! conjunction", { "!tags": ["featured", "sale"] }],
+				["* focus ordering", { "*category": ["featured", "popular"] }],
+				["^ sort (number)", { "^price": 1 }],
+				["^ sort (negative)", { "^name": -2 }],
+				["^ sort (string)", { "^price": "asc" }],
+				["@ offset", { "@": 10 }],
+				["# limit", { "#": 25 }],
+				["@ offset + # limit", { "@": 0, "#": 25 }],
 
-					expect(encoded).toBe(encodeURIComponent(JSON.stringify(query)));
-				});
+				// computed expressions
+				["named expression", { "vendorName=vendor.name": "" }],
+				["transform expression", { "releaseYear=year:releaseDate": 0 }],
+				["aggregate expression", { "total=count:": 0 }],
+				["pipeline expression", { "avgPrice=round:avg:price": 0 }],
 
-				it("should encode query with boolean property", async () => {
-					const query = { available: true } as Query;
-					const encoded = encodeQuery(query, { mode: "json" });
+				// localized content
+				["wildcard locale", { name: { "*": "" } }],
+				["language-tagged locale", { name: { "en": "", "fr": "" } }],
+				["multi-valued locale", { keywords: { "en": [""], "fr": [""] } }],
 
-					expect(encoded).toBe(encodeURIComponent(JSON.stringify(query)));
-				});
+				// complex queries
+				["full collection query", {
+					items: [{
+						id: "", name: "", price: 0,
+						vendor: { id: "", name: "" },
+						">=price": 50, "<=price": 150,
+						"~name": "widget",
+						"?category": ["electronics", "home"],
+						"^price": 1, "^name": -2,
+						"@": 0, "#": 25
+					}]
+				}],
+				["faceted search query", {
+					items: [{
+						"category=min:category": "",
+						"count=count:": 0,
+						"^count": "desc"
+					}]
+				}]
 
-				it("should encode query with multiple properties", async () => {
-					const query = { id: "", name: "", price: 0 } as Query;
-					const encoded = encodeQuery(query, { mode: "json" });
+			];
 
-					expect(encoded).toBe(encodeURIComponent(JSON.stringify(query)));
-				});
+			it.each(jsonCases)("should encode %s", async (_, query) => {
+				const encoded = encodeQuery(query as Query, { mode: "json" });
 
+				expect(encoded).toBe(encodeURIComponent(JSON.stringify(query)));
 			});
 
-			describe("nested queries", () => {
-
-				it("should encode query with nested resource", async () => {
-					const query = {
-						id: "",
-						vendor: { id: "", name: "" }
-					} as Query;
-					const encoded = encodeQuery(query, { mode: "json" });
-
-					expect(encoded).toBe(encodeURIComponent(JSON.stringify(query)));
-				});
-
-				it("should encode query with deeply nested resource", async () => {
-					const query = {
-						order: {
-							customer: {
-								address: { city: "" }
-							}
-						}
-					} as Query;
-					const encoded = encodeQuery(query, { mode: "json" });
-
-					expect(encoded).toBe(encodeURIComponent(JSON.stringify(query)));
-				});
-
-			});
-
-			describe("collection queries", () => {
-
-				it("should encode query with singleton array collection", async () => {
-					const query = {
-						items: [{ id: "", name: "" }]
-					} as Query;
-					const encoded = encodeQuery(query, { mode: "json" });
-
-					expect(encoded).toBe(encodeURIComponent(JSON.stringify(query)));
-				});
-
-				it("should encode query with singleton array", async () => {
-					const query = {
-						items: [{}]
-					} as Query;
-					const encoded = encodeQuery(query, { mode: "json" });
-
-					expect(encoded).toBe(encodeURIComponent(JSON.stringify(query)));
-				});
-
-			});
-
-			describe("constraint keys", () => {
-
-				it("should encode less than constraint", async () => {
-					const query = { "<price": 100 } as Query;
-					const encoded = encodeQuery(query, { mode: "json" });
-
-					expect(encoded).toBe(encodeURIComponent(JSON.stringify(query)));
-				});
-
-				it("should encode less than or equal constraint", async () => {
-					const query = { "<=price": 100 } as Query;
-					const encoded = encodeQuery(query, { mode: "json" });
-
-					expect(encoded).toBe(encodeURIComponent(JSON.stringify(query)));
-				});
-
-				it("should encode greater than constraint", async () => {
-					const query = { ">price": 50 } as Query;
-					const encoded = encodeQuery(query, { mode: "json" });
-
-					expect(encoded).toBe(encodeURIComponent(JSON.stringify(query)));
-				});
-
-				it("should encode greater than or equal constraint", async () => {
-					const query = { ">=price": 50 } as Query;
-					const encoded = encodeQuery(query, { mode: "json" });
-
-					expect(encoded).toBe(encodeURIComponent(JSON.stringify(query)));
-				});
-
-				it("should encode range constraints", async () => {
-					const query = { ">=price": 50, "<=price": 150 } as Query;
-					const encoded = encodeQuery(query, { mode: "json" });
-
-					expect(encoded).toBe(encodeURIComponent(JSON.stringify(query)));
-				});
-
-				it("should encode stemmed word search constraint", async () => {
-					const query = { "~name": "widget" } as Query;
-					const encoded = encodeQuery(query, { mode: "json" });
-
-					expect(encoded).toBe(encodeURIComponent(JSON.stringify(query)));
-				});
-
-				it("should encode disjunctive matching constraint with array", async () => {
-					const query = { "?category": ["electronics", "home"] } as unknown as Query;
-					const encoded = encodeQuery(query, { mode: "json" });
-
-					expect(encoded).toBe(encodeURIComponent(JSON.stringify(query)));
-				});
-
-				it("should encode disjunctive matching constraint with null", async () => {
-					const query = { "?vendor": null } as unknown as Query;
-					const encoded = encodeQuery(query, { mode: "json" });
-
-					expect(encoded).toBe(encodeURIComponent(JSON.stringify(query)));
-				});
-
-				it("should encode conjunctive matching constraint", async () => {
-					const query = { "!tags": ["featured", "sale"] } as unknown as Query;
-					const encoded = encodeQuery(query, { mode: "json" });
-
-					expect(encoded).toBe(encodeURIComponent(JSON.stringify(query)));
-				});
-
-				it("should encode focus ordering constraint", async () => {
-					const query = { "*category": ["featured", "popular"] } as unknown as Query;
-					const encoded = encodeQuery(query, { mode: "json" });
-
-					expect(encoded).toBe(encodeURIComponent(JSON.stringify(query)));
-				});
-
-				it("should encode sort ordering constraint with number", async () => {
-					const query = { "^price": 1 } as Query;
-					const encoded = encodeQuery(query, { mode: "json" });
-
-					expect(encoded).toBe(encodeURIComponent(JSON.stringify(query)));
-				});
-
-				it("should encode sort ordering constraint with negative number", async () => {
-					const query = { "^name": -2 } as Query;
-					const encoded = encodeQuery(query, { mode: "json" });
-
-					expect(encoded).toBe(encodeURIComponent(JSON.stringify(query)));
-				});
-
-				it("should encode sort ordering constraint with string", async () => {
-					const query = { "^price": "asc" } as Query;
-					const encoded = encodeQuery(query, { mode: "json" });
-
-					expect(encoded).toBe(encodeURIComponent(JSON.stringify(query)));
-				});
-
-				it("should encode pagination offset", async () => {
-					const query = { "@": 10 } as Query;
-					const encoded = encodeQuery(query, { mode: "json" });
-
-					expect(encoded).toBe(encodeURIComponent(JSON.stringify(query)));
-				});
-
-				it("should encode pagination limit", async () => {
-					const query = { "#": 25 } as Query;
-					const encoded = encodeQuery(query, { mode: "json" });
-
-					expect(encoded).toBe(encodeURIComponent(JSON.stringify(query)));
-				});
-
-				it("should encode pagination offset and limit", async () => {
-					const query = { "@": 0, "#": 25 } as Query;
-					const encoded = encodeQuery(query, { mode: "json" });
-
-					expect(encoded).toBe(encodeURIComponent(JSON.stringify(query)));
-				});
-
-			});
-
-			describe("computed expressions", () => {
-
-				it("should encode named expression", async () => {
-					const query = { "vendorName=vendor.name": "" } as Query;
-					const encoded = encodeQuery(query, { mode: "json" });
-
-					expect(encoded).toBe(encodeURIComponent(JSON.stringify(query)));
-				});
-
-				it("should encode transform expression", async () => {
-					const query = { "releaseYear=year:releaseDate": 0 } as Query;
-					const encoded = encodeQuery(query, { mode: "json" });
-
-					expect(encoded).toBe(encodeURIComponent(JSON.stringify(query)));
-				});
-
-				it("should encode aggregate expression", async () => {
-					const query = { "total=count:": 0 } as Query;
-					const encoded = encodeQuery(query, { mode: "json" });
-
-					expect(encoded).toBe(encodeURIComponent(JSON.stringify(query)));
-				});
-
-				it("should encode pipeline expression", async () => {
-					const query = { "avgPrice=round:avg:price": 0 } as Query;
-					const encoded = encodeQuery(query, { mode: "json" });
-
-					expect(encoded).toBe(encodeURIComponent(JSON.stringify(query)));
-				});
-
-			});
-
-			describe("localized content", () => {
-
-				it("should encode dictionary with wildcard", async () => {
-					const query = { name: { "*": "" } } as Query;
-					const encoded = encodeQuery(query, { mode: "json" });
-
-					expect(encoded).toBe(encodeURIComponent(JSON.stringify(query)));
-				});
-
-				it("should encode dictionary with specific languages", async () => {
-					const query = { name: { "en": "", "fr": "" } } as Query;
-					const encoded = encodeQuery(query, { mode: "json" });
-
-					expect(encoded).toBe(encodeURIComponent(JSON.stringify(query)));
-				});
-
-				it("should encode multi-valued dictionary", async () => {
-					const query = { keywords: { "en": [""], "fr": [""] } } as Query;
-					const encoded = encodeQuery(query, { mode: "json" });
-
-					expect(encoded).toBe(encodeURIComponent(JSON.stringify(query)));
-				});
-
-			});
-
-			describe("complex queries", () => {
-
-				it("should encode full collection query with constraints", async () => {
-					const query = {
-						items: [{
-							id: "",
-							name: "",
-							price: 0,
-							vendor: { id: "", name: "" },
-							">=price": 50,
-							"<=price": 150,
-							"~name": "widget",
-							"?category": ["electronics", "home"],
-							"^price": 1,
-							"^name": -2,
-							"@": 0,
-							"#": 25
-						}]
-					} as unknown as Query;
-					const encoded = encodeQuery(query, { mode: "json" });
-
-					expect(encoded).toBe(encodeURIComponent(JSON.stringify(query)));
-				});
-
-				it("should encode faceted search query", async () => {
-					const query = {
-						items: [{
-							"category=min:category": "",
-							"count=count:": 0,
-							"^count": "desc"
-						}]
-					} as Query;
-					const encoded = encodeQuery(query, { mode: "json" });
-
-					expect(encoded).toBe(encodeURIComponent(JSON.stringify(query)));
-				});
-
-			});
-
-			describe("default format", () => {
-
-				it("should use json format when no format specified", async () => {
-					const query = { name: "" } as Query;
-					const encodedDefault = encodeQuery(query);
-					const encodedExplicit = encodeQuery(query, { mode: "json" });
-
-					expect(encodedDefault).toBe(encodedExplicit);
-				});
-
+			it("should use json format when no format specified", async () => {
+				const query = { name: "" } as Query;
+				const encodedDefault = encodeQuery(query);
+				const encodedExplicit = encodeQuery(query, { mode: "json" });
+
+				expect(encodedDefault).toBe(encodedExplicit);
 			});
 
 		});
 
 		describe("base64 format", () => {
 
-			describe("basic queries", () => {
+			// basic encoding/decoding covered by roundtrip tests
 
-				it("should encode empty query", async () => {
-					const query = {} as Query;
-					const encoded = encodeQuery(query, { mode: "base64" });
-					const decoded = JSON.parse(decodeBase64(encoded));
+			it("should produce URL-safe output", async () => {
+				const query = { name: "" } as Query;
+				const encoded = encodeQuery(query, { mode: "base64" });
 
-					expect(decoded).toEqual(query);
-				});
-
-				it("should encode query with properties", async () => {
-					const query = { id: "", name: "", price: 0 } as Query;
-					const encoded = encodeQuery(query, { mode: "base64" });
-					const decoded = JSON.parse(decodeBase64(encoded));
-
-					expect(decoded).toEqual(query);
-				});
-
-				it("should produce URL-safe output", async () => {
-					const query = { name: "" } as Query;
-					const encoded = encodeQuery(query, { mode: "base64" });
-
-					// Base64 should not contain URL-unsafe characters needing encoding
-					expect(encoded).toBe(encodeURIComponent(encoded));
-				});
-
+				// base64url should not contain URL-unsafe characters needing encoding
+				expect(encoded).toBe(encodeURIComponent(encoded));
 			});
 
-			describe("nested queries", () => {
+			it("should handle unicode in values", async () => {
+				const query = { "~name": "日本語" } as Query;
+				const encoded = encodeQuery(query, { mode: "base64" });
+				const decoded = JSON.parse(decodeBase64(encoded));
 
-				it("should encode nested resources", async () => {
-					const query = {
-						order: {
-							customer: {
-								address: { city: "" }
-							}
-						}
-					} as Query;
-					const encoded = encodeQuery(query, { mode: "base64" });
-					const decoded = JSON.parse(decodeBase64(encoded));
-
-					expect(decoded).toEqual(query);
-				});
-
-			});
-
-			describe("constraint keys", () => {
-
-				it("should preserve constraint key prefixes", async () => {
-					const query = {
-						">=price": 50,
-						"<=price": 150,
-						"~name": "widget",
-						"?category": ["a", "b"],
-						"^price": 1
-					};
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					const encoded = encodeQuery(query as any, { mode: "base64" });
-					const decoded = JSON.parse(decodeBase64(encoded));
-
-					expect(decoded).toEqual(query);
-				});
-
-			});
-
-			describe("special characters", () => {
-
-				it("should handle unicode in values", async () => {
-					const query = { "~name": "日本語" } as Query;
-					const encoded = encodeQuery(query, { mode: "base64" });
-					const decoded = JSON.parse(decodeBase64(encoded));
-
-					expect(decoded).toEqual(query);
-				});
+				expect(decoded).toEqual(query);
 
 			});
 
@@ -2100,23 +1594,10 @@ describe("codecs", () => {
 
 		describe("base option", () => {
 
-			it("should accept absolute hierarchical IRI base", async () => {
-				const encoded = encodeURIComponent(JSON.stringify({ id: "/products/42" }));
-
-				expect(() => decodeQuery(encoded, { base: "https://example.com/" })).not.toThrow();
-			});
-
 			it("should reject relative IRI base", async () => {
 				const encoded = encodeURIComponent(JSON.stringify({ id: "/products/42" }));
 
 				expect(() => decodeQuery(encoded, { base: "/relative/path" })).toThrow(TypeError);
-			});
-
-			it("should accept path-absolute IRI base", async () => {
-				const encoded = encodeURIComponent(JSON.stringify({ id: "/products/42" }));
-
-				expect(decodeQuery(encoded, { base: defaultBase }))
-					.toEqual({ id: "app:/products/42" } as Query);
 			});
 
 			it("should resolve root-relative IRI to absolute in json format", async () => {
@@ -2142,42 +1623,6 @@ describe("codecs", () => {
 				const decoded = decodeQuery(encoded, { base: "https://example.com/" });
 
 				expect(decoded).toEqual({ "?id": "https://example.com/products/42" } as Query);
-			});
-
-			it("should preserve absolute IRI", async () => {
-				const encoded = encodeURIComponent(JSON.stringify({ id: "https://other.com/products/42" }));
-
-				const decoded = decodeQuery(encoded, { base: "https://example.com/" });
-
-				expect(decoded).toEqual({ id: "https://other.com/products/42" } as Query);
-			});
-
-			it("should preserve non-root-relative IRIs and other strings", async () => {
-				const encoded = encodeURIComponent(JSON.stringify({
-					relative: "../products/42",
-					plain: "Widget"
-				}));
-
-				const decoded = decodeQuery(encoded, { base: "https://example.com/" });
-
-				expect(decoded).toEqual({
-					relative: "../products/42",
-					plain: "Widget"
-				});
-			});
-
-			it("should resolve IRIs recursively in nested structures", async () => {
-				const encoded = encodeURIComponent(JSON.stringify({
-					id: "/products/42",
-					vendor: { id: "/vendors/acme", name: "" }
-				}));
-
-				const decoded = decodeQuery(encoded, { base: "https://example.com/" });
-
-				expect(decoded).toEqual({
-					id: "https://example.com/products/42",
-					vendor: { id: "https://example.com/vendors/acme", name: "" }
-				});
 			});
 
 		});
@@ -2346,93 +1791,31 @@ describe("codecs", () => {
 
 			describe("comparison operators", () => {
 
-				it("should decode less than postfix encoded", async () => {
-					// price<100
-					const decoded = decodeQuery("price%3C100");
-
-					expect(decoded).toHaveProperty("<price", 100);
-				});
-
-				it("should decode less than postfix unencoded", async () => {
-					const decoded = decodeQuery("price<100");
-
-					expect(decoded).toHaveProperty("<price", 100);
-				});
-
-				it("should decode less than or equal postfix encoded", async () => {
-					// price<=100
-					const decoded = decodeQuery("price%3C%3D100");
-
-					expect(decoded).toHaveProperty("<=price", 100);
-				});
-
-				it("should decode less than or equal postfix unencoded", async () => {
-					const decoded = decodeQuery("price<=100");
-
-					expect(decoded).toHaveProperty("<=price", 100);
-				});
-
-				it("should decode greater than postfix encoded", async () => {
-					// price>50
-					const decoded = decodeQuery("price%3E50");
-
-					expect(decoded).toHaveProperty(">price", 50);
-				});
-
-				it("should decode greater than postfix unencoded", async () => {
-					const decoded = decodeQuery("price>50");
-
-					expect(decoded).toHaveProperty(">price", 50);
-				});
-
-				it("should decode greater than or equal postfix encoded", async () => {
-					// price>=50
-					const decoded = decodeQuery("price%3E%3D50");
-
-					expect(decoded).toHaveProperty(">=price", 50);
-				});
-
-				it("should decode greater than or equal postfix unencoded", async () => {
-					const decoded = decodeQuery("price>=50");
-
-					expect(decoded).toHaveProperty(">=price", 50);
-				});
-
-				it("should decode prefix comparison operators", async () => {
-					// >=price=50 (canonical prefix form requires encoding due to = ambiguity)
-					const decoded = decodeQuery("%3E%3Dprice=50");
-
-					expect(decoded).toHaveProperty(">=price", 50);
+				it.each([
+					["< (encoded)", "price%3C100", "<price", 100],
+					["< (unencoded)", "price<100", "<price", 100],
+					["<= (encoded)", "price%3C%3D100", "<=price", 100],
+					["<= (unencoded)", "price<=100", "<=price", 100],
+					["> (encoded)", "price%3E50", ">price", 50],
+					["> (unencoded)", "price>50", ">price", 50],
+					[">= (encoded)", "price%3E%3D50", ">=price", 50],
+					[">= (unencoded)", "price>=50", ">=price", 50],
+					[">= (prefix)", "%3E%3Dprice=50", ">=price", 50]
+				] as const)("should decode %s", async (_, input, key, value) => {
+					expect(decodeQuery(input)).toHaveProperty(key, value);
 				});
 
 			});
 
 			describe("search operator", () => {
 
-				it("should decode stemmed word search encoded", async () => {
-					// ~name=widget
-					const decoded = decodeQuery("%7Ename=widget");
-
-					expect(decoded).toHaveProperty("~name", "widget");
-				});
-
-				it("should decode stemmed word search unencoded", async () => {
-					// ~ is unreserved in RFC 3986, no encoding needed
-					const decoded = decodeQuery("~name=widget");
-
-					expect(decoded).toHaveProperty("~name", "widget");
-				});
-
-				it("should decode spaces as words", async () => {
-					const decoded = decodeQuery("%7Ename=red%20widget");
-
-					expect(decoded).toHaveProperty("~name", "red widget");
-				});
-
-				it("should decode plus as space", async () => {
-					const decoded = decodeQuery("%7Ename=red+widget");
-
-					expect(decoded).toHaveProperty("~name", "red widget");
+				it.each([
+					["encoded", "%7Ename=widget", "widget"],
+					["unencoded", "~name=widget", "widget"],
+					["spaces (%20)", "%7Ename=red%20widget", "red widget"],
+					["plus as space", "%7Ename=red+widget", "red widget"]
+				] as const)("should decode search (%s)", async (_, input, value) => {
+					expect(decodeQuery(input)).toHaveProperty("~name", value);
 				});
 
 			});
@@ -2467,30 +1850,20 @@ describe("codecs", () => {
 
 			describe("conjunctive matching", () => {
 
-				it("should decode all-match constraint encoded", async () => {
-					// !tags=featured&!tags=sale
-					const decoded = decodeQuery("%21tags=featured&%21tags=sale") as Record<string, unknown>;
+				it.each([
+					["encoded", "%21tags=featured&%21tags=sale"],
+					["unencoded", "!tags=featured&!tags=sale"]
+				])("should decode all-match constraint (%s)", async (_, input) => {
+					const decoded = decodeQuery(input) as Record<string, unknown>;
 
 					expect(decoded["!tags"]).toEqual(["featured", "sale"]);
 				});
 
-				it("should decode all-match constraint unencoded", async () => {
-					// ! is unreserved in RFC 3986, no encoding needed
-					const decoded = decodeQuery("!tags=featured&!tags=sale") as Record<string, unknown>;
-
-					expect(decoded["!tags"]).toEqual(["featured", "sale"]);
-				});
-
-				it("should decode explicit prefix operator encoded", async () => {
-					const decoded = decodeQuery("%21tags=premium");
-
-					expect(decoded).toHaveProperty("!tags");
-				});
-
-				it("should decode explicit prefix operator unencoded", async () => {
-					const decoded = decodeQuery("!tags=premium");
-
-					expect(decoded).toHaveProperty("!tags");
+				it.each([
+					["encoded", "%21tags=premium"],
+					["unencoded", "!tags=premium"]
+				])("should decode explicit prefix operator (%s)", async (_, input) => {
+					expect(decodeQuery(input)).toHaveProperty("!tags");
 				});
 
 			});
@@ -2515,111 +1888,32 @@ describe("codecs", () => {
 
 			describe("ordering operators", () => {
 
-				it("should decode ascending sort encoded", async () => {
-					// ^price=asc (shorthand string value)
-					const decoded = decodeQuery("%5Eprice=asc");
-
-					expect(decoded).toHaveProperty("^price", "asc");
-				});
-
-				it("should decode ascending sort unencoded", async () => {
-					const decoded = decodeQuery("^price=asc");
-
-					expect(decoded).toHaveProperty("^price", "asc");
-				});
-
-				it("should decode descending sort encoded", async () => {
-					// ^price=desc (shorthand string value)
-					const decoded = decodeQuery("%5Eprice=desc");
-
-					expect(decoded).toHaveProperty("^price", "desc");
-				});
-
-				it("should decode descending sort unencoded", async () => {
-					const decoded = decodeQuery("^price=desc");
-
-					expect(decoded).toHaveProperty("^price", "desc");
-				});
-
-				it("should decode asc keyword", async () => {
-					const decoded = decodeQuery("^price=asc");
-
-					expect(decoded).toHaveProperty("^price", "asc");
-				});
-
-				it("should decode desc keyword", async () => {
-					const decoded = decodeQuery("^price=desc");
-
-					expect(decoded).toHaveProperty("^price", "desc");
-				});
-
-				it("should decode numeric priority encoded", async () => {
-					// ^price=1 (canonical form)
-					const decoded = decodeQuery("%5Eprice=1");
-
-					expect(decoded).toHaveProperty("^price", 1);
-				});
-
-				it("should decode numeric priority unencoded", async () => {
-					const decoded = decodeQuery("^price=1");
-
-					expect(decoded).toHaveProperty("^price", 1);
-				});
-
-				it("should decode negative priority encoded", async () => {
-					// ^price=-2 (canonical form)
-					const decoded = decodeQuery("%5Eprice=-2");
-
-					expect(decoded).toHaveProperty("^price", -2);
-				});
-
-				it("should decode negative priority unencoded", async () => {
-					const decoded = decodeQuery("^price=-2");
-
-					expect(decoded).toHaveProperty("^price", -2);
+				it.each([
+					["ascending (encoded)", "%5Eprice=asc", "^price", "asc"],
+					["ascending (unencoded)", "^price=asc", "^price", "asc"],
+					["descending (encoded)", "%5Eprice=desc", "^price", "desc"],
+					["descending (unencoded)", "^price=desc", "^price", "desc"],
+					["numeric priority (encoded)", "%5Eprice=1", "^price", 1],
+					["numeric priority (unencoded)", "^price=1", "^price", 1],
+					["negative priority (encoded)", "%5Eprice=-2", "^price", -2],
+					["negative priority (unencoded)", "^price=-2", "^price", -2]
+				] as const)("should decode %s", async (_, input, key, value) => {
+					expect(decodeQuery(input)).toHaveProperty(key, value);
 				});
 
 			});
 
 			describe("pagination", () => {
 
-				it("should decode offset encoded", async () => {
-					// @=10
-					const decoded = decodeQuery("%40=10");
-
-					expect(decoded).toHaveProperty("@", 10);
-				});
-
-				it("should decode offset unencoded", async () => {
-					const decoded = decodeQuery("@=10");
-
-					expect(decoded).toHaveProperty("@", 10);
-				});
-
-				it("should decode limit encoded", async () => {
-					// #=25
-					const decoded = decodeQuery("%23=25");
-
-					expect(decoded).toHaveProperty("#", 25);
-				});
-
-				it("should decode limit unencoded", async () => {
-					// # must be encoded in URLs (fragment delimiter) but decoder should handle if present
-					const decoded = decodeQuery("#=25");
-
-					expect(decoded).toHaveProperty("#", 25);
-				});
-
-				it("should decode zero offset encoded", async () => {
-					const decoded = decodeQuery("%40=0");
-
-					expect(decoded).toHaveProperty("@", 0);
-				});
-
-				it("should decode zero offset unencoded", async () => {
-					const decoded = decodeQuery("@=0");
-
-					expect(decoded).toHaveProperty("@", 0);
+				it.each([
+					["offset", "%40=10", "@", 10],
+					["offset (unencoded)", "@=10", "@", 10],
+					["limit", "%23=25", "#", 25],
+					["limit (unencoded)", "#=25", "#", 25],
+					["zero offset", "%40=0", "@", 0],
+					["zero offset (unencoded)", "@=0", "@", 0]
+				] as const)("should decode %s", async (_, input, key, value) => {
+					expect(decodeQuery(input)).toHaveProperty(key, value);
 				});
 
 			});

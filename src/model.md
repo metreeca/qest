@@ -40,9 +40,9 @@ Properties are classified along two independent axes:
 
 - **No property / no value**: if any step in a property path references an unknown property, or if the property exists
 	but carries no value, the entire path resolves to `undefined`; both cases produce the same result. This lenient
-	behaviour is consistent with union handling, where non-matching branches are silently skipped; strict error
-	semantics for unknown properties would make union traversal significantly more complex, as each branch would need
-	explicit property-existence checks before resolution
+	behaviour is consistent with union handling, where non-matching branches are silently skipped; strict error semantics
+	for unknown properties would make union traversal significantly more complex, as each branch would need explicit
+	property-existence checks before resolution
 - **Single-valued**: resolve to a single value or `undefined`
 - **Multi-valued**: resolve to a possibly empty JSON array of values; the system does not guarantee ordering, even for
 	backends that natively preserve it (for example, XPath document order)
@@ -253,12 +253,12 @@ SQL rejects unknown columns at compile time rather than producing a runtime `NUL
 detecting unknown properties at query-building time and short-circuiting to a `NULL` literal before emitting SQL. Other
 backends resolve unknown properties to `undefined` natively without additional handling.
 
-| Backend             | Normalisation                                                            |
-|---------------------|--------------------------------------------------------------------------|
-| XPath 2.0           | none — unknown steps produce empty sequence (→ `undefined`) natively     |
-| SPARQL 1.1          | none — unknown properties produce unbound (→ `undefined`) natively       |
-| SQL                 | prevented at query-building time — short-circuit to `NULL` before emit   |
-| GQL:2024/openCypher | none — unknown properties produce `null` (→ `undefined`) natively        |
+| Backend             | Normalisation                                                          |
+|---------------------|------------------------------------------------------------------------|
+| XPath 2.0           | none — unknown steps produce empty sequence (→ `undefined`) natively   |
+| SPARQL 1.1          | none — unknown properties produce unbound (→ `undefined`) natively     |
+| SQL                 | prevented at query-building time — short-circuit to `NULL` before emit |
+| GQL:2024/openCypher | none — unknown properties produce `null` (→ `undefined`) natively      |
 
 ## Domain Violation Guards
 

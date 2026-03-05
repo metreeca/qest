@@ -16,8 +16,8 @@
 
 import { describe, expect, it } from "vitest";
 import { defaultBase } from "./index.js";
-import { decodeResource, encodeResource, type Resource } from "./state.js";
 import { isLiteral, isLocal, isLocals, isReference, isResource, isValue, isValues } from "./state.core.js";
+import { decodeResource, encodeResource, type Resource } from "./state.js";
 
 
 describe("guards", () => {

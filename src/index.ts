@@ -90,7 +90,7 @@ export type EncoderOpts = {
 	 *
 	 * If omitted, output is not indented.
 	 */
-	readonly indent? : boolean | number
+	readonly indent?: boolean | number
 
 }
 
@@ -119,6 +119,6 @@ export type DecoderOpts = {
 	 *
 	 * If omitted, decoders apply internal structural validators to the input.
 	 */
-	readonly lenient? : boolean
+	readonly lenient?: boolean
 
 }
