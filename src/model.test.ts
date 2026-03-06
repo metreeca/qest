@@ -1179,7 +1179,7 @@ describe("codecs", () => {
 
 			describe("search operator", () => {
 
-				it("should encode stemmed word search", async () => {
+				it("should encode prefix word search", async () => {
 					const query = { "~name": "widget" } as Query;
 					const encoded = encodeQuery(query, { mode: "form" });
 

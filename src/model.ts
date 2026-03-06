@@ -437,6 +437,8 @@ export type Query = Model & {
 	 *
 	 * Includes resources where at least one expression value is strictly less than the literal
 	 * under [value ordering](./model.md#comparison-and-collation) rules.
+	 *
+	 * Applicable to boolean, numeric, and string properties.
 	 */
 	readonly [lt: `<${Expression}`]: Literal
 
@@ -445,6 +447,8 @@ export type Query = Model & {
 	 *
 	 * Includes resources where at least one expression value is strictly greater than the literal
 	 * under [value ordering](./model.md#comparison-and-collation) rules.
+	 *
+	 * Applicable to boolean, numeric, and string properties.
 	 */
 	readonly [gt: `>${Expression}`]: Literal
 
@@ -453,6 +457,8 @@ export type Query = Model & {
 	 *
 	 * Includes resources where at least one expression value is less than or equal to the literal
 	 * under [value ordering](./model.md#comparison-and-collation) rules.
+	 *
+	 * Applicable to boolean, numeric, and string properties.
 	 */
 	readonly [lte: `<=${Expression}`]: Literal
 
@@ -461,18 +467,28 @@ export type Query = Model & {
 	 *
 	 * Includes resources where at least one expression value is greater than or equal to the literal
 	 * under [value ordering](./model.md#comparison-and-collation) rules.
+	 *
+	 * Applicable to boolean, numeric, and string properties.
 	 */
 	readonly [gte: `>=${Expression}`]: Literal
 
 	/**
-	 * Stemmed word search filter (`"~expression": value`).
+	 * Prefix word search filter (`"~expression": value`).
 	 *
-	 * Includes resources where at least one expression value contains all word stems from the search string.
-	 * Applicable to both plain string and {@link Local | localised text} properties.
+	 * Includes resources where every whitespace-delimited token in the search string is a case-insensitive prefix
+	 * of at least one whitespace-delimited token in the expression value, matching in the order tokens appear
+	 * in the search string.
+	 *
+	 * Applicable to plain string and {@link Local | localised text} properties.
 	 *
 	 * > [!WARNING]
 	 * > When targeting a localised property, the target language must be communicated to the server
-	 * > through an application-specific channel (e.g., `Accept-Language` header or request context).
+	 * > through an application-specific channel (for example, `Accept-Language` header or request context).
+	 *
+	 * > [!WARNING]
+	 * > Matching is diacritics-sensitive: diacritics normalisation is not uniformly supported across storage
+	 * > backends and would require extensive application-level pre-processing at storage time. For detailed
+	 * > matching rules and cross-backend semantics, see [prefix word search](./model.md#prefix-word-search).
 	 */
 	readonly [like: `~${Expression}`]: string
 

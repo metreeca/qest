@@ -3,8 +3,8 @@ title: Model Design
 summary: Cross-backend semantics for property paths and transform pipes
 description: |
   Documents the design rationale and cross-backend comparison for property path
-  resolution, transform pipe composition, type coercion, and collation semantics
-  across XPath 2.0, SPARQL 1.1, SQL:2011, and GQL:2024/openCypher.
+  resolution, transform pipe composition, type coercion, collation, and prefix
+  word search semantics across XPath 2.0, SPARQL 1.1, SQL:2011, and GQL:2024/openCypher.
 ---
 
 # Design Rationale
@@ -115,6 +115,24 @@ The following composition rules govern valid pipes and their evaluation order:
 	`dateTime` but not to `date`
 - **String / numeric**: no implicit parsing or formatting; `abs("3")` is a domain violation
 	(→ `undefined`)
+
+## Prefix Word Search
+
+The `~` filter performs case-insensitive, order-sensitive prefix matching on whitespace-delimited words:
+
+1. Split the search string into whitespace-separated tokens
+1. Split the target value into whitespace-separated words
+1. Case-fold both tokens and words (Unicode default case folding)
+1. A resource matches when every token is a case-folded prefix of at least one word, and the matched words appear in the
+   target value in the same relative order as the corresponding tokens in the search string
+
+- **Word boundaries**: transition from whitespace (or start-of-string) to non-whitespace; words are maximal
+	non-whitespace runs, so punctuation stays part of the word (for example, `e-mail` is one word)
+- **Case**: case-insensitive, using Unicode default case folding (same as
+	[comparison and collation](#comparison-and-collation))
+- **Diacritics**: diacritics-sensitive — no normalisation is applied; `cafe` does not match `café`
+- **Token ordering**: order-sensitive — all tokens must match words in the same relative order; for example, `"red wid"`
+	matches `"big red widget"` but not `"widget red"`
 
 ## Comparison and Collation
 
@@ -230,6 +248,40 @@ resolution; the cardinality and union structure are transparent to the aggregate
 Numeric promotion aligns natively across all backends. Temporal types and string/numeric conversions require no
 normalisation as all backends consistently reject implicit conversion.
 
+## Backend Prefix Word Search
+
+| Aspect          | XPath 2.0                          | SPARQL 1.1                        | SQL:2011                          | GQL:2024/openCypher               |
+|-----------------|------------------------------------|------------------------------------|-----------------------------------|------------------------------------|
+| Implementation  | single `matches()` regex           | single `REGEX()` filter            | single `REGEXP` / `SIMILAR TO`    | single `=~` regex                  |
+| Case folding    | `lower-case()` both sides          | `LCASE()` both sides or `'i'` flag | `LOWER()` or `ILIKE`/collation   | `toLower()` both sides             |
+
+Order-sensitive semantics allow all backends to evaluate the filter with a single case-insensitive regex, without
+lookaheads or per-token conjunction. For search tokens `[t1, t2, …, tn]`, the canonical pattern is:
+
+```
+(?i)(?:^|\s)t1\S*\s+(?:\S+\s+)*t2\S*\s+(?:\S+\s+)*…tn
+```
+
+Each token is anchored at a word boundary and must appear as a prefix of a word, with matched words in left-to-right
+order. This pattern uses only concatenation and alternation — no lookaheads — so it is expressible in the XML Schema
+regex dialect shared by XPath 2.0 and SPARQL 1.1, as well as in SQL and GQL regex engines. No backend-specific
+normalisation is required beyond case folding.
+
+### Diacritics-insensitive Matching — Rejected
+
+Diacritics-insensitive matching (NFD decomposition + strip combining marks) was evaluated but rejected because it is not
+uniformly feasible across backends without application-level pre-processing at storage time:
+
+| Backend             | In-query NFD + strip combining marks?                                          |
+|---------------------|--------------------------------------------------------------------------------|
+| XPath 2.0           | `normalize-unicode('NFD')` exists but no regex on combining marks — fragile    |
+| SPARQL 1.1          | no standard NFD function — requires extension or pre-computation               |
+| SQL:2011            | PostgreSQL `UNACCENT()` (non-standard); MySQL collation-based only             |
+| GQL:2024/openCypher | no standard support — requires pre-computation                                 |
+
+Application-level normalisation would require dual storage (original + normalised form), which is not acceptable.
+Diacritics-sensitive matching aligns with the cross-backend intersection principle.
+
 ## Backend Comparison and Collation
 
 | Aspect            | XPath 2.0              | SPARQL 1.1          | SQL:2011                | GQL:2024/openCypher |
@@ -298,5 +350,5 @@ codepoint collation for string comparison, ordering, and case mapping.
 | SQL                 | specify `COLLATE` clause or use codepoint-ordered column collation   |
 | GQL:2024/openCypher | none — lexicographic ordering aligns for common cases                |
 
-All other documented semantics (property paths, transform pipes, type promotion, invalid value handling) align natively
-across all four backends without normalisation.
+All other documented semantics (property paths, transform pipes, type promotion, invalid value handling, prefix word
+search) align natively across all four backends without normalisation.
