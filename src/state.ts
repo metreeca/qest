@@ -395,8 +395,9 @@ export type Locals =
  * Otherwise, performs plain JSON serialization.
  *
  * @param resource The resource state to encode
- * @param base Base IRI for internalizing absolute IRIs
- * @param indent Indentation level for pretty-printing output
+ * @param options Encoding options
+ * @param options.base Base IRI for internalizing absolute IRIs
+ * @param options.indent Indentation level for pretty-printing output
  *
  * @returns The JSON string, with internalized IRIs if `base` is provided
  *
@@ -444,10 +445,11 @@ export function encodeResource(resource: Resource, {
  * performs plain JSON parsing.
  *
  * @param json The JSON-serialized {@link Resource}
- * @param base Base IRI for resolving internal IRIs
- * @param lenient Disables structural validation when `true`
+ * @param options Decoding options
+ * @param options.base Base IRI for resolving internal IRIs
+ * @param options.lenient Disables structural validation when `true`
  *
- * @returns The decoded resource, with resolved IRIs if `base` is provided
+ * @returns The decoded deeply {@link immutable} resource, with resolved IRIs if `base` is provided
  *
  * @throws {TypeError} If `base` is not a hierarchical IRI
  * @throws {TypeError} If the decoded value fails structural validation (unless `lenient` is `true`)

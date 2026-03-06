@@ -811,8 +811,9 @@ export type Transform =
  * the model structure. Otherwise, performs plain JSON serialization.
  *
  * @param model The model to encode
- * @param base Base IRI for internalizing absolute IRIs
- * @param indent Indentation level for pretty-printing output
+ * @param options Encoding options
+ * @param options.base Base IRI for internalizing absolute IRIs
+ * @param options.indent Indentation level for pretty-printing output
  *
  * @returns The JSON string, with internalized IRIs if `base` is provided
  *
@@ -860,10 +861,11 @@ export function encodeModel(model: Model, {
  * the model structure. Otherwise, performs plain JSON parsing.
  *
  * @param json The JSON-serialized {@link Model}
- * @param base Base IRI for resolving internal IRIs
- * @param lenient Disables structural validation when `true`
+ * @param options Decoding options
+ * @param options.base Base IRI for resolving internal IRIs
+ * @param options.lenient Disables structural validation when `true`
  *
- * @returns The decoded model, with resolved IRIs if `base` is provided
+ * @returns The decoded deeply {@link immutable} model, with resolved IRIs if `base` is provided
  *
  * @throws {TypeError} If `base` is not a hierarchical IRI
  * @throws {TypeError} If the decoded value fails structural validation (unless `lenient` is `true`)
@@ -911,8 +913,9 @@ export function decodeModel(json: string, {
  * using {@link internalize}, recursively throughout the query structure. Otherwise, performs plain serialization.
  *
  * @param query The query object to encode
- * @param base Base IRI for internalizing absolute IRIs
- * @param mode The output format:
+ * @param options Encoding options
+ * @param options.base Base IRI for internalizing absolute IRIs
+ * @param options.mode The output format:
  *
  * - `"json"` (default) — [Percent-encoded](https://www.rfc-editor.org/rfc/rfc3986#section-2.1) JSON; human-readable
  *   but verbose; see [JSON Serialization](#json-serialization)
@@ -1032,10 +1035,11 @@ export function encodeQuery(query: Query, {
  * using `resolve()`, recursively throughout the query structure. Otherwise, performs plain parsing.
  *
  * @param json The URL-encoded {@link Query} string (JSON, base64, or form format)
- * @param base Base IRI for resolving internal IRIs
- * @param lenient Disables structural validation when `true`
+ * @param options Decoding options
+ * @param options.base Base IRI for resolving internal IRIs
+ * @param options.lenient Disables structural validation when `true`
  *
- * @returns The decoded query, with resolved IRIs if `base` is provided
+ * @returns The decoded deeply {@link immutable} query, with resolved IRIs if `base` is provided
  *
  * @throws {TypeError} If `base` is not a hierarchical IRI
  * @throws {Error} If `json` is malformed or unparseable
@@ -1188,7 +1192,7 @@ export function encodeProbe(probe: Probe): string {
  *
  * @param key The query key string to decode
  *
- * @returns The parsed probe
+ * @returns The parsed deeply {@link immutable} probe
  *
  * @throws {Error} If `key` is malformed or unparseable
  *

@@ -10,7 +10,8 @@
       "Variant": "https://metreeca.github.io/core/types/resource.Variant.html",
       "internalize": "https://metreeca.github.io/core/functions/resource.internalize.html",
       "Tag": "https://metreeca.github.io/core/types/language.Tag.html",
-      "TagRange": "https://metreeca.github.io/core/types/language.TagRange.html"
+      "TagRange": "https://metreeca.github.io/core/types/language.TagRange.html",
+      "immutable": "https://metreeca.github.io/core/functions/nested.immutable.html"
     }
   },
   "includeVersion": true,
