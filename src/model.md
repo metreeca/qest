@@ -124,7 +124,7 @@ The `~` filter performs case-insensitive, order-sensitive prefix matching on whi
 1. Split the target value into whitespace-separated words
 1. Case-fold both tokens and words (Unicode default case folding)
 1. A resource matches when every token is a case-folded prefix of at least one word, and the matched words appear in the
-   target value in the same relative order as the corresponding tokens in the search string
+	 target value in the same relative order as the corresponding tokens in the search string
 
 - **Word boundaries**: transition from whitespace (or start-of-string) to non-whitespace; words are maximal
 	non-whitespace runs, so punctuation stays part of the word (for example, `e-mail` is one word)
@@ -250,10 +250,10 @@ normalisation as all backends consistently reject implicit conversion.
 
 ## Backend Prefix Word Search
 
-| Aspect          | XPath 2.0                          | SPARQL 1.1                        | SQL:2011                          | GQL:2024/openCypher               |
-|-----------------|------------------------------------|------------------------------------|-----------------------------------|------------------------------------|
-| Implementation  | single `matches()` regex           | single `REGEX()` filter            | single `REGEXP` / `SIMILAR TO`    | single `=~` regex                  |
-| Case folding    | `lower-case()` both sides          | `LCASE()` both sides or `'i'` flag | `LOWER()` or `ILIKE`/collation   | `toLower()` both sides             |
+| Aspect         | XPath 2.0                 | SPARQL 1.1                         | SQL:2011                       | GQL:2024/openCypher    |
+|----------------|---------------------------|------------------------------------|--------------------------------|------------------------|
+| Implementation | single `matches()` regex  | single `REGEX()` filter            | single `REGEXP` / `SIMILAR TO` | single `=~` regex      |
+| Case folding   | `lower-case()` both sides | `LCASE()` both sides or `'i'` flag | `LOWER()` or `ILIKE`/collation | `toLower()` both sides |
 
 Order-sensitive semantics allow all backends to evaluate the filter with a single case-insensitive regex, without
 lookaheads or per-token conjunction. For search tokens `[t1, t2, …, tn]`, the canonical pattern is:
@@ -272,12 +272,12 @@ normalisation is required beyond case folding.
 Diacritics-insensitive matching (NFD decomposition + strip combining marks) was evaluated but rejected because it is not
 uniformly feasible across backends without application-level pre-processing at storage time:
 
-| Backend             | In-query NFD + strip combining marks?                                          |
-|---------------------|--------------------------------------------------------------------------------|
-| XPath 2.0           | `normalize-unicode('NFD')` exists but no regex on combining marks — fragile    |
-| SPARQL 1.1          | no standard NFD function — requires extension or pre-computation               |
-| SQL:2011            | PostgreSQL `UNACCENT()` (non-standard); MySQL collation-based only             |
-| GQL:2024/openCypher | no standard support — requires pre-computation                                 |
+| Backend             | In-query NFD + strip combining marks?                                       |
+|---------------------|-----------------------------------------------------------------------------|
+| XPath 2.0           | `normalize-unicode('NFD')` exists but no regex on combining marks — fragile |
+| SPARQL 1.1          | no standard NFD function — requires extension or pre-computation            |
+| SQL:2011            | PostgreSQL `UNACCENT()` (non-standard); MySQL collation-based only          |
+| GQL:2024/openCypher | no standard support — requires pre-computation                              |
 
 Application-level normalisation would require dual storage (original + normalised form), which is not acceptable.
 Diacritics-sensitive matching aligns with the cross-backend intersection principle.
