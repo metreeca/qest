@@ -17,7 +17,7 @@ description: Development guidelines and conventions for the @metreeca/qest packa
 	- [peggy npm](https://www.npmjs.com/package/peggy) - Package repository
 
 - Dependencies:
-	- [@metreeca/core](https://metreeca.github.io/core/) - Essential TypeScript abstractions
+- [@metreeca/core](https://github.com/metreeca/core) - Core utilities and shared types
 
 # NPM Scripts
 
