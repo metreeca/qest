@@ -2278,7 +2278,7 @@ describe("codecs", () => {
 
 			it("should throw on invalid base64 JSON", async () => {
 				// Valid base64 but invalid JSON throws with cause
-				expect(() => decodeQuery("eyJpbnZhbGlk")).toThrow("invalid query");
+				expect(() => decodeQuery("eyJpbnZhbGlk")).toThrow("malformed query");
 			});
 
 			it("should handle truncated percent-encoding", async () => {

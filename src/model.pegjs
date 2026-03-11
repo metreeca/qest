@@ -216,7 +216,7 @@ Direction
   = $("asc"i ("ending"i)?)
   / $("desc"i ("ending"i)?)
   / n:Integer &([&] / !.) { return n; }
-  / $[^&]+ { error("invalid sort direction"); }
+  / $[^&]+ { error(`expected sort direction <${text()}>`) }
 
 
 /// Pagination /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -229,7 +229,7 @@ LimitPair
 
 Pagination
   = n:$[0-9]+ &([&] / !.) { return parseInt(n, 10); }
-  / $[^&]+ { error("invalid pagination value"); }
+  / $[^&]+ { error(`expected integer pagination value <${text()}>`) }
 
 
 /// Equality ///////////////////////////////////////////////////////////////////////////////////////////////////////////

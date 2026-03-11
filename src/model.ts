@@ -865,7 +865,7 @@ export function encodeModel(model: Model, {
 }: EncoderOpts = {}): string {
 
 	if ( base !== defaultBase && !isIRI(base, "hierarchical") ) {
-		throw new TypeError(`invalid non-hierarchical base IRI <${base}>`);
+		throw new TypeError(`expected hierarchical base IRI <${base}>`);
 	}
 
 	return JSON.stringify(model, replacer, indent === true ? 2 : indent || undefined);
@@ -917,7 +917,7 @@ export function decodeModel(json: string, {
 }: DecoderOpts = {}): Model {
 
 	if ( base !== defaultBase && !isIRI(base, "hierarchical") ) {
-		throw new TypeError(`invalid non-hierarchical base IRI <${base}>`);
+		throw new TypeError(`expected hierarchical base IRI <${base}>`);
 	}
 
 	const model = JSON.parse(json, (_key, value) =>
@@ -989,7 +989,7 @@ export function encodeQuery(query: Query, {
 } = {}): string {
 
 	if ( base !== defaultBase && !isIRI(base, "hierarchical") ) {
-		throw new TypeError(`invalid non-hierarchical base IRI <${base}>`);
+		throw new TypeError(`expected hierarchical base IRI <${base}>`);
 	}
 
 	const internalized = internalizeIRIs(base, query);
@@ -1101,7 +1101,7 @@ export function decodeQuery(json: string, {
 }: DecoderOpts = {}): Query {
 
 	if ( base !== defaultBase && !isIRI(base, "hierarchical") ) {
-		throw new TypeError(`invalid non-hierarchical base IRI <${base}>`);
+		throw new TypeError(`expected hierarchical base IRI <${base}>`);
 	}
 
 
@@ -1138,7 +1138,7 @@ export function decodeQuery(json: string, {
 
 		} catch ( cause ) {
 
-			throw new Error(`invalid query <${json}>`, { cause });
+			throw new Error(`malformed query <${json}>`, { cause });
 
 		}
 	}
@@ -1240,7 +1240,7 @@ export function decodeProbe(key: string): Probe {
 		return immutable(probe, isProbe, "malformed probe");
 
 	} catch ( cause ) {
-		throw new Error(`invalid probe <${key}>`, { cause });
+		throw new Error(`malformed probe <${key}>`, { cause });
 	}
 
 }

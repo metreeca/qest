@@ -423,7 +423,7 @@ export function encodeResource(resource: Resource, {
 }: EncoderOpts = {}): string {
 
 	if ( base !== defaultBase && !isIRI(base, "hierarchical") ) {
-		throw new TypeError(`invalid non-hierarchical base IRI <${base}>`);
+		throw new TypeError(`expected hierarchical base IRI <${base}>`);
 	}
 
 	return JSON.stringify(resource, replacer, indent === true ? 2 : indent || undefined);
@@ -475,7 +475,7 @@ export function decodeResource(json: string, {
 }: DecoderOpts = {}): Resource {
 
 	if ( base !== defaultBase && !isIRI(base, "hierarchical") ) {
-		throw new TypeError(`invalid non-hierarchical base IRI <${base}>`);
+		throw new TypeError(`expected hierarchical base IRI <${base}>`);
 	}
 
 	const resource = JSON.parse(json, (_key, value) =>
