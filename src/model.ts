@@ -325,6 +325,20 @@ import { Literal, Local, Locals, Reference, Resource, type Value } from "./state
 
 
 /**
+ * Aggregate {@link Transform | transforms}.
+ */
+const Aggregates: ReadonlySet<Transform>=new Set<Transform>([
+	"count",
+	"min",
+	"max",
+	"sum",
+	"avg"
+]);
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
  * Resource retrieval model.
  *
  * A recursively nested property map specifying which properties to retrieve from a {@link Resource} and how deeply
@@ -802,6 +816,18 @@ export type Transform =
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * Checks whether a {@link Transform | transform} is an aggregate.
+ *
+ * @param transform - The transform to check
+ *
+ * @returns true if `transform` is an aggregate; false otherwise
+ */
+export function isAggregate(transform: Transform): boolean {
+	return Aggregates.has(transform);
+}
+
 
 /**
  * Encodes a model as a JSON string.
