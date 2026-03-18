@@ -327,7 +327,7 @@ import { Literal, Local, Locals, Reference, Resource, type Value } from "./state
 /**
  * Aggregate {@link Transform | transforms}.
  */
-const Aggregates: ReadonlySet<Transform>=new Set<Transform>([
+const Aggregates: ReadonlySet<Transform> = new Set<Transform>([
 	"count",
 	"min",
 	"max",
@@ -585,22 +585,13 @@ export type Binding =
 /**
  * Computed expression.
  *
- * Combines value transformations and property access paths to define computed fields
+ * Combines property access paths  and value transformations to define computed fields
  * in {@link Model} projections and {@link Query} constraints.
  *
- * Expressions use the compact string syntax `[transform:]*[path]` where:
+ * Expressions use the compact string syntax `[pipe][path]` where:
  *
- * - **path** is a dot-separated list of property names (for example, `order.items.price`);
- *   the empty path refers to the root value; path steps always refer to actual resource property names
- *   and not to projected computed properties defined by {@link Binding bindings}
- * - **transforms** is a sequence of {@link Transform} names, each followed by a colon (for example, `round:avg:`)
- *   and applied right-to-left (functional composition order)
- *
- * Path steps follow {@link Identifier} rules (ECMAScript names).
- *
- * Property path resolution semantics (including multi-valued and union properties) are defined in
- * [Property Paths](./model.md#property-paths); transform pipe composition rules (including valid/invalid combinations)
- * are defined in [Transform Pipes](./model.md#transform-pipes).
+ * - **pipe** is a {@link Pipe} identifying the chain of value transformations to apply
+ * - **path** is a {@link Path} navigating to a nested value within the resource
  *
  * > [!WARNING]
  * > This is a type alias for documentation purposes only; expression syntax is validated at runtime
@@ -618,7 +609,42 @@ export type Binding =
  * ```
  */
 export type Expression =
-	string;
+	`${Pipe}:${Path}`;
+
+
+/**
+ * Transform pipe.
+ *
+ * A sequence of {@link Transform} names, each followed by a colon, identifying a chain of value transformations
+ * in an {@link Expression} (for example, `round:avg:`). Transforms are applied right-to-left in functional composition
+ * order; the empty pipe denotes the identity transformation, passing the value through unchanged.
+ *
+ * Composition rules and valid/invalid combinations are defined in
+ * [Transform Pipes](./model.md#transform-pipes).
+ *
+ * > [!WARNING]
+ * > This is a type alias for documentation purposes only; pipe syntax is validated at runtime by query processors.
+ */
+export type Pipe =
+	| string;
+
+/**
+ * Property path.
+ *
+ * A dot-separated list of property names identifying a value within a resource (for example, `order.items.price`).
+ * The empty string refers to the root value. Path steps follow {@link Identifier} rules (ECMAScript names)
+ * and always refer to actual resource property names, not to projected computed properties
+ * defined by {@link Binding bindings}.
+ *
+ * Resolution semantics (including multi-valued and union properties) are defined in
+ * [Property Paths](./model.md#property-paths).
+ *
+ * > [!WARNING]
+ * > This is a type alias for documentation purposes only; path syntax is validated at runtime by query processors.
+ * > References to undefined properties resolve to `undefined` in the output.
+ */
+export type Path =
+	| string;
 
 
 /**
