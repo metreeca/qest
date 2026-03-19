@@ -312,9 +312,9 @@
  */
 
 import { Identifier, isArray, isIdentifier, isObject, isString } from "@metreeca/core";
-import { error } from "@metreeca/core/error";
+import { error } from "@metreeca/core/report";
 import { TagRange } from "@metreeca/core/language";
-import { immutable } from "@metreeca/core/nested";
+import { immutable } from "@metreeca/core/deep";
 import type { IRI } from "@metreeca/core/resource";
 import { internalize, isIRI, resolve } from "@metreeca/core/resource";
 import { decodeBase64, encodeBase64 } from "./base64.js";

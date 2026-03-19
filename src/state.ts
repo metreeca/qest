@@ -253,7 +253,7 @@
 
 import { Identifier } from "@metreeca/core";
 import { Tag } from "@metreeca/core/language";
-import { immutable } from "@metreeca/core/nested";
+import { immutable } from "@metreeca/core/deep";
 import { internalize, IRI, isIRI, resolve } from "@metreeca/core/resource";
 import { type DecoderOpts, defaultBase, type EncoderOpts, type Indexed } from "./index.js";
 import { isResource } from "./state.core.js";
