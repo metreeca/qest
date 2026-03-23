@@ -276,7 +276,7 @@ export type Resource =
 
 
 /**
- * Model value set.
+ * Linked data value set.
  *
  * A single {@link Value}, a {@link Local} or {@link Locals} language map, or an array of values.
  *
@@ -293,7 +293,7 @@ export type Values =
 	| readonly Value[]
 
 /**
- * Model value.
+ * Linked data value.
  *
  * Represents property values in resource state descriptions:
  *
