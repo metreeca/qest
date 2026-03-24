@@ -4,7 +4,7 @@
 
 Minimalist foundations for client-driven, queryable REST/JSON APIs.
 
-**@metreeca/qest** standardizes critical capabilities that vanilla REST/JSON APIs typically lack or implement in ad‑hoc,
+**@metreeca/qest** standardises critical capabilities that vanilla REST/JSON APIs typically lack or implement in ad‑hoc,
 non‑portable ways:
 
 - **Client-Driven**: clients specify what they need, retrieving complex envelopes in a single call
@@ -14,7 +14,7 @@ non‑portable ways:
 Developers seek these features in frameworks like GraphQL; **@metreeca/qest** brings them to REST/JSON, achieving:
 
 - **Familiar Patterns**: standard REST and JSON conventions, no new paradigms to learn
-- **Simple Clients**: no specialized libraries, preprocessors, or code generators
+- **Simple Clients**: no specialised libraries, preprocessors, or code generators
 - **Automated Servers**: model-driven development, dramatically reducing implementation effort
 - **Standard Caching**: compatibility with CDNs and browser caches using standard GET requests
 - **URL-Based Versioning**: standard REST versioning without field deprecation complexity
@@ -49,11 +49,11 @@ npm install @metreeca/qest
 >
 > This section introduces essential concepts; for complete coverage, see the API reference:
 >
-> | Module                                                                     | Description                     |
-> |----------------------------------------------------------------------------|---------------------------------|
+> | Module                                                                     | Description                      |
+> |----------------------------------------------------------------------------|----------------------------------|
 > | [@metreeca/qest](https://metreeca.github.io/qest/modules/index.html)       | Shared values, types, and guards |
-> | [@metreeca/qest/state](https://metreeca.github.io/qest/modules/state.html) | Resource state management       |
-> | [@metreeca/qest/model](https://metreeca.github.io/qest/modules/model.html) | Client-driven retrieval         |
+> | [@metreeca/qest/state](https://metreeca.github.io/qest/modules/state.html) | Resource state management        |
+> | [@metreeca/qest/model](https://metreeca.github.io/qest/modules/model.html) | Client-driven retrieval          |
 
 **@metreeca/qest** types define payload semantics and formats for standard REST operations:
 
@@ -61,15 +61,15 @@ npm install @metreeca/qest
 |--------|---------------|------------------------------------|
 | GET    | [Resource][]  | Resource retrieval                 |
 | GET    | [Resource][]  | Collection retrieval               |
-| GET    | [Model][]     | Client-driven resource retrieval   |
-| GET    | [Model][]     | Client-driven collection retrieval |
+| GET    | [Query][]     | Client-driven resource retrieval   |
+| GET    | [Query][]     | Client-driven collection retrieval |
 | POST   | [Resource][]  | Resource creation                  |
 | PUT    | [Resource][]  | Complete resource state update     |
 | DELETE | [Reference][] | Resource deletion                  |
 
 [Resource]: https://metreeca.github.io/qest/types/state.Resource.html
 
-[Model]: https://metreeca.github.io/qest/types/model.Model.html
+[Query]: https://metreeca.github.io/qest/types/model.Query.html
 
 [Reference]: https://metreeca.github.io/core/types/resource.Reference.html
 
@@ -127,16 +127,16 @@ fills this gap, supporting precise control over responses while remaining fully 
 > [!IMPORTANT]
 >
 > Client-driven retrieval is fully optional. Servers may provide defaults, typically derived from the underlying data
-> model, preserving standard REST/JSON behavior while enabling advanced capabilities when needed.
+> model, preserving standard REST/JSON behaviour while enabling advanced capabilities when needed.
 
-**Resources** — A [**Model**](https://metreeca.github.io/qest/types/model.Model.html) defines the data retrieval
+**Resources** — A [**Query**](https://metreeca.github.io/qest/types/model.Query.html) defines the data retrieval
 envelope: which properties to include and how deeply and in how much detail to expand linked resources.
 
 ```http request
-GET https://data.example.com/products/123?<model>
+GET https://data.example.com/products/123?<query>
 ```
 
-where `<model>` is the following URL-encoded JSON:
+where `<query>` is the following URL-encoded JSON:
 
 ```js
 ({
@@ -164,11 +164,9 @@ The response includes only the requested properties, with the linked `vendor` ex
 }
 ```
 
-**Collections** — Multi-valued collection properties use a
-[**Query**](https://metreeca.github.io/qest/types/model.Query.html), a
-specialised [Model](https://metreeca.github.io/qest/types/model.Model.html) that extends the retrieval envelope with
-filtering, ordering, and pagination criteria, also supporting computed projections including aggregates for faceted
-search and analytics.
+**Collections** — For resources included in a collection, a
+[**Query**](https://metreeca.github.io/qest/types/model.Query.html) may also specify filtering constrainst, ordering
+criteria, and pagination ,imits, as well as computed projections including aggregates for faceted search and analytics.
 
 ```http request
 GET https://data.example.com/products/?<query>
@@ -280,9 +278,8 @@ strings and string arrays are accepted as shorthands for language-neutral values
 [JSON-LD](https://www.w3.org/TR/json-ld11/) (JSON for Linked Data) is a [W3C](https://www.w3.org/) standard for
 publishing linked data on the web. It extends JSON with web identifiers ([IRIs](https://www.rfc-editor.org/rfc/rfc3987))
 to link resources across systems and domains, and to give property names precise, machine-readable meaning by mapping
-them to shared vocabularies — a capability at the heart of the [Web Data Activity](https://www.w3.org/2013/data/) (
-Semantic Web)
-and modern knowledge graphs.
+them to shared vocabularies — a capability at the heart of the
+[Web Data Activity](https://www.w3.org/2013/data/) (Semantic Web) and modern knowledge graphs.
 
 **@metreeca/qest** defines a controlled JSON-LD subset designed to feel like plain idiomatic JSON, letting JavaScript
 developers work with linked data using familiar REST/JSON patterns without mastering JSON-LD technicalities, while
@@ -297,13 +294,13 @@ This controlled subset is specified by:
 	[JSON-LD keywords](https://www.w3.org/TR/json-ld11/#keywords) (`@id`, `@type`, etc.) and
 	[blank node identifiers](https://www.w3.org/TR/json-ld11/#identifying-blank-nodes) are not allowed and must be mapped
 	to identifiers via an application-provided [`@context`](https://www.w3.org/TR/json-ld11/#the-context) (for instance,
-	`"id": "@id"`); `@context` must also maps property names to IRIs for semantic interoperability
+	`"id": "@id"`); `@context` must also map property names to IRIs for semantic interoperability
 - native JSON primitives (`boolean`, `number`, `string`) as values;
 	[typed literals](https://www.w3.org/TR/json-ld11/#typed-values) with arbitrary datatypes are not allowed and must be
 	represented as strings with [datatype coercion](https://www.w3.org/TR/json-ld11/#type-coercion) declared in `@context`
-- [language maps](https://www.w3.org/TR/json-ld11/#language-indexing) for localised text; [
-	`@none`](https://www.w3.org/TR/json-ld11/#dfn-none) keys for non-localised values in language maps are not allowed and
-	must be handled using the [`und`](https://iso639-3.sil.org/code/und) language tag or plain string / string array
+- [language maps](https://www.w3.org/TR/json-ld11/#language-indexing) for localised text;
+	[`@none`](https://www.w3.org/TR/json-ld11/#dfn-none) keys for non-localised values in language maps are not allowed
+	and must be handled using the [`und`](https://iso639-3.sil.org/code/und) language tag or plain string / string array
 	shorthands, which are equivalent to `{ und: value }`
 - [index maps](https://www.w3.org/TR/json-ld11/#data-indexing) for key-indexed property values; indexed semantics must
 	be signalled by application-provided `@context` declarations, as indexed values are otherwise indistinguishable from
@@ -313,8 +310,8 @@ This controlled subset is specified by:
 
 # Support
 
-- open an [issue](https://github.com/metreeca/qest/issues) to report a problem or to suggest a new feature
-- start a [discussion](https://github.com/metreeca/qest/discussions) to ask a how-to question or to share an idea
+- Open an [issue](https://github.com/metreeca/qest/issues) to report a problem or to suggest a new feature
+- Start a [discussion](https://github.com/metreeca/qest/discussions) to ask a how-to question or to share an idea
 
 # License
 

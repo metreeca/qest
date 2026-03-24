@@ -36,7 +36,6 @@ import type {
 	Binding,
 	Expression,
 	Locale,
-	Model,
 	Operator,
 	Option,
 	Options,
@@ -47,54 +46,6 @@ import type {
 } from "./model.js";
 import { isLiteral, isLocalised, isReference } from "./state.core.js";
 
-
-/**
- * Checks if a value is a {@link Model}.
- *
- * @param value The value to check
- *
- * @returns True if the value is a valid projection model
- */
-export function isModel(value: unknown): value is Model {
-	return isObject(value, (v, k) =>
-		isBinding(k) && (isTemplate(v) || isIndexed(v, isTemplate))
-	);
-}
-
-
-/**
- * Checks if a value is a {@link Template}.
- *
- * @param value The value to check
- *
- * @returns True if the value is a valid property value template
- */
-export function isTemplate(value: unknown): value is Template {
-	return isUnion(value, [
-		isLiteral,
-		isReference,
-		isModel,
-		isLocale,
-		v => isArray(v, [isLiteral]),
-		v => isArray(v, [isReference]),
-		v => isArray(v, [isQuery])
-	]);
-}
-
-/**
- * Checks if a value is a {@link Locale}.
- *
- * @param value The value to check
- *
- * @returns True if the value is a string, string array, or a plain object with tag range keys
- * and uniformly string or string array values
- */
-export function isLocale(value: unknown): value is Locale {
-	return isString(value)
-		|| isArray(value, [isString])
-		|| isObject(value, (v, k) => isTagRange(k) && isString(v))
-		|| isObject(value, (v, k) => isTagRange(k) && isArray(v, [isString]));
-}
 
 /**
  * Checks if a value is a {@link Query}.
@@ -159,6 +110,41 @@ export function isQuery(value: unknown): value is Query {
 		}
 
 	});
+}
+
+
+/**
+ * Checks if a value is a {@link Template}.
+ *
+ * @param value The value to check
+ *
+ * @returns True if the value is a valid property value template
+ */
+export function isTemplate(value: unknown): value is Template {
+	return isUnion(value, [
+		isLiteral,
+		isReference,
+		isQuery,
+		isLocale,
+		v => isArray(v, [isLiteral]),
+		v => isArray(v, [isReference]),
+		v => isArray(v, [isQuery])
+	]);
+}
+
+/**
+ * Checks if a value is a {@link Locale}.
+ *
+ * @param value The value to check
+ *
+ * @returns True if the value is a string, string array, or a plain object with tag range keys
+ * and uniformly string or string array values
+ */
+export function isLocale(value: unknown): value is Locale {
+	return isString(value)
+		|| isArray(value, [isString])
+		|| isObject(value, (v, k) => isTagRange(k) && isString(v))
+		|| isObject(value, (v, k) => isTagRange(k) && isArray(v, [isString]));
 }
 
 

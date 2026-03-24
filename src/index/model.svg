@@ -1,0 +1,281 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:xl="http://www.w3.org/1999/xlink" viewBox="-252 191 457 390" width="457" height="390">
+  <defs>
+    <marker orient="auto" overflow="visible" markerUnits="strokeWidth" id="StickArrow_Marker" stroke-linejoin="miter" stroke-miterlimit="10" viewBox="-1 -10 26 20" markerWidth="26" markerHeight="20" color="black">
+      <g>
+        <path d="M 24 0 L 0 0 M 0 -9 L 24 0 L 0 9" fill="none" stroke="currentColor" stroke-width="1"/>
+      </g>
+    </marker>
+    <marker orient="auto" overflow="visible" markerUnits="strokeWidth" id="NegativeControls_Marker" stroke-linejoin="miter" stroke-miterlimit="10" viewBox="-1 -13 2 26" markerWidth="2" markerHeight="26" color="black">
+      <g>
+        <line x1="0" y1="-12" x2="0" y2="12" fill="none" stroke="currentColor" stroke-width="1"/>
+      </g>
+    </marker>
+    <marker orient="auto" overflow="visible" markerUnits="strokeWidth" id="Arrow_Marker" stroke-linejoin="miter" stroke-miterlimit="10" viewBox="-1 -10 26 20" markerWidth="26" markerHeight="20" color="black">
+      <g>
+        <path d="M 24 0 L 0 -9 L 0 9 Z" fill="none" stroke="currentColor" stroke-width="1"/>
+      </g>
+    </marker>
+  </defs>
+  <g id="model" stroke="none" stroke-opacity="1" stroke-dasharray="none" fill="none" fill-opacity="1">
+    <title>model</title>
+    <g id="model_Layer_1">
+      <title>Layer 1</title>
+      <g id="Group_785">
+        <g id="Graphic_786">
+          <rect x="70.48559" y="517.1501" width="59.31" height="17.261063" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+          <text transform="translate(79.48559 520.1501)" fill="black">
+            <tspan font-family="Helvetica Neue" font-weight="bold" font-size="9" fill="black" x="657252e-18" y="9" xml:space="preserve">Localised</tspan>
+          </text>
+        </g>
+      </g>
+      <g id="Group_774">
+        <g id="Graphic_776">
+          <rect x="-178.68433" y="257.5785" width="57.141" height="17.261063" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+          <text transform="translate(-169.68433 260.5785)" fill="black">
+            <tspan font-family="Helvetica Neue" font-weight="bold" font-size="9" fill="black" x="0" y="9" xml:space="preserve">Template</tspan>
+          </text>
+        </g>
+      </g>
+      <g id="Group_769">
+        <g id="Graphic_773">
+          <rect x="-176.05083" y="223.02045" width="51.874" height="12.195999" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+          <text transform="translate(-171.05083 225.02045)" fill="black">
+            <tspan font-family="Helvetica Neue" font-size="7" fill="black" x="0" y="7" xml:space="preserve">key: Identifier</tspan>
+          </text>
+        </g>
+        <g id="Group_770">
+          <g id="Graphic_771">
+            <rect x="-176.19133" y="205.75939" width="52.155" height="17.261063" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+            <text transform="translate(-167.19133 208.75939)" fill="black">
+              <tspan font-family="Helvetica Neue" font-weight="bold" font-size="9" fill="black" x="0" y="9" xml:space="preserve">Indexed</tspan>
+            </text>
+          </g>
+        </g>
+      </g>
+      <g id="Line_764">
+        <path d="M -150.11383 553.1655 L -150.11383 561.2655 L -232.34057 561.2655 L -232.34057 240.7322 L -231.09057 240.7322" marker-end="url(#StickArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+      </g>
+      <g id="Line_765">
+        <path d="M -150.32983 375.81147 L -150.32983 369.56147 L -150.11383 364.18647 L -150.11383 359.81147" marker-end="url(#NegativeControls_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+      </g>
+      <g id="Group_818">
+        <g id="Graphic_819">
+          <rect x="-8.345409" y="375.93647" width="62.001" height="17.261063" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+          <text transform="translate(.65459035 378.93647)" fill="black">
+            <tspan font-family="Helvetica Neue" font-weight="bold" font-size="9" fill="black" x="10658141e-20" y="9" xml:space="preserve">Reference</tspan>
+          </text>
+        </g>
+      </g>
+      <g id="Line_842">
+        <path d="M -205.98557 234.1062 L -205.98557 214.3899 L -183.04133 214.3899" marker-end="url(#StickArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+      </g>
+      <g id="Graphic_845">
+        <text transform="translate(-221.24057 235.1062)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="9" fill="black" x="0" y="9" xml:space="preserve">«union»</tspan>
+        </text>
+      </g>
+      <g id="Line_846">
+        <line x1="-150.11383" y1="235.21645" x2="-150.11383" y2="250.7285" marker-end="url(#StickArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+      </g>
+      <g id="Group_851">
+        <g id="Graphic_852">
+          <rect x="74.65259" y="340.6754" width="50.976" height="17.261063" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+          <text transform="translate(83.65259 343.6754)" fill="black">
+            <tspan font-family="Helvetica Neue" font-weight="bold" font-size="9" fill="black" x="0" y="9" xml:space="preserve">[Literal]</tspan>
+          </text>
+        </g>
+      </g>
+      <g id="Graphic_856">
+        <text transform="translate(-165.36883 292.32335)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="9" fill="black" x="0" y="9" xml:space="preserve">«union»</tspan>
+        </text>
+      </g>
+      <g id="Line_857">
+        <line x1="-150.11383" y1="291.28893" x2="-150.11383" y2="281.68958" marker-end="url(#Arrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+      </g>
+      <g id="Group_862">
+        <g id="Graphic_863">
+          <rect x="-174.94933" y="340.6754" width="49.671" height="17.261063" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+          <text transform="translate(-165.94933 343.6754)" fill="black">
+            <tspan font-family="Helvetica Neue" font-weight="bold" font-size="9" fill="black" x="0" y="9" xml:space="preserve">[Query]</tspan>
+          </text>
+        </g>
+      </g>
+      <g id="Group_864">
+        <g id="Graphic_865">
+          <rect x="-11.34241" y="340.6754" width="67.995" height="17.261063" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+          <text transform="translate(-2.34241 343.6754)" fill="black">
+            <tspan font-family="Helvetica Neue" font-weight="bold" font-size="9" fill="black" x="0" y="9" xml:space="preserve">[Reference]</tspan>
+          </text>
+        </g>
+      </g>
+      <g id="Group_869">
+        <g id="Graphic_870">
+          <rect x="77.64959" y="375.93647" width="44.982" height="17.261063" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+          <text transform="translate(86.64959 378.93647)" fill="black">
+            <tspan font-family="Helvetica Neue" font-weight="bold" font-size="9" fill="black" x="0" y="9" xml:space="preserve">Literal</tspan>
+          </text>
+        </g>
+      </g>
+      <g id="Line_871">
+        <line x1="100.14059" y1="375.93647" x2="100.14059" y2="359.81147" marker-end="url(#NegativeControls_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+      </g>
+      <g id="Group_922">
+        <g id="Graphic_750">
+          <rect x="-183.12083" y="540.9695" width="66.014" height="12.195999" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+          <text transform="translate(-178.12083 542.9695)" fill="black">
+            <tspan font-family="Helvetica Neue" font-size="7" fill="black" x=".973" y="7" xml:space="preserve">property: Binding </tspan>
+          </text>
+        </g>
+        <g id="Group_874">
+          <g id="Graphic_906">
+            <rect x="-203.03983" y="512.4655" width="105.42" height="28.503998" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+            <text transform="translate(-197.03983 515.4655)" fill="black">
+              <tspan font-family="Helvetica Neue" font-size="9" fill="black" x="0" y="9" xml:space="preserve">@ : number</tspan>
+              <tspan font-family="Helvetica Neue" font-size="9" fill="black" x="0" y="20.252" xml:space="preserve"># : number</tspan>
+            </text>
+          </g>
+          <g id="Graphic_905">
+            <rect x="-203.03983" y="483.9615" width="105.42" height="28.503998" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+            <text transform="translate(-197.03983 486.9615)" fill="black">
+              <tspan font-family="Helvetica Neue" font-size="9" fill="black" x="0" y="9" xml:space="preserve">*{expression} : Options</tspan>
+              <tspan font-family="Helvetica Neue" font-size="9" fill="black" x="0" y="20.252" xml:space="preserve">^{expression} : number</tspan>
+            </text>
+          </g>
+          <g id="Graphic_904">
+            <rect x="-203.03983" y="444.2055" width="105.42" height="39.755997" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+            <text transform="translate(-197.03983 447.2055)" fill="black">
+              <tspan font-family="Helvetica Neue" font-size="9" fill="black" x="0" y="9" xml:space="preserve">~{expression} : string</tspan>
+              <tspan font-family="Helvetica Neue" font-size="9" fill="black" x="0" y="20.252" xml:space="preserve">?{expression} : Options</tspan>
+              <tspan font-family="Helvetica Neue" font-size="9" fill="black" x="0" y="31.503998" xml:space="preserve">!{expression} : Options</tspan>
+            </text>
+          </g>
+          <g id="Graphic_876">
+            <rect x="-203.03983" y="393.19753" width="105.42" height="51.007996" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+            <text transform="translate(-197.03983 396.19753)" fill="black">
+              <tspan font-family="Helvetica Neue" font-size="9" fill="black" x="0" y="9" xml:space="preserve">&lt;{expression} : Literal</tspan>
+              <tspan font-family="Helvetica Neue" font-size="9" fill="black" x="0" y="20.252" xml:space="preserve">&gt;{expression} : Literal</tspan>
+              <tspan font-family="Helvetica Neue" font-size="9" fill="black" x="0" y="31.503998" xml:space="preserve">&lt;={expression} : Literal</tspan>
+              <tspan font-family="Helvetica Neue" font-size="9" fill="black" x="0" y="42.755997" xml:space="preserve">&gt;={expression} : Literal</tspan>
+            </text>
+          </g>
+          <g id="Graphic_875">
+            <rect x="-203.03983" y="375.93647" width="105.42" height="17.261063" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+            <text transform="translate(-163.16833 378.93647)" fill="black">
+              <tspan font-family="Helvetica Neue" font-weight="bold" font-size="9" fill="black" x="0" y="9" xml:space="preserve">Query</tspan>
+            </text>
+          </g>
+        </g>
+      </g>
+      <g id="Line_877">
+        <path d="M -125.27833 349.30593 L -89.51983 349.30593 L -89.51983 417.19473 L -90.76983 417.19473" marker-end="url(#StickArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+      </g>
+      <g id="Group_878">
+        <g id="Graphic_879">
+          <rect x="-72.11579" y="490.88906" width="51.66" height="17.261063" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+          <text transform="translate(-63.11579 493.88906)" fill="black">
+            <tspan font-family="Helvetica Neue" font-weight="bold" font-size="9" fill="black" x="0" y="9" xml:space="preserve">Options</tspan>
+          </text>
+        </g>
+      </g>
+      <g id="Graphic_880">
+        <text transform="translate(-1.8520774 493.8936)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="9" fill="black" x="0" y="9" xml:space="preserve">«union»</tspan>
+        </text>
+      </g>
+      <g id="Line_881">
+        <path d="M -4.8520775 499.5196 L -12.653934 499.5196 L -13.60579 499.5196" marker-end="url(#Arrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+      </g>
+      <g id="Group_882">
+        <g id="Graphic_883">
+          <rect x="150.29759" y="375.93647" width="33.318" height="17.261063" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+          <text transform="translate(159.2976 378.93647)" fill="black">
+            <tspan font-family="Helvetica Neue" font-weight="bold" font-size="9" fill="black" x="0" y="9" xml:space="preserve">null</tspan>
+          </text>
+        </g>
+      </g>
+      <g id="Line_884">
+        <line x1="100.14059" y1="414.24985" x2="100.14059" y2="393.19753" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+      </g>
+      <g id="Line_885">
+        <path d="M 13.402922 506.1456 L 13.402922 521.4654 L 70.48559 521.4654" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+      </g>
+      <g id="Group_886">
+        <g id="Graphic_887">
+          <rect x="76.72709" y="464.628" width="46.827" height="17.261063" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+          <text transform="translate(85.72709 467.628)" fill="black">
+            <tspan font-family="Helvetica Neue" font-weight="bold" font-size="9" fill="black" x="5684342e-19" y="9" xml:space="preserve">Option</tspan>
+          </text>
+        </g>
+      </g>
+      <g id="Graphic_888">
+        <text transform="translate(84.88559 415.24985)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="9" fill="black" x="0" y="9" xml:space="preserve">«union»</tspan>
+        </text>
+      </g>
+      <g id="Line_889">
+        <line x1="100.14059" y1="427.50185" x2="100.14059" y2="457.778" marker-end="url(#Arrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+      </g>
+      <g id="Line_890">
+        <path d="M 118.39559 420.87585 L 166.9566 420.87585 L 166.9566 393.19753" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+      </g>
+      <g id="Line_891">
+        <path d="M 81.88559 420.87585 L 22.65509 420.87585 L 22.65509 393.19753" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+      </g>
+      <g id="Group_892">
+        <g id="Graphic_893">
+          <rect x="73.73009" y="490.88906" width="52.821" height="17.261063" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+          <text transform="translate(82.73009 493.88906)" fill="black">
+            <tspan font-family="Helvetica Neue" font-weight="bold" font-size="9" fill="black" x="0" y="9" xml:space="preserve">Option[]</tspan>
+          </text>
+        </g>
+      </g>
+      <g id="Line_895">
+        <path d="M 126.55109 499.5196 L 128.04959 499.5196 L 128.04959 478.427" marker-end="url(#StickArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+      </g>
+      <g id="Line_896">
+        <path d="M 76.72709 473.2585 L 13.402922 473.2585 L 13.402922 492.8936" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+      </g>
+      <g id="Line_899">
+        <path d="M 125.62859 349.30593 L 127.12709 349.30593 L 127.12709 379.39854" marker-end="url(#StickArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+      </g>
+      <g id="Line_900">
+        <path d="M 56.65259 349.30593 L 58.15109 349.30593 L 58.15109 379.39854" marker-end="url(#StickArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+      </g>
+      <g id="Line_902">
+        <line x1="22.65509" y1="375.93647" x2="22.65509" y2="359.81147" marker-end="url(#NegativeControls_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+      </g>
+      <g id="Line_912">
+        <path d="M -97.61983 499.71125 L -89.51983 499.71125 L -80.21579 499.5196 L -78.96579 499.5196" marker-end="url(#StickArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="1.0,1.0" stroke-width=".25"/>
+      </g>
+      <g id="Line_916">
+        <line x1="31.657922" y1="499.5196" x2="73.73009" y2="499.5196" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+      </g>
+      <g id="Group_860">
+        <g id="Graphic_861">
+          <rect x="143.62859" y="340.6754" width="46.656" height="17.261063" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+          <text transform="translate(152.62859 343.6754)" fill="black">
+            <tspan font-family="Helvetica Neue" font-weight="bold" font-size="9" fill="black" x="0" y="9" xml:space="preserve">Locale</tspan>
+          </text>
+        </g>
+      </g>
+      <g id="Line_917">
+        <line x1="-150.11383" y1="340.6754" x2="-150.11383" y2="304.57535" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+      </g>
+      <g id="Line_918">
+        <path d="M 166.9566 340.6754 L 166.9566 322.4254 L -150.11383 322.4254 L -150.11383 304.57535" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+      </g>
+      <g id="Line_919">
+        <path d="M 100.14059 340.6754 L 100.14059 322.4254 L -150.11383 322.4254 L -150.11383 304.57535" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+      </g>
+      <g id="Line_920">
+        <path d="M 22.65509 340.6754 L 22.65509 322.4254 L -150.11383 322.4254 L -150.11383 304.57535" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+      </g>
+      <g id="Line_921">
+        <path d="M -205.98557 247.3582 L -205.98557 266.20904 L -185.53433 266.20904" marker-end="url(#StickArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+      </g>
+    </g>
+  </g>
+</svg>

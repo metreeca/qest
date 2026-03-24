@@ -15,15 +15,14 @@
  */
 
 /**
- * Client-driven retrieval.
+ * Client-driven resource retrieval.
  *
  * Defines types for specifying what data to retrieve in REST/JSON APIs, including property selection, linked
  * resource expansion, and—for collections—filtering, ordering, and pagination:
  *
- * - {@link Model} — Resource retrieval model
+ * - {@link Query} — Resource retrieval query
  * - {@link Template} — Property value template
  * - {@link Locale} — Localised text retrieval template
- * - {@link Query} — Collection retrieval model
  * - {@link Binding} — Named computed expression
  * - {@link Expression} — Computed expression
  * - {@link Options} — Constraint option set
@@ -34,6 +33,8 @@
  * - {@link Probe} — Parsed query probe
  * - {@link Operator} — Constraint operator symbols
  * - {@link Transform} — Value transforms
+ *
+ * <img src="index/model.svg" alt="Model type hierarchy" style="width: 100%; display: block; margin: auto;" />
  *
  * Comparison and sorting operators rely on a total ordering over values defined by
  * {@link https://www.w3.org/TR/xpath-functions-20/#comparison-operators XPath 2.0 comparison operators};
@@ -47,11 +48,11 @@
  *
  * ## Resource Retrieval
  *
- * A {@link Model} specifies which properties to retrieve from a single {@link Resource} and how deeply to
+ * A {@link Query} specifies which properties to retrieve from a single {@link Resource} and how deeply to
  * expand linked resources. No over-fetching of unwanted fields, no under-fetching requiring additional calls:
  *
  * ```typescript
- * const model: Model = {
+ * const query: Query = {
  *   id: "",               // resource identifier
  *   name: "",             // string property
  *   price: 0,             // numeric property
@@ -65,13 +66,13 @@
  *
  * ## Collection Retrieval
  *
- * A {@link Query} extends {@link Model} with filtering, ordering, and pagination criteria for collections.
- * Collection queries are nested inside a managing resource that owns the collection, following REST/JSON best
- * practices. Singleton array projections retrieve filtered, sorted, and paginated results with arbitrarily deep
- * expansions in a single call - no over-fetching, no under-fetching:
+ * For resources included in a collection, a {@link Query} may also specify filtering, ordering, and pagination
+ * criteria. Collection queries are nested inside a managing resource that owns the collection, following REST/JSON
+ * best practices. Singleton array projections retrieve filtered, sorted, and paginated results with arbitrarily
+ * deep expansions in a single call — no over-fetching, no under-fetching:
  *
  * ```typescript
- * const model: Model = {
+ * const query: Query = {
  *   items: [{                                 // collection query
  *     id: "",
  *     name: "",
@@ -95,11 +96,11 @@
  * tags to retrieve.
  *
  * Plain string or string array shorthands select language-neutral projections. Within a single map, all
- * values must be uniformly scalar or uniformly array. If the model specifies a shorthand, the retrieved
+ * values must be uniformly scalar or uniformly array. If the query specifies a shorthand, the retrieved
  * value should use the same shorthand form:
  *
  * ```typescript
- * const model: Model = {
+ * const query: Query = {
  *   id: "",
  *   name: "",                             // language-neutral shorthand
  *   title: { "*": "" },                   // all available languages
@@ -115,13 +116,13 @@
  *
  * ## Computed Properties
  *
- * Models can define computed properties using {@link Expression | expressions} combining property paths
+ * Queries can define computed properties using {@link Expression | expressions} combining property paths
  * with {@link Transform}.
  *
  * Plain transforms operate on individual values:
  *
  * ```typescript
- * const model: Model = {
+ * const query: Query = {
  *   id: "",
  *   name: "",
  *   price: 0,
@@ -134,7 +135,7 @@
  * analogous to SQL `GROUP BY` (see [Aggregate Transforms](./model.md#aggregate-transforms) for details):
  *
  * ```typescript
- * const model: Model = {
+ * const query: Query = {
  *   items: [{
  *     vendor: { id: "", name: "" },    // group by vendor
  *     "items=count:": 0,               // count of items per vendor
@@ -150,7 +151,7 @@
  * ```typescript
  * // Category facet with product counts
  *
- * const categoryFacet: Model = {
+ * const categoryFacet: Query = {
  *   items: [{
  *     "category=min:category": "",
  *     "count=count:": 0,
@@ -165,7 +166,7 @@
  *
  * // Price range for slider bounds
  *
- * const priceRange: Model = {
+ * const priceRange: Query = {
  *   items: [{
  *     "min=min:price": 0,
  *     "max=max:price": 0
@@ -176,7 +177,7 @@
  *
  * // Total product count
  *
- * const productCount: Model = {
+ * const productCount: Query = {
  *   items: [{
  *     "count=count:": 0
  *   }]
@@ -198,14 +199,14 @@
  * - `number` — {@link https://www.w3.org/TR/xpath-functions/#func-numeric-less-than standard numeric} ordering;
  *   `NaN` is unordered
  * - `string` — {@link https://www.w3.org/TR/xpath-functions/#func-compare Unicode codepoint} collation
- * - {@link https://metreeca.github.io/core/types/resource.IRI.html IRI} references and nested {@link Model}
+ * - {@link https://metreeca.github.io/core/types/resource.IRI.html IRI} references and nested {@link Query}
  *   resources — ordered by their IRI identifier using the same string collation
  *
  * > [!WARNING]
  * > Cross-type comparisons and values that fall outside these rules produce
  * > unpredictable, system-dependent results.
  *
- * # Model Serialization
+ * # Query Serialization
  *
  * Multiple formats are supported for transmission as URL query strings in GET requests:
  *
@@ -217,13 +218,13 @@
  *
  * ## JSON Serialization
  *
- * Directly encodes {@link Model} objects using operator key prefixes.
+ * Directly encodes {@link Query} objects using operator key prefixes.
  *
  * ## Form Serialization
  *
  * > [!WARNING]
  * >
- * > Form serialization specifies only query constraints; servers are expected to convert to a model by wrapping
+ * > Form serialization specifies only query constraints; servers are expected to convert to a query by wrapping
  * > inside the target endpoint's collection property and providing a default projection.
  *
  * Supports `application/x-www-form-urlencoded` encoding via the `form` mode. The format encodes queries as
@@ -260,7 +261,7 @@
  * 4. Sorts results by `price` ascending
  * 5. Returns the first 25 items (offset 0, limit 25)
  *
- * # Model Grammar
+ * # Query Grammar
  *
  * The following grammar elements are shared by both JSON and Form serialization formats.
  *
@@ -313,14 +314,14 @@
  */
 
 import { Identifier, isArray, isIdentifier, isObject, isString } from "@metreeca/core";
-import { error } from "@metreeca/core/report";
-import { TagRange } from "@metreeca/core/language";
 import { immutable } from "@metreeca/core/deep";
+import { TagRange } from "@metreeca/core/language";
+import { error } from "@metreeca/core/report";
 import type { IRI } from "@metreeca/core/resource";
 import { internalize, isIRI, resolve } from "@metreeca/core/resource";
 import { decodeBase64, encodeBase64 } from "./base64.js";
 import { type DecoderOpts, defaultBase, type EncoderOpts, Indexed } from "./index.js";
-import { isModel, isProbe, isQuery } from "./model.core.js";
+import { isProbe, isQuery } from "./model.core.js";
 import * as QueryParser from "./model.pegjs.js";
 import { Literal, Localised, Reference, Resource, type Value } from "./state.js";
 
@@ -340,99 +341,45 @@ const Aggregates: ReadonlySet<Transform> = new Set<Transform>([
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
- * Resource retrieval model.
+ * Resource retrieval query.
  *
  * A recursively nested property map specifying which properties to retrieve from a {@link Resource} and how deeply
- * to expand linked resources. Each property maps to {@link Template} describing the expected value type and
- * structure, or {@link Indexed} for union-typed or dynamically-keyed properties. Indexed containers can only appear
- * as top-level property values and cannot be nested.
+ * to expand linked resources. Each property maps to a {@link Template | property template} describing the expected
+ * value type and structure, or to an {@link Indexed | key-indexed property map} for union-typed or dynamically-keyed
+ * properties. Indexed containers can only appear as top-level property values and cannot be nested. Scalar template
+ * values serve as type placeholders; their actual value is immaterial.
  *
- * Models may define *computed* properties using the `{name}={expression}` syntax, where the value is computed
- * from an {@link Expression}. Scalar values serve as type placeholders; their actual value is immaterial.
+ * Queries may define *computed* properties using the `{name}={expression}: template` syntax, where the value i
+ * computed from an {@link Expression}.
+ *
+ * For resources included in a collection, queries may also specify filtering constraints, ordering criteria, and
+ * pagination limits using the `"{operator}{expression}": value` syntax.
  *
  * > [!NOTE]
- * > Aggregate transforms are formally legal also in top-level model expressions: they operate on the singleton set
- * > containing the retrieved resource.
+ * > Aggregate transforms, filtering constraints, sorting criteria, and pagination limits are formally legal also in
+ * > top-level queries: in this case, they operate on the singleton collection including only the target resource.
  *
  * > [!NOTE]
- * > References to undefined properties resolve to `undefined` in the JSON output, consistently across all
- * > storage backends. When any path step is undefined, the entire path resolves to `undefined`.
+ * > References to undefined properties in expressions resolve to `undefined` in the JSON output, consistently
+ * > across all storage backends. When any path step is undefined, the entire path resolves to `undefined`.
  *
  * > [!WARNING]
- * > Model processors must reject models with an error if they provide {@link Template | templates} of
- * > mismatched types for defined {@link Binding | bindings}, including computed ones.
- */
-export type Model =
-	| { readonly [property: Binding]: Template | Indexed<Template> }
-
-
-/**
- * Property value template.
- *
- * Defines the expected type and structure for a {@link Model} property value, mirroring {@link Value}:
- *
- * - {@link Literal} — Primitive value (`boolean`, `number`, `string`)
- * - {@link Reference} — IRI reference to a linked resource
- * - {@link Model} — Nested projection for expanding linked resources
- * - {@link Locale} — Localised text retrieval template
- * - `readonly [Literal]` — Array of primitive values
- * - `readonly [Reference]` — Array of IRI references
- * - `readonly [Query]` — Collection projection with filtering, ordering, and pagination
- *
- * @see {@link https://www.rfc-editor.org/rfc/rfc4647.html RFC 4647 - Matching of Language Tags}
- */
-export type Template =
-	| Literal
-	| Reference
-	| Model
-	| Locale
-	| readonly [Literal]
-	| readonly [Reference]
-	| readonly [Query]
-
-/**
- * Localised text retrieval template.
- *
- * Specifies via {@link TagRange | tag range} keys which locales are of interest and must be retrieved as
- * {@link Localised} values, supporting both single-valued and multi-valued forms per tag range.
- * String values are ignored as templates and serve only as type placeholders.
- *
- * Plain shorthands are accepted for language-neutral projections:
- *
- * - `""` is equivalent to `{ und: "" }`
- * - `[""]` is equivalent to `{ und: [""] }`
- *
- * Consumers are responsible for normalising shorthand values to the canonical object form, including shorthand
- * {@link Localised} values within {@link Options} constraints.
- *
- * > [!WARNING]
- * > Within a single map, all values must be uniformly scalar or uniformly array — mixed content is not
- * > permitted.
- *
- * > [!NOTE]
- * > - If the model specifies a string or string array shorthand, the retrieved value should use the same
- * >   shorthand form
- * > - The `@none` key for non-localised values is not supported; use the `und` tag or the plain string/string
- * >   array shorthand for language-neutral values
- *
- * @see {@link Localised} for additional details on language tag semantics
- */
-export type Locale =
-	| string
-	| readonly [string]
-	| { readonly [range: TagRange]: string }
-	| { readonly [range: TagRange]: readonly [string] };
-
-/**
- * Collection retrieval model.
- *
- * Retrieval model for multi-valued collection properties, extending the {@link Model} envelope with filtering,
- * ordering, and pagination probes. Each probe key uses a prefixed operator syntax to specify constraints,
- * sort order, or pagination limits on the collection.
+ * > Query processors must reject queries with an error if they provide {@link Template | templates} of mismatched
+ * > types for defined {@link Binding | bindings}, including computed ones.
  *
  * @see [Value Ordering](./model.md#comparison-and-collation) for comparison and sorting semantics
  */
-export type Query = Model & {
+export type Query = {
+
+	/**
+	 * Property projection (`"binding": template`).
+	 *
+	 * Maps a {@link Binding} to a {@link Template} describing the expected value type and structure,
+	 * or to an {@link Indexed} container for union-typed or dynamically-keyed properties.
+	 */
+	readonly [property: Binding]: Template | Indexed<Template>
+
+} & {
 
 	/**
 	 * Less-than filter (`"<expression": value`).
@@ -546,20 +493,76 @@ export type Query = Model & {
 	 */
 	readonly "#"?: number
 
-};
+}
 
 
 /**
+ * Property value template.
+ *
+ * Defines the expected type and structure for a {@link Query} property value, mirroring {@link Value}:
+ *
+ * - {@link Literal} — Primitive value (`boolean`, `number`, `string`)
+ * - {@link Reference} — IRI reference to a linked resource
+ * - {@link Query} — Nested projection for expanding linked resources
+ * - {@link Locale} — Localised text retrieval template
+ * - `readonly [Literal]` — Array of primitive values
+ * - `readonly [Reference]` — Array of IRI references
+ * - `readonly [Query]` — Collection projection with filtering, ordering, and pagination
+ *
+ * @see {@link https://www.rfc-editor.org/rfc/rfc4647.html RFC 4647 - Matching of Language Tags}
+ */
+export type Template =
+	| Literal
+	| Reference
+	| Query
+	| Locale
+	| readonly [Literal]
+	| readonly [Reference]
+	| readonly [Query]
+
+/**
+ * Localised text retrieval template.
+ *
+ * Specifies via {@link TagRange | tag range} keys which locales are of interest and must be retrieved as
+ * {@link Localised} values, supporting both single-valued and multi-valued forms per tag range.
+ * String values are ignored as templates and serve only as type placeholders.
+ *
+ * Plain shorthands are accepted for language-neutral projections:
+ *
+ * - `""` is equivalent to `{ und: "" }`
+ * - `[""]` is equivalent to `{ und: [""] }`
+ *
+ * Consumers are responsible for normalising shorthand values to the canonical object form, including shorthand
+ * {@link Localised} values within {@link Options} constraints.
+ *
+ * > [!WARNING]
+ * > Within a single map, all values must be uniformly scalar or uniformly array — mixed content is not
+ * > permitted.
+ *
+ * > [!NOTE]
+ * > - If the query specifies a string or string array shorthand, the retrieved value should use the same
+ * >   shorthand form
+ * > - The `@none` key for non-localised values is not supported; use the `und` tag or the plain string/string
+ * >   array shorthand for language-neutral values
+ *
+ * @see {@link Localised} for additional details on language tag semantics
+ */
+export type Locale =
+	| string
+	| readonly [string]
+	| { readonly [range: TagRange]: string }
+	| { readonly [range: TagRange]: readonly [string] };
+/**
  * Named computed expression.
  *
- * Assigns a name to a computed {@link Expression} in {@link Model} projections, either as a plain
+ * Assigns a name to a computed {@link Expression} in {@link Query} projections, either as a plain
  * {@link Identifier} or using the `{name}={expression}` syntax. A plain {@link Identifier} is a shorthand for
  * `{name}={name}`.
  *
  * @example
  *
  * ```typescript
- * const model: Model = {
+ * const query: Query = {
  *   "name": "",                        // property binding (shorthand for "name=name")
  *   "vendorName=vendor.name": "",      // path binding
  *   "releaseYear=year:releaseDate": 0  // transform binding
@@ -573,8 +576,8 @@ export type Binding =
 /**
  * Computed expression.
  *
- * Combines property access paths  and value transformations to define computed fields
- * in {@link Model} projections and {@link Query} constraints.
+ * Combines property access paths and value transformations to define computed fields
+ * in {@link Query} projections and constraints.
  *
  * Expressions use the compact string syntax `[pipe][path]` where:
  *
@@ -648,7 +651,7 @@ export type Path =
  * > [!IMPORTANT]
  * > Consumers must accept both scalar and array {@link Localised} forms when filtering or constraining on
  * > localised properties, regardless of the target property's cardinality: codec roundtrips may normalise
- * > between the two forms (see {@link decodeQuery}).
+ * > between the two forms (see {@link decodeQueryString}).
  *
  * - {@link Option} — Shorthand for a single-element option set
  * - {@link Localised} — Language-tagged option set
@@ -842,13 +845,13 @@ export function isAggregate(transform: Transform): boolean {
 
 
 /**
- * Encodes a model as a JSON string.
+ * Encodes a query as a JSON string.
  *
- * Serializes a {@link Model} object into a JSON string. If `base` is provided, converts absolute IRIs
+ * Serializes a {@link Query} object into a JSON string. If `base` is provided, converts absolute IRIs
  * (matching `isIRI(value, "absolute")`) to internal IRIs using {@link internalize}, recursively throughout
- * the model structure. Otherwise, performs plain JSON serialization.
+ * the query structure. Otherwise, performs plain JSON serialization.
  *
- * @param model The model to encode
+ * @param query The query to encode
  * @param options Encoding options
  * @param options.base Base IRI for internalizing absolute IRIs
  * @param options.indent Indentation level for pretty-printing output
@@ -860,16 +863,16 @@ export function isAggregate(transform: Transform): boolean {
  * @example
  *
  * ```typescript
- * encodeModel(
+ * encodeQuery(
  *   { id: "", name: "", vendor: { id: "https://example.com/vendors/acme", name: "" } },
  *   { base: "https://example.com/" }
  * );
  * // → '{"id":"","name":"","vendor":{"id":"/vendors/acme","name":""}}'
  * ```
  *
- * @see {@link decodeModel}
+ * @see {@link decodeQuery}
  */
-export function encodeModel(model: Model, {
+export function encodeQuery(query: Query, {
 
 	base = defaultBase,
 	indent
@@ -880,7 +883,7 @@ export function encodeModel(model: Model, {
 		throw new TypeError(`expected hierarchical base IRI <${base}>`);
 	}
 
-	return JSON.stringify(model, replacer, indent === true ? 2 : indent || undefined);
+	return JSON.stringify(query, replacer, indent === true ? 2 : indent || undefined);
 
 
 	function replacer(_key: string, value: unknown): unknown {
@@ -892,18 +895,18 @@ export function encodeModel(model: Model, {
 }
 
 /**
- * Decodes a model from a JSON string.
+ * Decodes a query from a JSON string.
  *
- * Parses a JSON string back into a {@link Model} object. If `base` is provided, resolves internal IRIs
+ * Parses a JSON string back into a {@link Query} object. If `base` is provided, resolves internal IRIs
  * (matching `isIRI(value, "internal")`) to absolute IRIs using `resolve()`, recursively throughout
- * the model structure. Otherwise, performs plain JSON parsing.
+ * the query structure. Otherwise, performs plain JSON parsing.
  *
- * @param json The JSON-serialized {@link Model}
+ * @param json The JSON-serialized {@link Query}
  * @param options Decoding options
  * @param options.base Base IRI for resolving internal IRIs
  * @param options.lenient Disables structural validation when `true`
  *
- * @returns The decoded deeply {@link immutable} model, with resolved IRIs if `base` is provided
+ * @returns The decoded deeply {@link immutable} query, with resolved IRIs if `base` is provided
  *
  * @throws {TypeError} If `base` is not a hierarchical IRI
  * @throws {TypeError} If the decoded value fails structural validation (unless `lenient` is `true`)
@@ -912,31 +915,31 @@ export function encodeModel(model: Model, {
  * @example
  *
  * ```typescript
- * decodeModel(
+ * decodeQuery(
  *   '{"id":"","name":"","vendor":{"id":"/vendors/acme","name":""}}',
  *   { base: "https://example.com/" }
  * );
  * // → { id: "", name: "", vendor: { id: "https://example.com/vendors/acme", name: "" } }
  * ```
  *
- * @see {@link encodeModel}
+ * @see {@link encodeQuery}
  */
-export function decodeModel(json: string, {
+export function decodeQuery(json: string, {
 
 	base = defaultBase,
 	lenient
 
-}: DecoderOpts = {}): Model {
+}: DecoderOpts = {}): Query {
 
 	if ( base !== defaultBase && !isIRI(base, "hierarchical") ) {
 		throw new TypeError(`expected hierarchical base IRI <${base}>`);
 	}
 
-	const model = JSON.parse(json, (_key, value) =>
+	const query = JSON.parse(json, (_key, value) =>
 		isIRI(value, "internal") ? resolve(base, value) : value
 	);
 
-	return immutable(model, lenient ? (v): v is Model => true : isModel, "malformed model");
+	return immutable(query, lenient ? (v): v is Query => true : isQuery, "malformed query");
 
 }
 
@@ -980,16 +983,16 @@ export function decodeModel(json: string, {
  * @example
  *
  * ```typescript
- * encodeQuery(
+ * encodeQueryString(
  *   { "~name": "widget", ">=price": 50, "^price": 1, "#": 25 },
  *   { mode: "form" }
  * );
  * // → '~name=%22widget%22&%3E%3Dprice=50&%5Eprice=1&%23=25'
  * ```
  *
- * @see {@link decodeQuery}
+ * @see {@link decodeQueryString}
  */
-export function encodeQuery(query: Query, {
+export function encodeQueryString(query: Query, {
 
 	base = defaultBase,
 	mode = "json"
@@ -1099,13 +1102,13 @@ export function encodeQuery(query: Query, {
  *
  * ```typescript
  * // Form format with shorthand operators (auto-detected)
- * decodeQuery("~name=widget&price>=50&^price=1&#=25");
+ * decodeQueryString("~name=widget&price>=50&^price=1&#=25");
  * // → { "~name": "widget", ">=price": 50, "^price": 1, "#": 25 }
  * ```
  *
- * @see {@link encodeQuery}
+ * @see {@link encodeQueryString}
  */
-export function decodeQuery(json: string, {
+export function decodeQueryString(json: string, {
 
 	base = defaultBase,
 	lenient
@@ -1192,7 +1195,8 @@ export function decodeQuery(json: string, {
 /**
  * Encodes a probe as a {@link Query} key string.
  *
- * Serializes a parsed {@link Probe} back into its compact string representation suitable for use as a Model key.
+ * Serializes a parsed {@link Probe} back into its compact string representation suitable for use as a
+ * {@link Query} key.
  *
  * @param probe The probe to encode
  *
@@ -1225,7 +1229,7 @@ export function encodeProbe(probe: Probe): string {
 /**
  * Decodes a {@link Query} key string into a probe.
  *
- * Parses a Model key string into its structural {@link Probe} components, distinguishing projection keys
+ * Parses a {@link Query} key string into its structural {@link Probe} components, distinguishing projection keys
  * from constraint keys based on the presence of an {@link Operator} prefix.
  *
  * @param key The query key string to decode

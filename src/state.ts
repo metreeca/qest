@@ -28,6 +28,8 @@
  * - {@link Localised} — Localised text value set
  * - {@link Indexed} — Key-indexed value container
  *
+ * <img src="index/state.svg" alt="State type hierarchy" style="width: 66%; display: block; margin: auto;" />
+ *
  * # Resource Operations
  *
  * ## Retrieving

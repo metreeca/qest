@@ -9,7 +9,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- Add `encodeModel`/`decodeModel` codecs for `Model` serialization with IRI internalization/resolution
+- Add `encodeQuery`/`decodeQuery` codecs for `Query` JSON serialization with IRI internalization/resolution
 - Add `lower`, `upper`, `length` string transforms to `Transform` enum
 - Add `indent` option to `EncoderOpts` for pretty-printing encoded JSON output
 - Add `lenient` option to `DecoderOpts` to skip structural validation in decoders
@@ -29,6 +29,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Rename `ValuesModel` to `Template`, `LocalModel` to `Locale`, `LocalsModel` to `Locales`
 - Rename `Criterion` to `Probe`; rename `isCriterion`, `encodeCriterion`, `decodeCriterion` accordingly
 - Inline `ValueModel` into `Template` union; remove `isValueModel` guard
+- Merge `Model` and `Query` into unified `Query` type combining projection, filtering, ordering, and pagination
+- Rename `encodeModel`/`decodeModel` to `encodeQuery`/`decodeQuery`
+- Rename `encodeQuery`/`decodeQuery` to `encodeQueryString`/`decodeQueryString`
 
 ### Removed
 
