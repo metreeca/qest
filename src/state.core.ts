@@ -20,11 +20,11 @@
  * @module
  */
 
-import { isArray, isBoolean, isIdentifier, isNumber, isObject, isString, isUnion } from "@metreeca/core";
+import { isArray, isIdentifier, isObject, isString, isUnion } from "@metreeca/core";
 import { isTag } from "@metreeca/core/language";
-import { isIRI } from "@metreeca/core/resource";
-import { isIndexed } from "./index.core.js";
-import type { Literal, Localised, Reference, Resource, Value, Values } from "./state.js";
+import { isIndexed, isLiteral, isReference } from "./index.core.js";
+import type { Literal, Reference } from "./index.js";
+import type { Localised, Resource, Value, Values } from "./state.js";
 
 
 /**
@@ -59,28 +59,6 @@ export function isValues(value: unknown): value is Values {
  */
 export function isValue(value: unknown): value is Value {
 	return isUnion(value, [isLiteral, isReference, isResource]);
-}
-
-/**
- * Checks if a value is a {@link Literal}.
- *
- * @param value The value to check
- *
- * @returns True if the value is a boolean, finite number, or string
- */
-export function isLiteral(value: unknown): value is Literal {
-	return isUnion(value, [isBoolean, isNumber, isString]);
-}
-
-/**
- * Checks if a value is a {@link Reference}.
- *
- * @param value The value to check
- *
- * @returns True if the value is an absolute IRI
- */
-export function isReference(value: unknown): value is Reference {
-	return isIRI(value, "absolute");
 }
 
 /**

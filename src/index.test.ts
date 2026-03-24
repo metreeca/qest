@@ -16,7 +16,7 @@
 
 import { isAny, isString } from "@metreeca/core";
 import { describe, expect, it } from "vitest";
-import { isIndexed } from "./index.core.js";
+import { isIndexed, isLiteral, isReference } from "./index.core.js";
 
 
 describe("guards", () => {
@@ -44,6 +44,71 @@ describe("guards", () => {
 		it("should reject arrays", async () => {
 			expect(isIndexed([], isAny)).toBeFalsy();
 			expect(isIndexed(["a", "b"], isAny)).toBeFalsy();
+		});
+
+	});
+
+	describe("isLiteral", () => {
+
+		it("should accept boolean", async () => {
+			expect(isLiteral(true)).toBeTruthy();
+			expect(isLiteral(false)).toBeTruthy();
+		});
+
+		it("should accept number", async () => {
+			expect(isLiteral(42)).toBeTruthy();
+			expect(isLiteral(3.14)).toBeTruthy();
+			expect(isLiteral(0)).toBeTruthy();
+			expect(isLiteral(-1)).toBeTruthy();
+		});
+
+		it("should accept string", async () => {
+			expect(isLiteral("")).toBeTruthy();
+			expect(isLiteral("hello")).toBeTruthy();
+		});
+
+		it("should reject null", async () => {
+			expect(isLiteral(null)).toBeFalsy();
+		});
+
+		it("should reject undefined", async () => {
+			expect(isLiteral(undefined)).toBeFalsy();
+		});
+
+		it("should reject objects", async () => {
+			expect(isLiteral({})).toBeFalsy();
+			expect(isLiteral({ value: 42 })).toBeFalsy();
+		});
+
+		it("should reject arrays", async () => {
+			expect(isLiteral([])).toBeFalsy();
+			expect(isLiteral([1, 2, 3])).toBeFalsy();
+		});
+
+	});
+
+	describe("isReference", () => {
+
+		it("should accept absolute IRI", async () => {
+			expect(isReference("https://example.com/resource")).toBeTruthy();
+		});
+
+		it("should reject root-relative IRI", async () => {
+			expect(isReference("/path/to/resource")).toBeFalsy();
+		});
+
+		it("should reject relative IRI", async () => {
+			expect(isReference("relative/path")).toBeFalsy();
+		});
+
+		it("should reject empty string", async () => {
+			expect(isReference("")).toBeFalsy();
+		});
+
+		it("should reject non-strings", async () => {
+			expect(isReference(42)).toBeFalsy();
+			expect(isReference(null)).toBeFalsy();
+			expect(isReference({})).toBeFalsy();
 		});
 
 	});

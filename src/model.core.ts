@@ -31,7 +31,7 @@ import {
 	isUnion
 } from "@metreeca/core";
 import { isTagRange } from "@metreeca/core/language";
-import { isIndexed } from "./index.core.js";
+import { isIndexed, isLiteral, isReference } from "./index.core.js";
 import type {
 	Binding,
 	Expression,
@@ -42,9 +42,10 @@ import type {
 	Probe,
 	Query,
 	Template,
+	Templates,
 	Transform
 } from "./model.js";
-import { isLiteral, isLocalised, isReference } from "./state.core.js";
+import { isLocalised } from "./state.core.js";
 
 
 /**
@@ -61,7 +62,7 @@ export function isQuery(value: unknown): value is Query {
 
 		if ( isBinding(k) as boolean ) {
 
-			return isTemplate(v) || isIndexed(v, isTemplate);
+			return isTemplates(v) || isIndexed(v, isTemplates);
 
 		}
 
@@ -114,22 +115,25 @@ export function isQuery(value: unknown): value is Query {
 
 
 /**
+ * Checks if a value is a {@link Templates}.
+ *
+ * @param value The value to check
+ *
+ * @returns True if the value is a {@link Template}, {@link Locale}, or tuple of templates
+ */
+export function isTemplates(value: unknown): value is Templates {
+	return isUnion(value, [isTemplate, isLocale, v => isArray(v, [isTemplate])]);
+}
+
+/**
  * Checks if a value is a {@link Template}.
  *
  * @param value The value to check
  *
- * @returns True if the value is a valid property value template
+ * @returns True if the value is a {@link Literal}, {@link Reference}, or {@link Query}
  */
 export function isTemplate(value: unknown): value is Template {
-	return isUnion(value, [
-		isLiteral,
-		isReference,
-		isQuery,
-		isLocale,
-		v => isArray(v, [isLiteral]),
-		v => isArray(v, [isReference]),
-		v => isArray(v, [isQuery])
-	]);
+	return isUnion(value, [isLiteral, isReference, isQuery]);
 }
 
 /**

@@ -23,12 +23,9 @@
  * - {@link Resource} — Complete resource state (HTTP GET/PUT)
  * - {@link Values} — Property value sets
  * - {@link Value} — Individual property values
- * - {@link Literal} — Primitive data values
- * - {@link Reference} — IRI resource references
  * - {@link Localised} — Localised text value set
- * - {@link Indexed} — Key-indexed value container
  *
- * <img src="index/state.svg" alt="State type hierarchy" style="width: 66%; display: block; margin: auto;" />
+ * <img src="index/state.svg" alt="State type hierarchy" style="zoom: 1.75; display: block; margin: auto;" />
  *
  * # Resource Operations
  *
@@ -259,7 +256,14 @@ import { Identifier } from "@metreeca/core";
 import { immutable } from "@metreeca/core/deep";
 import { Tag } from "@metreeca/core/language";
 import { internalize, IRI, isIRI, resolve } from "@metreeca/core/resource";
-import { type DecoderOpts, defaultBase, type EncoderOpts, type Indexed } from "./index.js";
+import {
+	type DecoderOpts,
+	defaultBase,
+	type EncoderOpts,
+	type Indexed,
+	type Literal,
+	type Reference
+} from "./index.js";
 import { isResource } from "./state.core.js";
 
 
@@ -272,6 +276,7 @@ import { isResource } from "./state.core.js";
  *
  * Used for both retrieving resource state (HTTP GET) and complete state replacement (HTTP PUT).
  *
+ * @see {@link model!Query} for the corresponding retrieval template
  * @see {@link https://datatracker.ietf.org/doc/html/rfc9110#section-9.3.1 RFC 9110 - HTTP GET Method}
  * @see {@link https://datatracker.ietf.org/doc/html/rfc9110#section-9.3.4 RFC 9110 - HTTP PUT Method}
  */
@@ -289,6 +294,8 @@ export type Resource =
  * @remarks
  *
  * {@link Indexed} containers are accepted at the property level but excluded from `Values` to prevent nesting.
+ *
+ * @see {@link model!Templates} for the corresponding retrieval template
  */
 export type Values =
 	| Value
@@ -303,37 +310,13 @@ export type Values =
  * - {@link Literal}: primitive data (boolean, number, string)
  * - {@link Reference}: IRI reference to a resource
  * - {@link Resource}: nested resource state
+ *
+ * @see {@link model!Template} for the corresponding retrieval template
  */
 export type Value =
 	| Literal
 	| Reference
 	| Resource
-
-/**
- * Literal value.
- *
- * JSON primitives used as property values in resources. Corresponds to JSON-LD's primitive value types
- * for boolean, numeric, and string data.
- */
-export type Literal =
-	| boolean
-	| number
-	| string
-
-/**
- * Resource reference.
- *
- * An absolute {@link IRI} identifying a linked resource without embedding its state. Contrast with {@link Resource},
- * which includes the linked resource's properties inline.
- *
- * > [!WARNING]
- * > This is a type alias for documentation purposes only. Branding was considered but not adopted due to
- * > interoperability issues with tools relying on static code analysis.
- *
- * @see {@link https://www.w3.org/TR/json-ld11/#node-identifiers JSON-LD 1.1 - Node Identifiers}
- */
-export type Reference =
-	| IRI
 
 /**
  * Localised text value set.
@@ -361,6 +344,7 @@ export type Reference =
  * >   `und` denotes text not bound to a specific language, while `zxx` is reserved for non-linguistic content
  * >   such as instrumental music or binary data
  *
+ * @see {@link model!Locale} for the corresponding retrieval template
  * @see {@link https://www.rfc-editor.org/rfc/rfc5646.html RFC 5646 - Tags for Identifying Languages}
  * @see {@link https://iso639-3.sil.org/code/und ISO 639 und - Undetermined Language}
  */

@@ -21,6 +21,7 @@
  * resource expansion, and—for collections—filtering, ordering, and pagination:
  *
  * - {@link Query} — Resource retrieval query
+ * - {@link Templates} — Property value template set
  * - {@link Template} — Property value template
  * - {@link Locale} — Localised text retrieval template
  * - {@link Binding} — Named computed expression
@@ -34,7 +35,7 @@
  * - {@link Operator} — Constraint operator symbols
  * - {@link Transform} — Value transforms
  *
- * <img src="index/model.svg" alt="Model type hierarchy" style="width: 100%; display: block; margin: auto;" />
+ * <img src="index/model.svg" alt="Model type hierarchy" style="zoom: 1.75; display: block; margin: auto;" />
  *
  * Comparison and sorting operators rely on a total ordering over values defined by
  * {@link https://www.w3.org/TR/xpath-functions-20/#comparison-operators XPath 2.0 comparison operators};
@@ -320,10 +321,10 @@ import { error } from "@metreeca/core/report";
 import type { IRI } from "@metreeca/core/resource";
 import { internalize, isIRI, resolve } from "@metreeca/core/resource";
 import { decodeBase64, encodeBase64 } from "./base64.js";
-import { type DecoderOpts, defaultBase, type EncoderOpts, Indexed } from "./index.js";
+import { type DecoderOpts, defaultBase, type EncoderOpts, Indexed, type Literal, type Reference } from "./index.js";
 import { isProbe, isQuery } from "./model.core.js";
 import * as QueryParser from "./model.pegjs.js";
-import { Literal, Localised, Reference, Resource, type Value } from "./state.js";
+import { Localised, Resource, type Value } from "./state.js";
 
 
 /**
@@ -344,12 +345,12 @@ const Aggregates: ReadonlySet<Transform> = new Set<Transform>([
  * Resource retrieval query.
  *
  * A recursively nested property map specifying which properties to retrieve from a {@link Resource} and how deeply
- * to expand linked resources. Each property maps to a {@link Template | property template} describing the expected
+ * to expand linked resources. Each property maps to a {@link Templates | property template} describing the expected
  * value type and structure, or to an {@link Indexed | key-indexed property map} for union-typed or dynamically-keyed
  * properties. Indexed containers can only appear as top-level property values and cannot be nested. Scalar template
  * values serve as type placeholders; their actual value is immaterial.
  *
- * Queries may define *computed* properties using the `{name}={expression}: template` syntax, where the value i
+ * Queries may define *computed* properties using the `{name}={expression}: template` syntax, where the value is
  * computed from an {@link Expression}.
  *
  * For resources included in a collection, queries may also specify filtering constraints, ordering criteria, and
@@ -367,6 +368,7 @@ const Aggregates: ReadonlySet<Transform> = new Set<Transform>([
  * > Query processors must reject queries with an error if they provide {@link Template | templates} of mismatched
  * > types for defined {@link Binding | bindings}, including computed ones.
  *
+ * @see {@link state!Resource} for the corresponding state type
  * @see [Value Ordering](./model.md#comparison-and-collation) for comparison and sorting semantics
  */
 export type Query = {
@@ -374,10 +376,10 @@ export type Query = {
 	/**
 	 * Property projection (`"binding": template`).
 	 *
-	 * Maps a {@link Binding} to a {@link Template} describing the expected value type and structure,
+	 * Maps a {@link Binding} to a {@link Templates} describing the expected value type and structure,
 	 * or to an {@link Indexed} container for union-typed or dynamically-keyed properties.
 	 */
-	readonly [property: Binding]: Template | Indexed<Template>
+	readonly [property: Binding]: Templates | Indexed<Templates>
 
 } & {
 
@@ -497,28 +499,35 @@ export type Query = {
 
 
 /**
+ * Property value template set.
+ *
+ * A single {@link Template}, a {@link Locale} language map, or a tuple of templates.
+ *
+ * Tuples denote collection projections supporting filtering, ordering, and pagination.
+ *
+ * @see {@link state!Values} for the corresponding state type
+ * @see {@link https://www.rfc-editor.org/rfc/rfc4647.html RFC 4647 - Matching of Language Tags}
+ */
+export type Templates =
+	| Template
+	| Locale
+	| readonly [Template]
+
+/**
  * Property value template.
  *
- * Defines the expected type and structure for a {@link Query} property value, mirroring {@link Value}:
+ * Defines the expected type and structure for a {@link Query} property value:
  *
- * - {@link Literal} — Primitive value (`boolean`, `number`, `string`)
- * - {@link Reference} — IRI reference to a linked resource
- * - {@link Query} — Nested projection for expanding linked resources
- * - {@link Locale} — Localised text retrieval template
- * - `readonly [Literal]` — Array of primitive values
- * - `readonly [Reference]` — Array of IRI references
- * - `readonly [Query]` — Collection projection with filtering, ordering, and pagination
+ * - {@link Literal}: primitive value (`boolean`, `number`, `string`)
+ * - {@link Reference}: IRI reference to a linked resource
+ * - {@link Query}: nested projection for expanding linked resources
  *
- * @see {@link https://www.rfc-editor.org/rfc/rfc4647.html RFC 4647 - Matching of Language Tags}
+ * @see {@link state!Value} for the corresponding state type
  */
 export type Template =
 	| Literal
 	| Reference
 	| Query
-	| Locale
-	| readonly [Literal]
-	| readonly [Reference]
-	| readonly [Query]
 
 /**
  * Localised text retrieval template.
@@ -545,13 +554,15 @@ export type Template =
  * > - The `@none` key for non-localised values is not supported; use the `und` tag or the plain string/string
  * >   array shorthand for language-neutral values
  *
- * @see {@link Localised} for additional details on language tag semantics
+ * @see {@link state!Localised} for the corresponding state type
  */
 export type Locale =
 	| string
 	| readonly [string]
 	| { readonly [range: TagRange]: string }
 	| { readonly [range: TagRange]: readonly [string] };
+
+
 /**
  * Named computed expression.
  *

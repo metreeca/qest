@@ -26,6 +26,7 @@ import {
 	isProbe,
 	isQuery,
 	isTemplate,
+	isTemplates,
 	isTransform
 } from "./model.core.js";
 import { decodeQuery, decodeProbe, decodeQueryString, encodeQuery, encodeProbe, encodeQueryString, type Query } from "./model.js";
@@ -293,72 +294,93 @@ describe("guards", () => {
 	});
 
 
-	describe("isTemplate", () => {
+	describe("isTemplates", () => {
 
-		describe("valid model values", () => {
-
-			it("should accept literals", async () => {
-				expect(isTemplate(true)).toBeTruthy();
-				expect(isTemplate(false)).toBeTruthy();
-				expect(isTemplate(0)).toBeTruthy();
-				expect(isTemplate(42)).toBeTruthy();
-				expect(isTemplate("")).toBeTruthy();
-				expect(isTemplate("text")).toBeTruthy();
-			});
-
-			it("should accept references", async () => {
-				expect(isTemplate("/products/42")).toBeTruthy();
-				expect(isTemplate("https://example.com/resource")).toBeTruthy();
-			});
-
-			it("should accept nested models", async () => {
-				expect(isTemplate({ id: "", name: "" })).toBeTruthy();
-				expect(isTemplate({ vendor: { id: "" } })).toBeTruthy();
-			});
-
-			it("should accept single-valued language maps", async () => {
-				expect(isTemplate({ "*": "" })).toBeTruthy();
-				expect(isTemplate({ "en": "text" })).toBeTruthy();
-				expect(isTemplate({ "en": "hello", "fr": "bonjour" })).toBeTruthy();
-			});
-
-			it("should accept multi-valued language maps", async () => {
-				expect(isTemplate({ "en": [""] })).toBeTruthy();
-				expect(isTemplate({ "en": ["hello"], "fr": ["bonjour"] })).toBeTruthy();
-			});
-
-			it("should accept literal arrays", async () => {
-				expect(isTemplate([true])).toBeTruthy();
-				expect(isTemplate([0])).toBeTruthy();
-				expect(isTemplate([""])).toBeTruthy();
-			});
-
-			it("should accept reference arrays", async () => {
-				expect(isTemplate(["/products/42"])).toBeTruthy();
-			});
-
-			it("should accept query arrays", async () => {
-				expect(isTemplate([{ id: "", name: "" }])).toBeTruthy();
-			});
-
+		it("should accept literals", async () => {
+			expect(isTemplates(true)).toBeTruthy();
+			expect(isTemplates(42)).toBeTruthy();
+			expect(isTemplates("")).toBeTruthy();
 		});
 
-		describe("invalid model values", () => {
+		it("should accept references", async () => {
+			expect(isTemplates("/products/42")).toBeTruthy();
+		});
 
-			it("should reject null and undefined", async () => {
-				expect(isTemplate(null)).toBeFalsy();
-				expect(isTemplate(undefined)).toBeFalsy();
-			});
+		it("should accept nested queries", async () => {
+			expect(isTemplates({ id: "", name: "" })).toBeTruthy();
+		});
 
-			it("should reject empty arrays", async () => {
-				expect(isTemplate([])).toBeFalsy();
-			});
+		it("should accept single-valued language maps", async () => {
+			expect(isTemplates({ "*": "" })).toBeTruthy();
+			expect(isTemplates({ "en": "text" })).toBeTruthy();
+			expect(isTemplates({ "en": "hello", "fr": "bonjour" })).toBeTruthy();
+		});
 
-			it("should reject arrays with multiple elements", async () => {
-				expect(isTemplate(["/a", "/b"])).toBeFalsy();
-				expect(isTemplate([{ id: "" }, { id: "" }])).toBeFalsy();
-			});
+		it("should accept multi-valued language maps", async () => {
+			expect(isTemplates({ "en": [""] })).toBeTruthy();
+			expect(isTemplates({ "en": ["hello"], "fr": ["bonjour"] })).toBeTruthy();
+		});
 
+		it("should accept literal tuples", async () => {
+			expect(isTemplates([true])).toBeTruthy();
+			expect(isTemplates([0])).toBeTruthy();
+			expect(isTemplates([""])).toBeTruthy();
+		});
+
+		it("should accept reference tuples", async () => {
+			expect(isTemplates(["/products/42"])).toBeTruthy();
+		});
+
+		it("should accept query tuples", async () => {
+			expect(isTemplates([{ id: "", name: "" }])).toBeTruthy();
+		});
+
+		it("should reject null and undefined", async () => {
+			expect(isTemplates(null)).toBeFalsy();
+			expect(isTemplates(undefined)).toBeFalsy();
+		});
+
+		it("should reject empty arrays", async () => {
+			expect(isTemplates([])).toBeFalsy();
+		});
+
+		it("should reject arrays with multiple elements", async () => {
+			expect(isTemplates(["/a", "/b"])).toBeFalsy();
+			expect(isTemplates([{ id: "" }, { id: "" }])).toBeFalsy();
+		});
+
+	});
+
+	describe("isTemplate", () => {
+
+		it("should accept literals", async () => {
+			expect(isTemplate(true)).toBeTruthy();
+			expect(isTemplate(false)).toBeTruthy();
+			expect(isTemplate(0)).toBeTruthy();
+			expect(isTemplate(42)).toBeTruthy();
+			expect(isTemplate("")).toBeTruthy();
+			expect(isTemplate("text")).toBeTruthy();
+		});
+
+		it("should accept references", async () => {
+			expect(isTemplate("/products/42")).toBeTruthy();
+			expect(isTemplate("https://example.com/resource")).toBeTruthy();
+		});
+
+		it("should accept nested queries", async () => {
+			expect(isTemplate({ id: "", name: "" })).toBeTruthy();
+			expect(isTemplate({ vendor: { id: "" } })).toBeTruthy();
+		});
+
+		it("should reject null and undefined", async () => {
+			expect(isTemplate(null)).toBeFalsy();
+			expect(isTemplate(undefined)).toBeFalsy();
+		});
+
+		it("should reject arrays", async () => {
+			expect(isTemplate([])).toBeFalsy();
+			expect(isTemplate([0])).toBeFalsy();
+			expect(isTemplate(["/a"])).toBeFalsy();
 		});
 
 	});

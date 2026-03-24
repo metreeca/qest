@@ -15,7 +15,7 @@
  */
 
 /**
- * Shared values and types.
+ * Shared primitive types and codec options.
  *
  * @module index
  */
@@ -66,6 +66,34 @@ export const defaultBase: IRI = asIRI("app:/");
 export type Indexed<T> =
 	| { readonly [key: Identifier]: T }
 
+/**
+ * Resource reference.
+ *
+ * An absolute {@link IRI} identifying a linked resource without embedding its state. Contrast with {@link state!Resource},
+ * which includes the linked resource's properties inline.
+ *
+ * > [!WARNING]
+ * > This is a type alias for documentation purposes only. Branding was considered but not adopted due to
+ * > interoperability issues with tools relying on static code analysis.
+ *
+ * @see {@link https://www.w3.org/TR/json-ld11/#node-identifiers JSON-LD 1.1 - Node Identifiers}
+ */
+export type Reference =
+	| IRI
+
+/**
+ * Literal value.
+ *
+ * JSON primitives used as property values in resources. Corresponds to JSON-LD's primitive value types
+ * for boolean, numeric, and string data.
+ */
+export type Literal =
+	| boolean
+	| number
+	| string
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
  * Configuration options for encoding operations.

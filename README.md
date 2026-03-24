@@ -165,8 +165,8 @@ The response includes only the requested properties, with the linked `vendor` ex
 ```
 
 **Collections** — For resources included in a collection, a
-[**Query**](https://metreeca.github.io/qest/types/model.Query.html) may also specify filtering constrainst, ordering
-criteria, and pagination ,imits, as well as computed projections including aggregates for faceted search and analytics.
+[**Query**](https://metreeca.github.io/qest/types/model.Query.html) may also specify filtering constraints, ordering
+criteria, and pagination limits, as well as computed projections including aggregates for faceted search and analytics.
 
 ```http request
 GET https://data.example.com/products/?<query>
