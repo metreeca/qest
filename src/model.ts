@@ -22,8 +22,7 @@
  *
  * - {@link Model} — Resource retrieval model
  * - {@link Template} — Property value template
- * - {@link Locale} — Single-valued locale placeholder
- * - {@link Locales} — Multi-valued locale placeholder
+ * - {@link Locale} — Localised text retrieval template
  * - {@link Query} — Collection retrieval model
  * - {@link Binding} — Named computed expression
  * - {@link Expression} — Computed expression
@@ -90,12 +89,14 @@
  * };
  * ```
  *
- * ## Localized Content
+ * ## Localised Content
  *
- * For multilingual properties, use {@link TagRange} keys to select language tags to retrieve.
+ * For multilingual properties, use {@link Locale} templates with {@link TagRange} keys to select language
+ * tags to retrieve.
  *
- * Plain string or string array shorthands select language-neutral projections; if specified,
- * the retrieved value should use the same shorthand form:
+ * Plain string or string array shorthands select language-neutral projections. Within a single map, all
+ * values must be uniformly scalar or uniformly array. If the model specifies a shorthand, the retrieved
+ * value should use the same shorthand form:
  *
  * ```typescript
  * const model: Model = {
@@ -298,7 +299,7 @@
  * ```
  *
  * - {@link IRI}s are serialized as strings
- * - Localized strings in {@link Local} or {@link Locals} maps combine a value with a
+ * - Localized strings in {@link Localised} maps combine a value with a
  *   {@link https://metreeca.github.io/core/types/language.Tag.html language tag} suffix (e.g., `"text"@en`)
  * - The encoder always produces double-quoted strings; the decoder accepts unquoted strings as a shorthand
  *
@@ -321,7 +322,7 @@ import { decodeBase64, encodeBase64 } from "./base64.js";
 import { type DecoderOpts, defaultBase, type EncoderOpts, Indexed } from "./index.js";
 import { isModel, isProbe, isQuery } from "./model.core.js";
 import * as QueryParser from "./model.pegjs.js";
-import { Literal, Local, Locals, Reference, Resource, type Value } from "./state.js";
+import { Literal, Localised, Reference, Resource, type Value } from "./state.js";
 
 
 /**
@@ -373,8 +374,7 @@ export type Model =
  * - {@link Literal} — Primitive value (`boolean`, `number`, `string`)
  * - {@link Reference} — IRI reference to a linked resource
  * - {@link Model} — Nested projection for expanding linked resources
- * - {@link Locale} — Single-valued language-tagged text
- * - {@link Locales} — Multi-valued language-tagged text
+ * - {@link Locale} — Localised text retrieval template
  * - `readonly [Literal]` — Array of primitive values
  * - `readonly [Reference]` — Array of IRI references
  * - `readonly [Query]` — Collection projection with filtering, ordering, and pagination
@@ -386,53 +386,41 @@ export type Template =
 	| Reference
 	| Model
 	| Locale
-	| Locales
 	| readonly [Literal]
 	| readonly [Reference]
 	| readonly [Query]
 
 /**
- * Single-valued locale template.
+ * Localised text retrieval template.
  *
  * Specifies via {@link TagRange | tag range} keys which locales are of interest and must be retrieved as
- * {@link Local} values; string values are ignored as templates and serve only as type placeholders.
+ * {@link Localised} values, supporting both single-valued and multi-valued forms per tag range.
+ * String values are ignored as templates and serve only as type placeholders.
  *
- * A plain string is accepted as shorthand for a language-neutral projection: `""` is equivalent to `{ und: "" }`.
+ * Plain shorthands are accepted for language-neutral projections:
+ *
+ * - `""` is equivalent to `{ und: "" }`
+ * - `[""]` is equivalent to `{ und: [""] }`
+ *
  * Consumers are responsible for normalising shorthand values to the canonical object form, including shorthand
- * {@link Local} values within {@link Options} constraints.
+ * {@link Localised} values within {@link Options} constraints.
+ *
+ * > [!WARNING]
+ * > Within a single map, all values must be uniformly scalar or uniformly array — mixed content is not
+ * > permitted.
  *
  * > [!NOTE]
- * > If the model specifies a string shorthand, the retrieved value should use the same shorthand form.
+ * > - If the model specifies a string or string array shorthand, the retrieved value should use the same
+ * >   shorthand form
+ * > - The `@none` key for non-localised values is not supported; use the `und` tag or the plain string/string
+ * >   array shorthand for language-neutral values
  *
- * The `@none` key for non-localised values is not supported; use the `und` tag or the plain string
- * shorthand for language-neutral values.
- *
- * @see {@link Local} for additional details on language tag semantics
+ * @see {@link Localised} for additional details on language tag semantics
  */
 export type Locale =
 	| string
-	| { readonly [range: TagRange]: string };
-
-/**
- * Multi-valued locale template.
- *
- * Specifies via {@link TagRange | tag range} keys which locales are of interest and must be retrieved as
- * {@link Locals} values; string array values are ignored as templates and serve only as type placeholders.
- *
- * A plain string array is accepted as shorthand for a language-neutral projection: `[""]` is equivalent to `{ und:
- * [""] }`. Consumers are responsible for normalising shorthand values to the canonical object form, including
- * shorthand {@link Locals} values within {@link Options} constraints.
- *
- * > [!NOTE]
- * > If the model specifies a string array shorthand, the retrieved value should use the same shorthand form.
- *
- * The `@none` key for non-localised values is not supported; use the `und` tag or the plain string array
- * shorthand for language-neutral values.
- *
- * @see {@link Locals} for additional details on language tag semantics
- */
-export type Locales =
 	| readonly [string]
+	| { readonly [range: TagRange]: string }
 	| { readonly [range: TagRange]: readonly [string] };
 
 /**
@@ -493,7 +481,7 @@ export type Query = Model & {
 	 * of at least one whitespace-delimited token in the expression value, matching in the order tokens appear
 	 * in the search string.
 	 *
-	 * Applicable to plain string and {@link Local | localised text} properties.
+	 * Applicable to plain string and {@link Localised | localised text} properties.
 	 *
 	 * > [!WARNING]
 	 * > When targeting a localised property, the target language must be communicated to the server
@@ -658,19 +646,17 @@ export type Path =
  * > for single-element sets.
  *
  * > [!IMPORTANT]
- * > Consumers must accept both {@link Local} and {@link Locals} when filtering or constraining on localised
- * > properties, regardless of the target property's cardinality: codec roundtrips may normalise between the two
- * > forms (see {@link decodeQuery}).
+ * > Consumers must accept both scalar and array {@link Localised} forms when filtering or constraining on
+ * > localised properties, regardless of the target property's cardinality: codec roundtrips may normalise
+ * > between the two forms (see {@link decodeQuery}).
  *
  * - {@link Option} — Shorthand for a single-element option set
- * - {@link Local} — Shorthand for a single-valued language-tagged option set
- * - {@link Locals} — Multi-valued language-tagged option set
+ * - {@link Localised} — Language-tagged option set
  * - `readonly Option[]` — Explicit option set
  */
 export type Options =
 	| Option
-	| Local
-	| Locals
+	| Localised
 	| readonly Option[];
 
 /**
@@ -775,8 +761,8 @@ export type Operator =
  * - **temporal** — `xsd:dateTime` | `xsd:date` | `xsd:time` | `xsd:duration`, mapped to JSON `string`; note that
  * temporal types may be accepted only by a specific subset of temporal transforms
  *
- * String-to-string transform pipes (for example `lower`, `upper`) may also be applied to {@link Local} and
- * {@link Locals} values: the pipe is applied individually to each string value in the language map.
+ * String-to-string transform pipes (for example `lower`, `upper`) may also be applied to {@link Localised}
+ * values: the pipe is applied individually to each string value in the language map.
  *
  * | Transform      | Definition                                                       | Domain       | Range         |
  * |----------------|------------------------------------------------------------------|--------------|---------------|
@@ -1106,8 +1092,8 @@ export function encodeQuery(query: Query, {
  * - Unquoted strings (shorthand): `name=widget`
  *
  * Tagged strings always require the canonical `"value"@tag` format. Tagged values are always reconstructed
- * as {@link Locals} (never {@link Local}), since {@link Options} are inherently multi-valued and `Local`/`Locals`
- * are indistinguishable in form encoding.
+ * in the multi-valued {@link Localised} form, since {@link Options} are inherently multi-valued and scalar/array
+ * forms are indistinguishable in form encoding.
  *
  * @example
  *

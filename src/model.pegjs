@@ -66,9 +66,9 @@
       : decoded;
   }
 
-  // reconstruct Tagged values into Locals objects ({ tag: [texts] });
-  // always produces Locals (never Local): Options are inherently multi-valued,
-  // so Local/Locals are indistinguishable in form encoding (see Options docs)
+  // reconstruct Tagged values into Localised objects ({ tag: [texts] });
+  // always produces multi-valued form: Options are inherently multi-valued,
+  // so scalar/array forms are indistinguishable in form encoding (see Options docs)
 
   function mergeTagged(values) {
     return values.reduce((obj, { text, tag }) => ({

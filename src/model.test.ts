@@ -20,7 +20,6 @@ import {
 	isBinding,
 	isExpression,
 	isLocale,
-	isLocales,
 	isModel,
 	isOperator,
 	isOption,
@@ -418,29 +417,34 @@ describe("guards", () => {
 
 	describe("isLocale", () => {
 
-		describe("valid local models", () => {
+		describe("valid locale models", () => {
 
-			it("should accept wildcard tag", async () => {
+			it("should accept single-valued wildcard tag", async () => {
 				expect(isLocale({ "*": "" })).toBeTruthy();
 				expect(isLocale({ "*": "text" })).toBeTruthy();
 			});
 
-			it("should accept language tags", async () => {
+			it("should accept multi-valued wildcard tag", async () => {
+				expect(isLocale({ "*": [""] })).toBeTruthy();
+				expect(isLocale({ "*": ["text"] })).toBeTruthy();
+			});
+
+			it("should accept single-valued language tags", async () => {
 				expect(isLocale({ "en": "hello" })).toBeTruthy();
 				expect(isLocale({ "fr": "bonjour" })).toBeTruthy();
 			});
 
-			it("should accept multiple language tags", async () => {
+			it("should accept multi-valued language tags", async () => {
+				expect(isLocale({ "en": ["hello"] })).toBeTruthy();
+				expect(isLocale({ "fr": ["bonjour"] })).toBeTruthy();
+			});
+
+			it("should accept multiple single-valued language tags", async () => {
 				expect(isLocale({ "en": "hello", "fr": "bonjour" })).toBeTruthy();
 			});
 
-		});
-
-		describe("invalid local models", () => {
-
-			it("should reject null and undefined", async () => {
-				expect(isLocale(null)).toBeFalsy();
-				expect(isLocale(undefined)).toBeFalsy();
+			it("should accept multiple multi-valued language tags", async () => {
+				expect(isLocale({ "en": ["hello"], "fr": ["bonjour"] })).toBeTruthy();
 			});
 
 			it("should accept plain string shorthand", async () => {
@@ -448,67 +452,33 @@ describe("guards", () => {
 				expect(isLocale("")).toBeTruthy();
 			});
 
+			it("should accept plain string array shorthand", async () => {
+				expect(isLocale(["text"])).toBeTruthy();
+				expect(isLocale([""])).toBeTruthy();
+			});
+
+		});
+
+		describe("invalid locale models", () => {
+
+			it("should reject null and undefined", async () => {
+				expect(isLocale(null)).toBeFalsy();
+				expect(isLocale(undefined)).toBeFalsy();
+			});
+
 			it("should reject non-string primitives", async () => {
 				expect(isLocale(true)).toBeFalsy();
 				expect(isLocale(42)).toBeFalsy();
 			});
 
-			it("should reject multi-valued maps", async () => {
-				expect(isLocale({ "en": ["hello"] })).toBeFalsy();
+			it("should reject mixed scalar/array content", async () => {
+				expect(isLocale({ "en": "hello", "fr": ["bonjour"] })).toBeFalsy();
+				expect(isLocale({ "en": ["hello"], "fr": "bonjour" })).toBeFalsy();
 			});
 
 			it("should reject invalid tag keys", async () => {
 				expect(isLocale({ "invalid tag": "text" })).toBeFalsy();
-			});
-
-		});
-
-	});
-
-	describe("isLocales", () => {
-
-		describe("valid locals models", () => {
-
-			it("should accept wildcard tag", async () => {
-				expect(isLocales({ "*": [""] })).toBeTruthy();
-				expect(isLocales({ "*": ["text"] })).toBeTruthy();
-			});
-
-			it("should accept language tags", async () => {
-				expect(isLocales({ "en": ["hello"] })).toBeTruthy();
-				expect(isLocales({ "fr": ["bonjour"] })).toBeTruthy();
-			});
-
-			it("should accept multiple language tags", async () => {
-				expect(isLocales({ "en": ["hello"], "fr": ["bonjour"] })).toBeTruthy();
-			});
-
-		});
-
-		describe("invalid locals models", () => {
-
-			it("should reject null and undefined", async () => {
-				expect(isLocales(null)).toBeFalsy();
-				expect(isLocales(undefined)).toBeFalsy();
-			});
-
-			it("should accept plain string array shorthand", async () => {
-				expect(isLocales(["text"])).toBeTruthy();
-				expect(isLocales([""])).toBeTruthy();
-			});
-
-			it("should reject non-array primitives", async () => {
-				expect(isLocales(true)).toBeFalsy();
-				expect(isLocales(42)).toBeFalsy();
-				expect(isLocales("text")).toBeFalsy();
-			});
-
-			it("should reject single-valued maps", async () => {
-				expect(isLocales({ "en": "hello" })).toBeFalsy();
-			});
-
-			it("should reject invalid tag keys", async () => {
-				expect(isLocales({ "invalid tag": ["text"] })).toBeFalsy();
+				expect(isLocale({ "invalid tag": ["text"] })).toBeFalsy();
 			});
 
 		});

@@ -263,10 +263,10 @@ Resource properties can hold localised text using language maps, which map
 }
 ```
 
-A [`Local`](https://metreeca.github.io/qest/types/state.Local.html) map holds a single text value per language; a
-[`Locals`](https://metreeca.github.io/qest/types/state.Locals.html) map holds multiple values per language. Plain
-strings and string arrays are accepted as shorthands for language-neutral values, equivalent to tagging them with the [
-`und`](https://iso639-3.sil.org/code/und) (Undetermined) language tag:
+A [`Localised`](https://metreeca.github.io/qest/types/state.Localised.html) value set supports both single-valued and
+multi-valued forms per language. Within a single map, all values must be uniformly scalar or uniformly array. Plain
+strings and string arrays are accepted as shorthands for language-neutral values, equivalent to tagging them with the
+[`und`](https://iso639-3.sil.org/code/und) (Undetermined) language tag:
 
 ```js
 ({

@@ -36,7 +36,6 @@ import type {
 	Binding,
 	Expression,
 	Locale,
-	Locales,
 	Model,
 	Operator,
 	Option,
@@ -46,7 +45,7 @@ import type {
 	Template,
 	Transform
 } from "./model.js";
-import { isLiteral, isLocal, isLocals, isReference } from "./state.core.js";
+import { isLiteral, isLocalised, isReference } from "./state.core.js";
 
 
 /**
@@ -76,7 +75,6 @@ export function isTemplate(value: unknown): value is Template {
 		isReference,
 		isModel,
 		isLocale,
-		isLocales,
 		v => isArray(v, [isLiteral]),
 		v => isArray(v, [isReference]),
 		v => isArray(v, [isQuery])
@@ -88,21 +86,14 @@ export function isTemplate(value: unknown): value is Template {
  *
  * @param value The value to check
  *
- * @returns True if the value is a valid single-valued locale placeholder
+ * @returns True if the value is a string, string array, or a plain object with tag range keys
+ * and uniformly string or string array values
  */
 export function isLocale(value: unknown): value is Locale {
-	return isString(value) || isObject(value, (v, k) => isTagRange(k) && isString(v));
-}
-
-/**
- * Checks if a value is a {@link Locales}.
- *
- * @param value The value to check
- *
- * @returns True if the value is a valid multi-valued locale placeholder
- */
-export function isLocales(value: unknown): value is Locales {
-	return isArray(value, [isString]) || isObject(value, (v, k) => isTagRange(k) && isArray(v, [isString]));
+	return isString(value)
+		|| isArray(value, [isString])
+		|| isObject(value, (v, k) => isTagRange(k) && isString(v))
+		|| isObject(value, (v, k) => isTagRange(k) && isArray(v, [isString]));
 }
 
 /**
@@ -209,10 +200,10 @@ export function isExpression(value: unknown): value is Expression {
  *
  * @param value The value to check
  *
- * @returns True if the value is an option, local, locals, or array of options
+ * @returns True if the value is an option, localised value, or array of options
  */
 export function isOptions(value: unknown): value is Options {
-	return isUnion(value, [isOption, isLocal, isLocals, v => isArray(v, isOption)]);
+	return isUnion(value, [isOption, isLocalised, v => isArray(v, isOption)]);
 }
 
 /**

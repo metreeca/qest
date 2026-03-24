@@ -25,8 +25,7 @@
  * - {@link Value} — Individual property values
  * - {@link Literal} — Primitive data values
  * - {@link Reference} — IRI resource references
- * - {@link Local} — Language-tagged text map (single-valued)
- * - {@link Locals} — Language-tagged text map (multi-valued)
+ * - {@link Localised} — Localised text value set
  * - {@link Indexed} — Key-indexed value container
  *
  * # Resource Operations
@@ -183,8 +182,7 @@
  * Each property in a resource state holds {@link Values}:
  *
  * - a single {@link Value}
- * - a {@link Local} single-valued language-tagged text map
- * - a {@link Locals} multi-valued language-tagged text map
+ * - a {@link Localised} localised text value set
  * - an array representing a set of values
  *
  * Additionally, properties can hold an {@link Indexed} container, mapping arbitrary keys to {@link Values}.
@@ -213,13 +211,14 @@
  * ## Literals
  *
  * A {@link Literal} maps directly to JSON primitives (`boolean`, `number`, `string`). Dates, times, and other
- * structured values are represented as strings in standard formats (e.g., ISO 8601). Application-level `@context`
- * objects can declare datatype coercion rules for JSON-LD processing.
+ * structured values are represented as strings in standard formats (for example, ISO 8601). Application-level
+ * `@context` objects can declare datatype coercion rules for JSON-LD processing.
  *
  * ## Localised Text
  *
- * For multilingual content, use {@link Local} or {@link Locals} language-tagged text maps.
- * Tags follow [RFC 5646](https://www.rfc-editor.org/rfc/rfc5646.html) (e.g., `en`, `de-CH`, `zh-Hans`):
+ * For multilingual content, use {@link Localised} value sets. Language
+ * {@link Tag | tags} follow [RFC 5646](https://www.rfc-editor.org/rfc/rfc5646.html)
+ * (for example, `en`, `de-CH`, `zh-Hans`):
  *
  * ```js
  * // single value per language
@@ -238,6 +237,9 @@
  * })
  * ```
  *
+ * Plain strings and string arrays are accepted as shorthands for language-neutral values tagged with `und`.
+ * Within a single map, all values must be uniformly scalar or uniformly array.
+ *
  * > [!IMPORTANT]
  * > The `@none` key for non-localised values is not supported; use the `und` tag for language-neutral
  * > values or plain string / string array shorthands, which are equivalent to `{ und: value }`.
@@ -252,8 +254,8 @@
  */
 
 import { Identifier } from "@metreeca/core";
-import { Tag } from "@metreeca/core/language";
 import { immutable } from "@metreeca/core/deep";
+import { Tag } from "@metreeca/core/language";
 import { internalize, IRI, isIRI, resolve } from "@metreeca/core/resource";
 import { type DecoderOpts, defaultBase, type EncoderOpts, type Indexed } from "./index.js";
 import { isResource } from "./state.core.js";
@@ -278,7 +280,7 @@ export type Resource =
 /**
  * Linked data value set.
  *
- * A single {@link Value}, a {@link Local} or {@link Locals} language map, or an array of values.
+ * A single {@link Value}, a {@link Localised} language map, or an array of values.
  *
  * Arrays represent sets of values: duplicate values are ignored and ordering is immaterial. Empty arrays are ignored.
  *
@@ -288,8 +290,7 @@ export type Resource =
  */
 export type Values =
 	| Value
-	| Local
-	| Locals
+	| Localised
 	| readonly Value[]
 
 /**
@@ -333,55 +334,38 @@ export type Reference =
 	| IRI
 
 /**
- * Single-valued language-tagged text or language map for internationalised text.
+ * Localised text value set.
  *
- * Maps language {@link Tag | tags} to a single localised text value per language.
+ * Language-tagged text mapping {@link Tag | tags} to localised values, supporting both single-valued and
+ * multi-valued forms per language.
  *
- * A plain string is accepted as shorthand for a language-neutral value tagged with `und`:
- * `"hello"` is equivalent to `{ und: "hello" }`. Consumers are responsible for normalising
- * shorthand values to the canonical object form.
+ * Plain shorthands are accepted for language-neutral values tagged with `und`:
  *
- * @remarks
+ * - `"hello"` is equivalent to `{ und: "hello" }`
+ * - `["a", "b"]` is equivalent to `{ und: ["a", "b"] }`
  *
- * - The `@none` key for non-localised values is not supported; use the `und` tag or the plain string
- *   shorthand for language-neutral values
- * - The `und` (Undetermined) tag is preferred over `zxx` (No Linguistic Content) for language-neutral text:
- *   `und` denotes text not bound to a specific language, while `zxx` is reserved for non-linguistic content
- *   such as instrumental music or binary data
- * - Language maps are conceptually equivalent to an array of language-tagged strings, which idiomatic JSON
- *   doesn't directly support
+ * Consumers are responsible for normalising shorthand values to the canonical object form.
+ *
+ * > [!WARNING]
+ * > Within a single map, all values must be uniformly scalar or uniformly array — mixed content is not
+ * > permitted.
+ *
+ * > [!NOTE]
+ * > - Language maps are conceptually equivalent to an array of language-tagged strings, which idiomatic JSON
+ * >   doesn't directly support
+ * > - The `@none` key for non-localised values is not supported; use the `und` tag or the plain string/string
+ * >   array shorthand for language-neutral values
+ * > - The `und` (Undetermined) tag is preferred over `zxx` (No Linguistic Content) for language-neutral text:
+ * >   `und` denotes text not bound to a specific language, while `zxx` is reserved for non-linguistic content
+ * >   such as instrumental music or binary data
  *
  * @see {@link https://www.rfc-editor.org/rfc/rfc5646.html RFC 5646 - Tags for Identifying Languages}
  * @see {@link https://iso639-3.sil.org/code/und ISO 639 und - Undetermined Language}
  */
-export type Local =
+export type Localised =
 	| string
-	| { readonly [tag: Tag]: string }
-
-/**
- * Multi-valued language-tagged text or language map for internationalised text.
- *
- * Maps language {@link Tag | tags} to multiple localised text values per language.
- *
- * A plain string array is accepted as shorthand for language-neutral values tagged with `und`:
- * `["a", "b"]` is equivalent to `{ und: ["a", "b"] }`. Consumers are responsible for normalising
- * shorthand values to the canonical object form.
- *
- * @remarks
- *
- * - The `@none` key for non-localised values is not supported; use the `und` tag or the plain string array
- *   shorthand for language-neutral values
- * - The `und` (Undetermined) tag is preferred over `zxx` (No Linguistic Content) for language-neutral text:
- *   `und` denotes text not bound to a specific language, while `zxx` is reserved for non-linguistic content
- *   such as instrumental music or binary data
- * - Language maps are conceptually equivalent to an array of language-tagged strings, which idiomatic JSON
- *   doesn't directly support
- *
- * @see {@link https://www.rfc-editor.org/rfc/rfc5646.html RFC 5646 - Tags for Identifying Languages}
- * @see {@link https://iso639-3.sil.org/code/und ISO 639 und - Undetermined Language}
- */
-export type Locals =
 	| readonly string[]
+	| { readonly [tag: Tag]: string }
 	| { readonly [tag: Tag]: readonly string[] }
 
 

@@ -23,6 +23,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Close transform set: `Probe.pipe` now typed as `Transform[]` and validated by `isTransform`
 - Extend `Binding` to accept plain `Identifier` as shorthand for `{id}={id}`
 - Align `decodeProbe`/`encodeProbe` with shorthand `Binding` semantics
+- Merge `Local`/`Locals` state types into unified `Localised` type accepting both scalar and array forms per tag
+- Merge `Locale`/`Locales` model types into unified `Locale` template accepting both scalar and array tag ranges
+- Merge `isLocal()`/`isLocals()` guards into `isLocalised()`; merge `isLocale()`/`isLocales()` into `isLocale()`
 - Rename `ValuesModel` to `Template`, `LocalModel` to `Locale`, `LocalsModel` to `Locales`
 - Rename `Criterion` to `Probe`; rename `isCriterion`, `encodeCriterion`, `decodeCriterion` accordingly
 - Inline `ValueModel` into `Template` union; remove `isValueModel` guard
@@ -34,9 +37,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
-- Fix form codec to reconstruct `Local`/`Locals` objects from tagged form parameters during decoding
-- Accept plain strings as `Local`/`Locale` shorthand and plain string arrays as `Locals`/`Locales` shorthand for
-	language-neutral values
+- Fix form codec to reconstruct `Localised` objects from tagged form parameters during decoding
+- Accept plain strings and string arrays as `Localised`/`Locale` shorthands for language-neutral values
 
 ## [0.9.2](https://github.com/metreeca/qest/releases/tag/v0.9.2) - 2026-02-09
 

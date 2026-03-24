@@ -24,7 +24,7 @@ import { isArray, isBoolean, isIdentifier, isNumber, isObject, isString, isUnion
 import { isTag } from "@metreeca/core/language";
 import { isIRI } from "@metreeca/core/resource";
 import { isIndexed } from "./index.core.js";
-import type { Literal, Local, Locals, Reference, Resource, Value, Values } from "./state.js";
+import type { Literal, Localised, Reference, Resource, Value, Values } from "./state.js";
 
 
 /**
@@ -44,10 +44,10 @@ export function isResource(value: unknown): value is Resource {
  *
  * @param value The value to check
  *
- * @returns True if the value is a {@link Value}, {@link Local}, {@link Locals}, or array of values
+ * @returns True if the value is a {@link Value}, {@link Localised}, or array of values
  */
 export function isValues(value: unknown): value is Values {
-	return isUnion(value, [isValue, isLocal, isLocals, v => isArray(v, isValue)]);
+	return isUnion(value, [isValue, isLocalised, v => isArray(v, isValue)]);
 }
 
 /**
@@ -84,23 +84,16 @@ export function isReference(value: unknown): value is Reference {
 }
 
 /**
- * Checks if a value is a {@link Local}.
+ * Checks if a value is a {@link Localised}.
  *
  * @param value The value to check
  *
- * @returns True if the value is a string or a plain object with language tag keys and string values
+ * @returns True if the value is a string, string array, or a plain object with language tag keys
+ * and uniformly string or string array values
  */
-export function isLocal(value: unknown): value is Local {
-	return isString(value) || isObject(value, (v, k) => isTag(k) && isString(v));
-}
-
-/**
- * Checks if a value is a {@link Locals}.
- *
- * @param value The value to check
- *
- * @returns True if the value is a string array or a plain object with language tag keys and string array values
- */
-export function isLocals(value: unknown): value is Locals {
-	return isArray(value, isString) || isObject(value, (v, k) => isTag(k) && isArray(v, isString));
+export function isLocalised(value: unknown): value is Localised {
+	return isString(value)
+		|| isArray(value, isString)
+		|| isObject(value, (v, k) => isTag(k) && isString(v))
+		|| isObject(value, (v, k) => isTag(k) && isArray(v, isString));
 }

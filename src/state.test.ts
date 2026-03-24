@@ -16,7 +16,7 @@
 
 import { describe, expect, it } from "vitest";
 import { defaultBase } from "./index.js";
-import { isLiteral, isLocal, isLocals, isReference, isResource, isValue, isValues } from "./state.core.js";
+import { isLiteral, isLocalised, isReference, isResource, isValue, isValues } from "./state.core.js";
 import { decodeResource, encodeResource, type Resource } from "./state.js";
 
 
@@ -210,79 +210,60 @@ describe("guards", () => {
 
 	});
 
-	describe("isLocal", () => {
+	describe("isLocalised", () => {
 
 		it("should accept single-valued language map", async () => {
-			expect(isLocal({ en: "Hello" })).toBeTruthy();
-			expect(isLocal({ en: "Hello", de: "Hallo", fr: "Bonjour" })).toBeTruthy();
+			expect(isLocalised({ en: "Hello" })).toBeTruthy();
+			expect(isLocalised({ en: "Hello", de: "Hallo", fr: "Bonjour" })).toBeTruthy();
 		});
-
-		it("should accept empty object", async () => {
-			expect(isLocal({})).toBeTruthy();
-		});
-
-		it("should reject multi-valued language map", async () => {
-			expect(isLocal({ en: ["Hello", "Hi"] })).toBeFalsy();
-		});
-
-		it("should reject invalid language tags", async () => {
-			expect(isLocal({ invalid_tag: "value" })).toBeFalsy();
-			expect(isLocal({ "123": "value" })).toBeFalsy();
-		});
-
-		it("should reject non-string values", async () => {
-			expect(isLocal({ en: 42 })).toBeFalsy();
-			expect(isLocal({ en: null })).toBeFalsy();
-		});
-
-		it("should accept plain string shorthand", async () => {
-			expect(isLocal("hello")).toBeTruthy();
-			expect(isLocal("")).toBeTruthy();
-		});
-
-		it("should reject non-string primitives", async () => {
-			expect(isLocal(42)).toBeFalsy();
-			expect(isLocal(null)).toBeFalsy();
-		});
-
-	});
-
-	describe("isLocals", () => {
 
 		it("should accept multi-valued language map", async () => {
-			expect(isLocals({ en: ["Hello", "Hi"] })).toBeTruthy();
-			expect(isLocals({ en: ["Hello"], de: ["Hallo", "Guten Tag"] })).toBeTruthy();
+			expect(isLocalised({ en: ["Hello", "Hi"] })).toBeTruthy();
+			expect(isLocalised({ en: ["Hello"], de: ["Hallo", "Guten Tag"] })).toBeTruthy();
 		});
 
 		it("should accept empty arrays", async () => {
-			expect(isLocals({ en: [] })).toBeTruthy();
+			expect(isLocalised({ en: [] })).toBeTruthy();
 		});
 
 		it("should accept empty object", async () => {
-			expect(isLocals({})).toBeTruthy();
+			expect(isLocalised({})).toBeTruthy();
 		});
 
-		it("should reject single-valued language map", async () => {
-			expect(isLocals({ en: "Hello" })).toBeFalsy();
-		});
-
-		it("should reject invalid language tags", async () => {
-			expect(isLocals({ invalid_tag: ["value"] })).toBeFalsy();
-		});
-
-		it("should reject non-string array elements", async () => {
-			expect(isLocals({ en: [42] })).toBeFalsy();
-			expect(isLocals({ en: [null] })).toBeFalsy();
+		it("should accept plain string shorthand", async () => {
+			expect(isLocalised("hello")).toBeTruthy();
+			expect(isLocalised("")).toBeTruthy();
 		});
 
 		it("should accept plain string array shorthand", async () => {
-			expect(isLocals(["a", "b"])).toBeTruthy();
-			expect(isLocals([])).toBeTruthy();
+			expect(isLocalised(["a", "b"])).toBeTruthy();
+			expect(isLocalised([])).toBeTruthy();
 		});
 
-		it("should reject non-array primitives", async () => {
-			expect(isLocals("string")).toBeFalsy();
-			expect(isLocals(null)).toBeFalsy();
+		it("should reject mixed scalar/array content", async () => {
+			expect(isLocalised({ en: "hello", fr: ["bonjour"] })).toBeFalsy();
+			expect(isLocalised({ en: ["hello"], fr: "bonjour" })).toBeFalsy();
+		});
+
+		it("should reject invalid language tags", async () => {
+			expect(isLocalised({ invalid_tag: "value" })).toBeFalsy();
+			expect(isLocalised({ "123": "value" })).toBeFalsy();
+			expect(isLocalised({ invalid_tag: ["value"] })).toBeFalsy();
+		});
+
+		it("should reject non-string values", async () => {
+			expect(isLocalised({ en: 42 })).toBeFalsy();
+			expect(isLocalised({ en: null })).toBeFalsy();
+		});
+
+		it("should reject non-string array elements", async () => {
+			expect(isLocalised({ en: [42] })).toBeFalsy();
+			expect(isLocalised({ en: [null] })).toBeFalsy();
+		});
+
+		it("should reject non-string/non-array primitives", async () => {
+			expect(isLocalised(42)).toBeFalsy();
+			expect(isLocalised(null)).toBeFalsy();
 		});
 
 	});
