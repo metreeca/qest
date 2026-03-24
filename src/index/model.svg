@@ -1,6 +1,22 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+  - Copyright © 2025-2026 Metreeca srl
+  -
+  - Licensed under the Apache License, Version 2.0 (the "License");
+  - you may not use this file except in compliance with the License.
+  - You may obtain a copy of the License at
+  -
+  -     http://www.apache.org/licenses/LICENSE-2.0
+  -
+  - Unless required by applicable law or agreed to in writing, software
+  - distributed under the License is distributed on an "AS IS" BASIS,
+  - WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  - See the License for the specific language governing permissions and
+  - limitations under the License.
+  -->
+
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:xl="http://www.w3.org/1999/xlink" viewBox="-252 191 397 427" width="397" height="427">
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="-252 191 397 427" width="397" height="427">
   <defs>
     <marker orient="auto" overflow="visible" markerUnits="strokeWidth" id="StickArrow_Marker" stroke-linejoin="miter" stroke-miterlimit="10" viewBox="-1 -10 26 20" markerWidth="26" markerHeight="20" color="black">
       <g>
@@ -164,7 +180,8 @@
         </g>
       </g>
       <g id="Line_884">
-        <line x1="57.02706" y1="453.36767" x2="57.02706" y2="430.61966" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+          <line x1="57.02706" y1="480.00957" x2="57.02706" y2="430.61966" stroke="black" stroke-linecap="round"
+                  stroke-linejoin="round" stroke-width=".25"/>
       </g>
       <g id="Line_885">
         <path d="M 3.5226434 543.77916 L 3.5226434 559.09896 L 27.37206 559.09896" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
@@ -178,18 +195,21 @@
         </g>
       </g>
       <g id="Graphic_888">
-        <text transform="translate(41.77206 454.36767)" fill="black">
+          <text transform="translate(41.77206 481.00957)" fill="black">
           <tspan font-family="Helvetica Neue" font-size="9" fill="black" x="0" y="9" xml:space="preserve">«union»</tspan>
         </text>
       </g>
       <g id="Line_889">
-        <line x1="57.02706" y1="466.61966" x2="57.02706" y2="495.41157" marker-end="url(#Arrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+          <line x1="57.02706" y1="493.26157" x2="57.02706" y2="495.41157" marker-end="url(#Arrow_Marker)" stroke="black"
+                  stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
       </g>
       <g id="Line_890">
-        <path d="M 57.02706 453.36767 L 57.02706 442.11767 L 114.17706 442.11767 L 114.17706 430.61966" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+          <path d="M 57.02706 480.00957 L 57.02706 455.75957 L 114.17706 455.75957 L 114.17706 430.61966" stroke="black"
+                  stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
       </g>
       <g id="Line_891">
-        <path d="M 57.02706 453.36767 L 57.02706 442.11767 L -14.46444 442.11767 L -14.46444 430.61966" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+          <path d="M 57.02706 480.00957 L 57.02706 455.75957 L -14.46444 455.75957 L -14.46444 430.61966" stroke="black"
+                  stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
       </g>
       <g id="Group_892">
         <g id="Graphic_893">

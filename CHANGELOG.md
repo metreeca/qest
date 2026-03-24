@@ -31,6 +31,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Inline `ValueModel` into `Template` union; remove `isValueModel` guard
 - Split `Templates` / `Template` into separate types mirroring `Values` / `Value`; add `isTemplates` guard
 - Move `Literal` and `Reference` types from `state` module to `index` module
+- Rename `./index` package export to `.` (root entry point)
 - Merge `Model` and `Query` into unified `Query` type combining projection, filtering, ordering, and pagination
 - Rename `encodeModel`/`decodeModel` to `encodeQuery`/`decodeQuery`
 - Rename `encodeQuery`/`decodeQuery` to `encodeQueryString`/`decodeQueryString`

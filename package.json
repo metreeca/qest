@@ -28,7 +28,7 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    "./index": "./dist/index.js",
+    ".": "./dist/index.js",
     "./state": "./dist/state.js",
     "./model": "./dist/model.js"
   },
