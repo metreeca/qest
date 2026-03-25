@@ -22,7 +22,7 @@
 
 import { isArray, isIdentifier, isObject, isString, isUnion } from "@metreeca/core";
 import { isTag } from "@metreeca/core/language";
-import { isIndexed, isLiteral, isReference } from "./index.core.js";
+import { isIndexable, isLiteral, isReference } from "./index.core.js";
 import type { Literal, Reference } from "./index.js";
 import type { Localised, Resource, Value, Values } from "./state.js";
 
@@ -35,7 +35,7 @@ import type { Localised, Resource, Value, Values } from "./state.js";
  * @returns True if the value is a plain object with identifier keys and {@link Values} or {@link Indexed} values
  */
 export function isResource(value: unknown): value is Resource {
-	return isObject(value, (v, k) => isIdentifier(k) && isUnion(v, [isValues, v => isIndexed(v, isValues)]));
+	return isObject(value, (v, k) => isIdentifier(k) && isIndexable(v, isValues));
 }
 
 

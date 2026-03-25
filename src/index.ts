@@ -67,10 +67,25 @@ export type Indexed<T> =
 	| { readonly [key: Identifier]: T }
 
 /**
+ * Optionally key-indexed property value.
+ *
+ * Accepts `T` directly or wrapped in an {@link Indexed} container, allowing properties to support both plain and
+ * union-discriminated values.
+ *
+ * @typeParam T The type of values in the container
+ *
+ * @see {@link https://www.w3.org/TR/json-ld11/#data-indexing JSON-LD 1.1 - Data Indexing}
+ */
+export type Indexable<T> =
+	| T
+	| Indexed<T>;
+
+
+/**
  * Resource reference.
  *
- * An absolute {@link IRI} identifying a linked resource without embedding its state. Contrast with {@link state!Resource},
- * which includes the linked resource's properties inline.
+ * An absolute {@link IRI} identifying a linked resource without embedding its state. Contrast with
+ * {@link state!Resource}, which includes the linked resource's properties inline.
  *
  * > [!WARNING]
  * > This is a type alias for documentation purposes only. Branding was considered but not adopted due to

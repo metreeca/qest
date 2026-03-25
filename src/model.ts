@@ -240,6 +240,7 @@
  *
  * **Encoding notes:**
  *
+ * - Nested containers use postfix `@key` suffixes on values (see [Values](#values) for syntax)
  * - Some operator characters are unreserved in RFC 3986 and remain unencoded: `~` (like), `!` (all)
  * - Reserved characters in values are percent-encoded: `&` (separator), `=` (key/value), `+` (space), `%` (escape)
  *
@@ -292,17 +293,21 @@
  *
  * ## Values
  *
- * Values are serialized as [JSON](https://www.rfc-editor.org/rfc/rfc8259) primitives:
+ * Values are serialised as [JSON](https://www.rfc-editor.org/rfc/rfc8259) primitives with optional postfix
+ * `@key` suffixes for nested containers:
  *
  * ```text
- * value       = primitive | localized
+ * value       = primitive ( '@' key )*
  * primitive   = null | boolean | number | string
- * localized   = string '@' tag
+ * key         = identifier ( '-' alphanumeric )*
  * ```
  *
- * - {@link IRI}s are serialized as strings
- * - Localized strings in {@link Localised} maps combine a value with a
- *   {@link https://metreeca.github.io/core/types/language.Tag.html language tag} suffix (e.g., `"text"@en`)
+ * - {@link IRI}s are serialised as strings
+ * - Each `@key` suffix adds one wrapping layer around the value, innermost key first (for example,
+ *   `"text"@en` wraps as `{ "en": "text" }` and `"text"@en@xsd_string` wraps as
+ *   `{ "xsd_string": { "en": "text" } }`)
+ * - The codec treats all `@key` suffixes uniformly — consumers interpret nesting levels using schema-based
+ *   information to distinguish {@link Localised} dictionaries from {@link Indexed} containers
  * - The encoder always produces double-quoted strings; the decoder accepts unquoted strings as a shorthand
  *
  * > [!WARNING]
@@ -321,10 +326,18 @@ import { error } from "@metreeca/core/report";
 import type { IRI } from "@metreeca/core/resource";
 import { internalize, isIRI, resolve } from "@metreeca/core/resource";
 import { decodeBase64, encodeBase64 } from "./base64.js";
-import { type DecoderOpts, defaultBase, type EncoderOpts, Indexed, type Literal, type Reference } from "./index.js";
+import {
+	type DecoderOpts,
+	defaultBase,
+	type EncoderOpts,
+	type Indexable,
+	Indexed,
+	type Literal,
+	type Reference
+} from "./index.js";
 import { isProbe, isQuery } from "./model.core.js";
 import * as QueryParser from "./model.pegjs.js";
-import { Localised, Resource, type Value } from "./state.js";
+import { Localised, Resource } from "./state.js";
 
 
 /**
@@ -376,10 +389,10 @@ export type Query = {
 	/**
 	 * Property projection (`"binding": template`).
 	 *
-	 * Maps a {@link Binding} to a {@link Templates} describing the expected value type and structure,
-	 * or to an {@link Indexed} container for union-typed or dynamically-keyed properties.
+	 * Maps a {@link Binding} to {@link Indexable} (plain or key-indexed) {@link Templates} describing the expected
+	 * value type and structure for plain or union-typed properties.
 	 */
-	readonly [property: Binding]: Templates | Indexed<Templates>
+	readonly [property: Binding]: Indexable<Templates>
 
 } & {
 
@@ -446,25 +459,28 @@ export type Query = {
 	/**
 	 * Disjunctive matching filter (`"?expression": value`).
 	 *
-	 * Includes resources where at least one expression value equals one of the options; `null` matches undefined.
+	 * Includes resources where at least one expression value equals one of the {@link Indexable} (plain or key-indexed)
+	 * {@link Options}; `null` matches undefined.
 	 */
-	readonly [any: `?${Expression}`]: Options
+	readonly [any: `?${Expression}`]: Indexable<Options>
 
 	/**
 	 * Conjunctive matching filter (`"!expression": value`).
 	 *
-	 * Includes resources whose expression values include all specified options; for multi-valued properties.
+	 * Includes resources whose expression values include all specified {@link Indexable} (plain or key-indexed)
+	 * {@link Options}; for multi-valued properties.
 	 */
-	readonly [all: `!${Expression}`]: Options
+	readonly [all: `!${Expression}`]: Indexable<Options>
 
 
 	/**
 	 * Focus ordering (`"*expression": options`).
 	 *
-	 * Orders results prioritising resources whose expression value appears in the specified {@link Options};
-	 * matching resources appear before non-matching ones; overrides regular sorting criteria.
+	 * Orders results prioritising resources whose expression value appears in the specified {@link Indexable}
+	 * (plain or key-indexed) {@link Options}; matching resources appear before non-matching ones; overrides regular
+	 * sorting criteria.
 	 */
-	readonly [focus: `*${Expression}`]: Options
+	readonly [focus: `*${Expression}`]: Indexable<Options>
 
 	/**
 	 * Sort ordering (`"^expression": priority`).
@@ -964,6 +980,25 @@ export function decodeQuery(json: string, {
  * If `base` is provided, converts absolute IRIs (matching `isIRI(value, "absolute")`) to root-relative IRIs
  * using {@link internalize}, recursively throughout the query structure. Otherwise, performs plain serialization.
  *
+ * > [!NOTE]
+ * > The `"form"` format always encodes to canonical form:
+ * >
+ * > - Operators use prefix notation (for example, `>=price=100`)
+ * > - String values are JSON double-quoted (for example, `name="widget"`)
+ * > - Numbers, booleans, and `null` remain unquoted (JSON literals)
+ * > - Sorting criteria are always numeric (for example, `^price=1`, `^name=-2`)
+ * > - Nested containers ({@link Localised} dictionaries, {@link Indexed} containers, or other keyed structures) are
+ * >   flattened using postfix `@key` suffixes on values, one suffix per nesting level (innermost key first)
+ * >
+ * > This ensures consistent, predictable output. The decoder accepts both canonical and shorthand forms (for example,
+ * > postfix operators like `price>=100`, unquoted strings like `name=widget`).
+ *
+ * > [!WARNING]
+ * > The codec does not assign semantic meaning to keys — it flattens every nesting level it encounters uniformly.
+ * > Consumers are responsible for interpreting the resulting structure using schema-based information to determine
+ * > whether a given nesting level represents a {@link Localised} dictionary, an {@link Indexed} container, or
+ * > another keyed structure.
+ *
  * @param query The query object to encode
  * @param options Encoding options
  * @param options.base Base IRI for internalizing absolute IRIs
@@ -978,18 +1013,6 @@ export function decodeQuery(json: string, {
  * @returns The encoded query string, with internalized IRIs if `base` is provided
  *
  * @throws {TypeError} If `base` is not a hierarchical IRI
- *
- * @remarks
- *
- * The `"form"` format always encodes to canonical form:
- *
- * - Operators use prefix notation (e.g., `>=price=100`)
- * - String values are JSON double-quoted (e.g., `name="widget"`)
- * - Numbers, booleans, and `null` remain unquoted (JSON literals)
- * - Sorting criteria are always numeric (e.g., `^price=1`, `^name=-2`)
- *
- * This ensures consistent, predictable output. The decoder accepts both canonical and shorthand forms (e.g., postfix
- * operators like `price>=100`, unquoted strings like `name=widget`).
  *
  * @example
  *
@@ -1051,14 +1074,19 @@ export function encodeQueryString(query: Query, {
 
 	}
 
-	function encodeFormDictionary(encodedKey: string, dict: Record<string, unknown>): string[] {
+	function encodeFormDictionary(encodedKey: string, dict: Record<string, unknown>, suffix: string = ""): string[] {
 
-		// Dictionary (localised content): expand to tagged strings
+		// nested container: flatten each key as a postfix @key suffix, recursing for deeper levels
 
-		return Object.entries(dict).flatMap(([tag, tagValue]) => isArray(tagValue)
-			? tagValue.map(v => `${encodedKey}=${encodeFormValue(v)}%40${tag}`)
-			: [`${encodedKey}=${encodeFormValue(tagValue)}%40${tag}`]
-		);
+		return Object.entries(dict).flatMap(([key, value]) => {
+
+			const keySuffix = `%40${key}${suffix}`;
+
+			return isArray(value) ? value.map(v => `${encodedKey}=${encodeFormValue(v)}${keySuffix}`)
+				: isObject(value) ? encodeFormDictionary(encodedKey, value, keySuffix)
+					: [`${encodedKey}=${encodeFormValue(value)}${keySuffix}`];
+
+		});
 
 	}
 
@@ -1086,6 +1114,25 @@ export function encodeQueryString(query: Query, {
  * If `base` is provided, resolves internal IRIs (matching `isIRI(value, "internal")`) to absolute IRIs
  * using `resolve()`, recursively throughout the query structure. Otherwise, performs plain parsing.
  *
+ * > [!NOTE]
+ * > For `"form"` format, the decoder accepts both canonical and shorthand forms:
+ * >
+ * > - Prefix operators (canonical): `>=price=100`
+ * > - Postfix operators (shorthand): `price>=100`
+ * > - Double-quoted strings (canonical): `name="widget"`
+ * > - Unquoted strings (shorthand): `name=widget`
+ * > - Nested containers ({@link Localised} dictionaries, {@link Indexed} containers, or other keyed structures) use
+ * >   postfix `@key` suffixes on values, one suffix per nesting level (innermost key first)
+ * >
+ * > Keyed values are always reconstructed in the multi-valued form, since {@link Options} are inherently multi-valued
+ * > and scalar/array forms are indistinguishable in form encoding.
+ *
+ * > [!WARNING]
+ * > The codec reconstructs nesting levels mechanically without assigning semantic meaning to keys. Consumers are
+ * > responsible for interpreting the resulting structure using schema-based information to determine whether a given
+ * > nesting level represents a {@link Localised} dictionary, an {@link Indexed} container, or another keyed
+ * > structure.
+ *
  * @param json The URL-encoded {@link Query} string (JSON, base64, or form format)
  * @param options Decoding options
  * @param options.base Base IRI for resolving internal IRIs
@@ -1095,19 +1142,6 @@ export function encodeQueryString(query: Query, {
  *
  * @throws {TypeError} If `base` is not a hierarchical IRI
  * @throws {Error} If `json` is malformed or unparseable
- *
- * @remarks
- *
- * For `"form"` format, the decoder accepts both canonical and shorthand forms:
- *
- * - Prefix operators (canonical): `>=price=100`
- * - Postfix operators (shorthand): `price>=100`
- * - Double-quoted strings (canonical): `name="widget"`
- * - Unquoted strings (shorthand): `name=widget`
- *
- * Tagged strings always require the canonical `"value"@tag` format. Tagged values are always reconstructed
- * in the multi-valued {@link Localised} form, since {@link Options} are inherently multi-valued and scalar/array
- * forms are indistinguishable in form encoding.
  *
  * @example
  *

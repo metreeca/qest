@@ -29,7 +29,15 @@ import {
 	isTemplates,
 	isTransform
 } from "./model.core.js";
-import { decodeQuery, decodeProbe, decodeQueryString, encodeQuery, encodeProbe, encodeQueryString, type Query } from "./model.js";
+import {
+	decodeProbe,
+	decodeQuery,
+	decodeQueryString,
+	encodeProbe,
+	encodeQuery,
+	encodeQueryString,
+	type Query
+} from "./model.js";
 
 
 describe("guards", () => {
@@ -66,8 +74,14 @@ describe("guards", () => {
 				expect(isQuery({ "!tags": ["featured"] })).toBeTruthy();
 			});
 
+			it("should accept indexed filtering options", async () => {
+				expect(isQuery({ "?category": { xsd_string: ["a", "b"] } })).toBeTruthy();
+				expect(isQuery({ "!tags": { xsd_string: ["featured"] } })).toBeTruthy();
+			});
+
 			it("should accept ordering entries", async () => {
 				expect(isQuery({ "*category": ["electronics"] })).toBeTruthy();
+				expect(isQuery({ "*category": { xsd_string: ["electronics"] } })).toBeTruthy();
 				expect(isQuery({ "^price": 1 })).toBeTruthy();
 				expect(isQuery({ "^name": "asc" })).toBeTruthy();
 				expect(isQuery({ "^name": "desc" })).toBeTruthy();
@@ -788,6 +802,24 @@ describe("codecs", () => {
 			expect(encodeQuery(model)).toBe(JSON.stringify(model));
 		});
 
+		it("should encode model with indexed filtering options", async () => {
+			const model: Query = {
+				"?category": { xsd_string: ["https://example.com/cat/electronics"] }
+			};
+
+			expect(encodeQuery(model, { base: "https://example.com/" }))
+				.toBe(JSON.stringify({ "?category": { xsd_string: ["/cat/electronics"] } }));
+		});
+
+		it("should encode model with indexed focus options", async () => {
+			const model: Query = {
+				"*category": { xsd_string: ["https://example.com/cat/featured"] }
+			};
+
+			expect(encodeQuery(model, { base: "https://example.com/" }))
+				.toBe(JSON.stringify({ "*category": { xsd_string: ["/cat/featured"] } }));
+		});
+
 		it("should encode model with collection query", async () => {
 			const model: Query = {
 				items: [{
@@ -875,6 +907,24 @@ describe("codecs", () => {
 			expect(decodeQuery(json)).toEqual({
 				"vendorName=vendor.name": ""
 			});
+		});
+
+		it("should decode model with indexed filtering options", async () => {
+			const json = JSON.stringify({
+				"?category": { xsd_string: ["/cat/electronics"] }
+			});
+
+			expect(decodeQuery(json, { base: "https://example.com/" }))
+				.toEqual({ "?category": { xsd_string: ["https://example.com/cat/electronics"] } });
+		});
+
+		it("should decode model with indexed focus options", async () => {
+			const json = JSON.stringify({
+				"*category": { xsd_string: ["/cat/featured"] }
+			});
+
+			expect(decodeQuery(json, { base: "https://example.com/" }))
+				.toEqual({ "*category": { xsd_string: ["https://example.com/cat/featured"] } });
 		});
 
 		it("should roundtrip with encodeQuery", async () => {
@@ -1487,6 +1537,50 @@ describe("codecs", () => {
 
 			});
 
+			describe("indexed content", () => {
+
+				it("should encode single-level indexed plain option", async () => {
+					const query = { "?category": { xsd_string: "electronics" } } as Query;
+					const encoded = encodeQueryString(query, { mode: "form" });
+
+					// ?category="electronics"@xsd_string
+					expect(encoded).toBe("%3Fcategory=%22electronics%22%40xsd_string");
+				});
+
+				it("should encode single-level indexed array options", async () => {
+					const query = { "?category": { xsd_string: ["electronics", "home"] } } as Query;
+					const encoded = encodeQueryString(query, { mode: "form" });
+
+					// ?category="electronics"@xsd_string&?category="home"@xsd_string
+					expect(encoded).toBe("%3Fcategory=%22electronics%22%40xsd_string&%3Fcategory=%22home%22%40xsd_string");
+				});
+
+				it("should encode two-level indexed localised option", async () => {
+					const query = { "?name": { xsd_string: { en: "Widget" } } } as Query;
+					const encoded = encodeQueryString(query, { mode: "form" });
+
+					// ?name="Widget"@en@xsd_string
+					expect(encoded).toBe("%3Fname=%22Widget%22%40en%40xsd_string");
+				});
+
+				it("should encode two-level indexed localised options", async () => {
+					const query = { "?name": { xsd_string: { en: "Widget", fr: "Gadget" } } } as Query;
+					const encoded = encodeQueryString(query, { mode: "form" });
+
+					// ?name="Widget"@en@xsd_string&?name="Gadget"@fr@xsd_string
+					expect(encoded).toBe("%3Fname=%22Widget%22%40en%40xsd_string&%3Fname=%22Gadget%22%40fr%40xsd_string");
+				});
+
+				it("should encode multiple indexed keys", async () => {
+					const query = { "?value": { xsd_integer: 42, xsd_string: "42" } } as Query;
+					const encoded = encodeQueryString(query, { mode: "form" });
+
+					// ?value=42@xsd_integer&?value="42"@xsd_string
+					expect(encoded).toBe("%3Fvalue=42%40xsd_integer&%3Fvalue=%2242%22%40xsd_string");
+				});
+
+			});
+
 			describe("local/locals roundtrip", () => {
 
 				it("should reconstruct single-tag Local as Locals", async () => {
@@ -2003,6 +2097,51 @@ describe("codecs", () => {
 					const decoded = decodeQueryString("%3Fname=%22Widget%22%40en&%3Fname=%22Gadget%22%40en&%3Fname=%22Bidule%22%40fr") as Record<string, unknown>;
 
 					expect(decoded["?name"]).toEqual({ "en": ["Widget", "Gadget"], "fr": ["Bidule"] });
+				});
+
+			});
+
+			describe("indexed content", () => {
+
+				it("should decode single-level indexed plain option", async () => {
+					// ?category="electronics"@xsd_string → { xsd_string: ["electronics"] }
+					const decoded = decodeQueryString("%3Fcategory=%22electronics%22%40xsd_string") as Record<string, unknown>;
+
+					expect(decoded["?category"]).toEqual({ "xsd_string": ["electronics"] });
+				});
+
+				it("should decode single-level indexed multiple options", async () => {
+					// ?category="electronics"@xsd_string&?category="home"@xsd_string
+					const decoded = decodeQueryString(
+						"%3Fcategory=%22electronics%22%40xsd_string&%3Fcategory=%22home%22%40xsd_string"
+					) as Record<string, unknown>;
+
+					expect(decoded["?category"]).toEqual({ "xsd_string": ["electronics", "home"] });
+				});
+
+				it("should decode two-level indexed localised option", async () => {
+					// ?name="Widget"@en@xsd_string → { xsd_string: { en: ["Widget"] } }
+					const decoded = decodeQueryString("%3Fname=%22Widget%22%40en%40xsd_string") as Record<string, unknown>;
+
+					expect(decoded["?name"]).toEqual({ "xsd_string": { "en": ["Widget"] } });
+				});
+
+				it("should decode two-level indexed localised options", async () => {
+					// ?name="Widget"@en@xsd_string&?name="Gadget"@fr@xsd_string
+					const decoded = decodeQueryString(
+						"%3Fname=%22Widget%22%40en%40xsd_string&%3Fname=%22Gadget%22%40fr%40xsd_string"
+					) as Record<string, unknown>;
+
+					expect(decoded["?name"]).toEqual({ "xsd_string": { "en": ["Widget"], "fr": ["Gadget"] } });
+				});
+
+				it("should decode multiple indexed keys", async () => {
+					// ?value=42@xsd_integer&?value="42"@xsd_string
+					const decoded = decodeQueryString(
+						"%3Fvalue=42%40xsd_integer&%3Fvalue=%2242%22%40xsd_string"
+					) as Record<string, unknown>;
+
+					expect(decoded["?value"]).toEqual({ "xsd_integer": [42], "xsd_string": ["42"] });
 				});
 
 			});

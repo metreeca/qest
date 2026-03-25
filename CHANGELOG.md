@@ -9,6 +9,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Add `Indexable<T>` type alias and `isIndexable` guard for plain or key-indexed values
 - Add `encodeQuery`/`decodeQuery` codecs for `Query` JSON serialization with IRI internalization/resolution
 - Add `lower`, `upper`, `length` string transforms to `Transform` enum
 - Add `indent` option to `EncoderOpts` for pretty-printing encoded JSON output
@@ -43,6 +44,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Support `Indexable<Options>` in disjunctive, conjunctive, and focus filter type signatures
+- Extend form codec to encode/decode nested containers via stacked postfix `@key` suffixes
 - Fix form codec to reconstruct `Localised` objects from tagged form parameters during decoding
 - Accept plain strings and string arrays as `Localised`/`Locale` shorthands for language-neutral values
 

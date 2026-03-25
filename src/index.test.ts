@@ -16,7 +16,7 @@
 
 import { isAny, isString } from "@metreeca/core";
 import { describe, expect, it } from "vitest";
-import { isIndexed, isLiteral, isReference } from "./index.core.js";
+import { isIndexable, isIndexed, isLiteral, isReference } from "./index.core.js";
 
 
 describe("guards", () => {
@@ -47,6 +47,40 @@ describe("guards", () => {
 		});
 
 	});
+
+	describe("isIndexable", () => {
+
+		it("should accept plain value satisfying guard", async () => {
+			expect(isIndexable("hello", isString)).toBeTruthy();
+		});
+
+		it("should accept indexed container with matching values", async () => {
+			expect(isIndexable({ key1: "value1", key2: "value2" }, isString)).toBeTruthy();
+		});
+
+		it("should accept empty indexed container", async () => {
+			expect(isIndexable({}, isString)).toBeTruthy();
+		});
+
+		it("should reject plain value not satisfying guard", async () => {
+			expect(isIndexable(42, isString)).toBeFalsy();
+		});
+
+		it("should reject indexed container with non-matching values", async () => {
+			expect(isIndexable({ str: "value", num: 42 }, isString)).toBeFalsy();
+		});
+
+		it("should reject null", async () => {
+			expect(isIndexable(null, isString)).toBeFalsy();
+		});
+
+		it("should reject arrays", async () => {
+			expect(isIndexable([], isString)).toBeFalsy();
+			expect(isIndexable(["a", "b"], isString)).toBeFalsy();
+		});
+
+	});
+
 
 	describe("isLiteral", () => {
 

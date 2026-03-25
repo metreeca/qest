@@ -22,22 +22,37 @@
 
 import { isBoolean, isIdentifier, isNumber, isObject, isString, isUnion } from "@metreeca/core";
 import { isIRI } from "@metreeca/core/resource";
-import type { Indexed, Literal, Reference } from "./index.js";
+import type { Indexable, Indexed, Literal, Reference } from "./index.js";
 
 
 /**
- * Checks if a value is an {@link Indexed}.
+ * Checks if a value is {@link Indexed} (key-indexed).
  *
- * @typeParam T The expected type of values in the container
+ * @typeParam T The expected type of contained values
  *
  * @param value The value to check
- * @param is Type guard for validating container values
+ * @param is Type guard for validating contained values
  *
- * @returns True if the value is a plain object with identifier keys and values satisfying the type guard
+ * @returns True if the value is a plain object with identifier keys and values satisfying `is`
  */
 export function isIndexed<T>(value: unknown, is: (value: unknown) => value is T): value is Indexed<T> {
 	return isObject(value, (v, k) => isIdentifier(k) && is(v));
 }
+
+/**
+ * Checks if a value is {@link Indexable} (plain or key-indexed).
+ *
+ * @typeParam T The expected type of contained values
+ *
+ * @param value The value to check
+ * @param is Type guard for validating contained values
+ *
+ * @returns True if the value satisfies `is` directly or is a valid {@link Indexed} container
+ */
+export function isIndexable<T>(value: unknown, is: (value: unknown) => value is T): value is Indexable<T> {
+	return isUnion(value, [is, v => isIndexed(v, is)]);
+}
+
 
 /**
  * Checks if a value is a {@link Reference}.

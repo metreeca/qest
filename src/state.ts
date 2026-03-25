@@ -260,6 +260,7 @@ import {
 	type DecoderOpts,
 	defaultBase,
 	type EncoderOpts,
+	type Indexable,
 	type Indexed,
 	type Literal,
 	type Reference
@@ -270,9 +271,9 @@ import { isResource } from "./state.core.js";
 /**
  * Linked data resource state.
  *
- * A property map describing the state of a resource. Each property holds {@link Values} or {@link Indexed} and may
- * include an `id` property mapped to `@id` for resource identification. Descriptions without `id` represent anonymous
- * (blank) nodes.
+ * A property map describing the state of a resource. Each property holds {@link Indexable} (plain or key-indexed)
+ * {@link Values} and may include an `id` property mapped to `@id` for resource identification. Descriptions without
+ * `id` represent anonymous (blank) nodes.
  *
  * Used for both retrieving resource state (HTTP GET) and complete state replacement (HTTP PUT).
  *
@@ -281,7 +282,7 @@ import { isResource } from "./state.core.js";
  * @see {@link https://datatracker.ietf.org/doc/html/rfc9110#section-9.3.4 RFC 9110 - HTTP PUT Method}
  */
 export type Resource =
-	| { readonly [property: Identifier]: Values | Indexed<Values> }
+	| { readonly [property: Identifier]: Indexable<Values> }
 
 
 /**

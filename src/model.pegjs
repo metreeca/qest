@@ -27,7 +27,7 @@
     '"': '"', '/': '/', '\\': '\\'
   };
 
-  const LocalizedPattern = /^"((?:[^"\\]|\\.)*)"\s*@\s*([a-zA-Z]+(?:-[a-zA-Z0-9]+)*)$/;
+  const KeyPattern = /^[_$\p{L}][_$\u200C\u200D\p{L}\p{N}]*(?:-[a-zA-Z0-9]+)*$/u;
   const NumberPattern = /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/;
   const IdentifierPattern = /^[_$\p{ID_Start}][$\u200C\u200D\p{ID_Continue}]*$/u;
 
@@ -44,21 +44,35 @@
     );
   }
 
-  // tagged value marker for localized strings parsed from "text"@tag form parameters
+  // keyed value marker for values with postfix @key suffixes (stacked for nested containers)
 
-  class Tagged {
-    constructor(text, tag) {
-      this.text = text;
-      this.tag = tag;
+  class Keyed {
+    constructor(value, keys) {
+      this.value = value;
+      this.keys = keys;
     }
   }
 
   function parseValue(str) {
     const decoded = decodeValue(str);
-    const localized = decoded.match(LocalizedPattern);
 
-    return localized ? new Tagged(parseJsonString(localized[1]), localized[2])
-      : decoded.startsWith('"') && decoded.endsWith('"') ? parseJsonString(decoded.slice(1, -1))
+    // split on @ from the right, collecting valid keys
+
+    const parts = decoded.split("@");
+    const keys = [];
+
+    while ( parts.length > 1 && KeyPattern.test(parts[parts.length - 1]) ) {
+      keys.unshift(parts.pop());
+    }
+
+    const literal = parts.join("@");
+    const value = parseLiteral(literal);
+
+    return keys.length > 0 ? new Keyed(value, keys) : value;
+  }
+
+  function parseLiteral(decoded) {
+    return decoded.startsWith('"') && decoded.endsWith('"') ? parseJsonString(decoded.slice(1, -1))
       : decoded === "true" ? true
       : decoded === "false" ? false
       : decoded === "null" ? null
@@ -66,22 +80,36 @@
       : decoded;
   }
 
-  // reconstruct Tagged values into Localised objects ({ tag: [texts] });
-  // always produces multi-valued form: Options are inherently multi-valued,
-  // so scalar/array forms are indistinguishable in form encoding (see Options docs)
+  // reconstruct Keyed values into nested container objects;
+  // each @key suffix adds one wrapping layer, innermost key first;
+  // always produces multi-valued form at the innermost level: Options are inherently
+  // multi-valued, so scalar/array forms are indistinguishable in form encoding
 
-  function mergeTagged(values) {
-    return values.reduce((obj, { text, tag }) => ({
-      ...obj,
-      [tag]: tag in obj ? [...obj[tag], text] : [text]
-    }), {});
+  function mergeKeyed(values) {
+    return values.reduce((obj, { value, keys }) => {
+
+      // navigate to outermost container, creating missing levels
+
+      const target = keys.reduceRight((t, key, i) => {
+        return i === 0 ? t : (t[key] = t[key] ?? {}, t[key]);
+      }, obj);
+
+      // innermost key groups values into arrays
+
+      const [innerKey] = keys;
+
+      target[innerKey] = innerKey in target ? [...target[innerKey], value] : [value];
+
+      return obj;
+
+    }, {});
   }
 
-  function resolveTagged(value) {
-    if (value instanceof Tagged) {
-      return { [value.tag]: [value.text] };
-    } else if (Array.isArray(value) && value.length > 0 && value.every(v => v instanceof Tagged)) {
-      return mergeTagged(value);
+  function resolveKeyed(value) {
+    if ( value instanceof Keyed ) {
+      return mergeKeyed([value]);
+    } else if ( Array.isArray(value) && value.length > 0 && value.every(v => v instanceof Keyed) ) {
+      return mergeKeyed(value);
     } else {
       return value;
     }
@@ -121,7 +149,7 @@
 
     return Object.fromEntries(
       Object.entries({ ...operators, ...equality })
-        .map(([key, value]) => [key, resolveTagged(value)])
+        .map(([key, value]) => [key, resolveKeyed(value)])
     );
   }
 

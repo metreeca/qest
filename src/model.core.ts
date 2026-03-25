@@ -31,7 +31,7 @@ import {
 	isUnion
 } from "@metreeca/core";
 import { isTagRange } from "@metreeca/core/language";
-import { isIndexed, isLiteral, isReference } from "./index.core.js";
+import { isIndexable, isLiteral, isReference } from "./index.core.js";
 import type {
 	Binding,
 	Expression,
@@ -62,7 +62,7 @@ export function isQuery(value: unknown): value is Query {
 
 		if ( isBinding(k) as boolean ) {
 
-			return isTemplates(v) || isIndexed(v, isTemplates);
+			return isIndexable(v, isTemplates);
 
 		}
 
@@ -82,7 +82,7 @@ export function isQuery(value: unknown): value is Query {
 
 		} else if ( k.startsWith("?") || k.startsWith("!") ) {
 
-			return isOptions(v);
+			return isIndexable(v, isOptions);
 
 		}
 
@@ -90,7 +90,7 @@ export function isQuery(value: unknown): value is Query {
 
 		else if ( k.startsWith("*") ) {
 
-			return isOptions(v);
+			return isIndexable(v, isOptions);
 
 		} else if ( k.startsWith("^") ) {
 
