@@ -296,7 +296,7 @@ export type Resource =
  *
  * {@link Indexed} containers are accepted at the property level but excluded from `Values` to prevent nesting.
  *
- * @see {@link model!Templates} for the corresponding retrieval template
+ * @see {@link model!Placeholders} for the corresponding retrieval template
  */
 export type Values =
 	| Value

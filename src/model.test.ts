@@ -26,21 +26,64 @@ import {
 	isProbe,
 	isQuery,
 	isTemplate,
-	isTemplates,
+	isPlaceholders,
 	isTransform
 } from "./model.core.js";
 import {
 	decodeProbe,
 	decodeQuery,
-	decodeQueryString,
+	decodeTemplate,
 	encodeProbe,
 	encodeQuery,
-	encodeQueryString,
-	type Query
+	encodeTemplate,
+	type Query,
+	type Template
 } from "./model.js";
 
 
 describe("guards", () => {
+
+	describe("isTemplate", () => {
+
+		it("should accept property maps with identifier keys", async () => {
+			expect(isTemplate({ id: "", name: "" })).toBeTruthy();
+			expect(isTemplate({ vendor: { id: "" } })).toBeTruthy();
+		});
+
+		it("should accept empty property maps", async () => {
+			expect(isTemplate({})).toBeTruthy();
+		});
+
+		it("should accept property maps with indexable values", async () => {
+			expect(isTemplate({ type: { x: 0, y: "" } })).toBeTruthy();
+		});
+
+		it("should reject literals", async () => {
+			expect(isTemplate(true)).toBeFalsy();
+			expect(isTemplate(false)).toBeFalsy();
+			expect(isTemplate(0)).toBeFalsy();
+			expect(isTemplate(42)).toBeFalsy();
+			expect(isTemplate("")).toBeFalsy();
+			expect(isTemplate("text")).toBeFalsy();
+		});
+
+		it("should reject references", async () => {
+			expect(isTemplate("/products/42")).toBeFalsy();
+			expect(isTemplate("https://example.com/resource")).toBeFalsy();
+		});
+
+		it("should reject null and undefined", async () => {
+			expect(isTemplate(null)).toBeFalsy();
+			expect(isTemplate(undefined)).toBeFalsy();
+		});
+
+		it("should reject arrays", async () => {
+			expect(isTemplate([])).toBeFalsy();
+			expect(isTemplate([0])).toBeFalsy();
+			expect(isTemplate(["/a"])).toBeFalsy();
+		});
+
+	});
 
 	describe("isQuery", () => {
 
@@ -126,6 +169,136 @@ describe("guards", () => {
 			it("should reject invalid values", async () => {
 				expect(isQuery({ name: null })).toBeFalsy();
 				expect(isQuery({ name: undefined })).toBeFalsy();
+			});
+
+		});
+
+	});
+
+
+	describe("isPlaceholdres", () => {
+
+		it("should accept literals", async () => {
+			expect(isPlaceholders(true)).toBeTruthy();
+			expect(isPlaceholders(42)).toBeTruthy();
+			expect(isPlaceholders("")).toBeTruthy();
+		});
+
+		it("should accept references", async () => {
+			expect(isPlaceholders("/products/42")).toBeTruthy();
+		});
+
+		it("should accept templates", async () => {
+			expect(isPlaceholders({ id: "", name: "" })).toBeTruthy();
+			expect(isPlaceholders({ vendor: { id: "" } })).toBeTruthy();
+		});
+
+		it("should accept single-valued language maps", async () => {
+			expect(isPlaceholders({ "*": "" })).toBeTruthy();
+			expect(isPlaceholders({ "en": "text" })).toBeTruthy();
+			expect(isPlaceholders({ "en": "hello", "fr": "bonjour" })).toBeTruthy();
+		});
+
+		it("should accept multi-valued language maps", async () => {
+			expect(isPlaceholders({ "en": [""] })).toBeTruthy();
+			expect(isPlaceholders({ "en": ["hello"], "fr": ["bonjour"] })).toBeTruthy();
+		});
+
+		it("should accept literal tuples", async () => {
+			expect(isPlaceholders([true])).toBeTruthy();
+			expect(isPlaceholders([0])).toBeTruthy();
+			expect(isPlaceholders([""])).toBeTruthy();
+		});
+
+		it("should accept reference tuples", async () => {
+			expect(isPlaceholders(["/products/42"])).toBeTruthy();
+		});
+
+		it("should accept query tuples", async () => {
+			expect(isPlaceholders([{ id: "", name: "" }])).toBeTruthy();
+			expect(isPlaceholders([{ id: "", "^id": "asc", "@": 0, "#": 10 }])).toBeTruthy();
+		});
+
+		it("should reject null and undefined", async () => {
+			expect(isPlaceholders(null)).toBeFalsy();
+			expect(isPlaceholders(undefined)).toBeFalsy();
+		});
+
+		it("should reject empty arrays", async () => {
+			expect(isPlaceholders([])).toBeFalsy();
+		});
+
+		it("should reject arrays with multiple elements", async () => {
+			expect(isPlaceholders(["/a", "/b"])).toBeFalsy();
+			expect(isPlaceholders([{ id: "" }, { id: "" }])).toBeFalsy();
+		});
+
+	});
+
+	describe("isLocale", () => {
+
+		describe("valid locale models", () => {
+
+			it("should accept single-valued wildcard tag", async () => {
+				expect(isLocale({ "*": "" })).toBeTruthy();
+				expect(isLocale({ "*": "text" })).toBeTruthy();
+			});
+
+			it("should accept multi-valued wildcard tag", async () => {
+				expect(isLocale({ "*": [""] })).toBeTruthy();
+				expect(isLocale({ "*": ["text"] })).toBeTruthy();
+			});
+
+			it("should accept single-valued language tags", async () => {
+				expect(isLocale({ "en": "hello" })).toBeTruthy();
+				expect(isLocale({ "fr": "bonjour" })).toBeTruthy();
+			});
+
+			it("should accept multi-valued language tags", async () => {
+				expect(isLocale({ "en": ["hello"] })).toBeTruthy();
+				expect(isLocale({ "fr": ["bonjour"] })).toBeTruthy();
+			});
+
+			it("should accept multiple single-valued language tags", async () => {
+				expect(isLocale({ "en": "hello", "fr": "bonjour" })).toBeTruthy();
+			});
+
+			it("should accept multiple multi-valued language tags", async () => {
+				expect(isLocale({ "en": ["hello"], "fr": ["bonjour"] })).toBeTruthy();
+			});
+
+			it("should accept plain string shorthand", async () => {
+				expect(isLocale("text")).toBeTruthy();
+				expect(isLocale("")).toBeTruthy();
+			});
+
+			it("should accept plain string array shorthand", async () => {
+				expect(isLocale(["text"])).toBeTruthy();
+				expect(isLocale([""])).toBeTruthy();
+			});
+
+		});
+
+		describe("invalid locale models", () => {
+
+			it("should reject null and undefined", async () => {
+				expect(isLocale(null)).toBeFalsy();
+				expect(isLocale(undefined)).toBeFalsy();
+			});
+
+			it("should reject non-string primitives", async () => {
+				expect(isLocale(true)).toBeFalsy();
+				expect(isLocale(42)).toBeFalsy();
+			});
+
+			it("should reject mixed scalar/array content", async () => {
+				expect(isLocale({ "en": "hello", "fr": ["bonjour"] })).toBeFalsy();
+				expect(isLocale({ "en": ["hello"], "fr": "bonjour" })).toBeFalsy();
+			});
+
+			it("should reject invalid tag keys", async () => {
+				expect(isLocale({ "invalid tag": "text" })).toBeFalsy();
+				expect(isLocale({ "invalid tag": ["text"] })).toBeFalsy();
 			});
 
 		});
@@ -301,168 +474,6 @@ describe("guards", () => {
 			it("should reject invalid characters", async () => {
 				expect(isExpression("name@field")).toBeFalsy();
 				expect(isExpression("name#field")).toBeFalsy();
-			});
-
-		});
-
-	});
-
-
-	describe("isTemplates", () => {
-
-		it("should accept literals", async () => {
-			expect(isTemplates(true)).toBeTruthy();
-			expect(isTemplates(42)).toBeTruthy();
-			expect(isTemplates("")).toBeTruthy();
-		});
-
-		it("should accept references", async () => {
-			expect(isTemplates("/products/42")).toBeTruthy();
-		});
-
-		it("should accept nested queries", async () => {
-			expect(isTemplates({ id: "", name: "" })).toBeTruthy();
-		});
-
-		it("should accept single-valued language maps", async () => {
-			expect(isTemplates({ "*": "" })).toBeTruthy();
-			expect(isTemplates({ "en": "text" })).toBeTruthy();
-			expect(isTemplates({ "en": "hello", "fr": "bonjour" })).toBeTruthy();
-		});
-
-		it("should accept multi-valued language maps", async () => {
-			expect(isTemplates({ "en": [""] })).toBeTruthy();
-			expect(isTemplates({ "en": ["hello"], "fr": ["bonjour"] })).toBeTruthy();
-		});
-
-		it("should accept literal tuples", async () => {
-			expect(isTemplates([true])).toBeTruthy();
-			expect(isTemplates([0])).toBeTruthy();
-			expect(isTemplates([""])).toBeTruthy();
-		});
-
-		it("should accept reference tuples", async () => {
-			expect(isTemplates(["/products/42"])).toBeTruthy();
-		});
-
-		it("should accept query tuples", async () => {
-			expect(isTemplates([{ id: "", name: "" }])).toBeTruthy();
-		});
-
-		it("should reject null and undefined", async () => {
-			expect(isTemplates(null)).toBeFalsy();
-			expect(isTemplates(undefined)).toBeFalsy();
-		});
-
-		it("should reject empty arrays", async () => {
-			expect(isTemplates([])).toBeFalsy();
-		});
-
-		it("should reject arrays with multiple elements", async () => {
-			expect(isTemplates(["/a", "/b"])).toBeFalsy();
-			expect(isTemplates([{ id: "" }, { id: "" }])).toBeFalsy();
-		});
-
-	});
-
-	describe("isTemplate", () => {
-
-		it("should accept literals", async () => {
-			expect(isTemplate(true)).toBeTruthy();
-			expect(isTemplate(false)).toBeTruthy();
-			expect(isTemplate(0)).toBeTruthy();
-			expect(isTemplate(42)).toBeTruthy();
-			expect(isTemplate("")).toBeTruthy();
-			expect(isTemplate("text")).toBeTruthy();
-		});
-
-		it("should accept references", async () => {
-			expect(isTemplate("/products/42")).toBeTruthy();
-			expect(isTemplate("https://example.com/resource")).toBeTruthy();
-		});
-
-		it("should accept nested queries", async () => {
-			expect(isTemplate({ id: "", name: "" })).toBeTruthy();
-			expect(isTemplate({ vendor: { id: "" } })).toBeTruthy();
-		});
-
-		it("should reject null and undefined", async () => {
-			expect(isTemplate(null)).toBeFalsy();
-			expect(isTemplate(undefined)).toBeFalsy();
-		});
-
-		it("should reject arrays", async () => {
-			expect(isTemplate([])).toBeFalsy();
-			expect(isTemplate([0])).toBeFalsy();
-			expect(isTemplate(["/a"])).toBeFalsy();
-		});
-
-	});
-
-	describe("isLocale", () => {
-
-		describe("valid locale models", () => {
-
-			it("should accept single-valued wildcard tag", async () => {
-				expect(isLocale({ "*": "" })).toBeTruthy();
-				expect(isLocale({ "*": "text" })).toBeTruthy();
-			});
-
-			it("should accept multi-valued wildcard tag", async () => {
-				expect(isLocale({ "*": [""] })).toBeTruthy();
-				expect(isLocale({ "*": ["text"] })).toBeTruthy();
-			});
-
-			it("should accept single-valued language tags", async () => {
-				expect(isLocale({ "en": "hello" })).toBeTruthy();
-				expect(isLocale({ "fr": "bonjour" })).toBeTruthy();
-			});
-
-			it("should accept multi-valued language tags", async () => {
-				expect(isLocale({ "en": ["hello"] })).toBeTruthy();
-				expect(isLocale({ "fr": ["bonjour"] })).toBeTruthy();
-			});
-
-			it("should accept multiple single-valued language tags", async () => {
-				expect(isLocale({ "en": "hello", "fr": "bonjour" })).toBeTruthy();
-			});
-
-			it("should accept multiple multi-valued language tags", async () => {
-				expect(isLocale({ "en": ["hello"], "fr": ["bonjour"] })).toBeTruthy();
-			});
-
-			it("should accept plain string shorthand", async () => {
-				expect(isLocale("text")).toBeTruthy();
-				expect(isLocale("")).toBeTruthy();
-			});
-
-			it("should accept plain string array shorthand", async () => {
-				expect(isLocale(["text"])).toBeTruthy();
-				expect(isLocale([""])).toBeTruthy();
-			});
-
-		});
-
-		describe("invalid locale models", () => {
-
-			it("should reject null and undefined", async () => {
-				expect(isLocale(null)).toBeFalsy();
-				expect(isLocale(undefined)).toBeFalsy();
-			});
-
-			it("should reject non-string primitives", async () => {
-				expect(isLocale(true)).toBeFalsy();
-				expect(isLocale(42)).toBeFalsy();
-			});
-
-			it("should reject mixed scalar/array content", async () => {
-				expect(isLocale({ "en": "hello", "fr": ["bonjour"] })).toBeFalsy();
-				expect(isLocale({ "en": ["hello"], "fr": "bonjour" })).toBeFalsy();
-			});
-
-			it("should reject invalid tag keys", async () => {
-				expect(isLocale({ "invalid tag": "text" })).toBeFalsy();
-				expect(isLocale({ "invalid tag": ["text"] })).toBeFalsy();
 			});
 
 		});
@@ -721,134 +732,94 @@ describe("guards", () => {
 
 	});
 
-
 });
 
 describe("codecs", () => {
 
-	describe("encodeQuery()", () => {
+	describe("encodeTemplate()", () => {
 
 		describe("base option", () => {
 
 			it("should reject relative IRI base", async () => {
-				const model: Query = { id: "/products/42" };
+				const template: Template = { id: "/products/42" };
 
-				expect(() => encodeQuery(model, { base: "/relative/path" })).toThrow(TypeError);
+				expect(() => encodeTemplate(template, { base: "/relative/path" })).toThrow(TypeError);
 			});
 
 			it("should internalize absolute IRI to root-relative", async () => {
-				const model: Query = { id: "https://example.com/products/42" };
+				const template: Template = { id: "https://example.com/products/42" };
 
-				expect(encodeQuery(model, { base: "https://example.com/" }))
+				expect(encodeTemplate(template, { base: "https://example.com/" }))
 					.toBe(JSON.stringify({ id: "/products/42" }));
 			});
 
 		});
 
 		it("should use defaultBase when base option is omitted", async () => {
-			const model: Query = { id: "app:/products/42" };
+			const template: Template = { id: "app:/products/42" };
 
-			expect(encodeQuery(model))
+			expect(encodeTemplate(template))
 				.toBe(JSON.stringify({ id: "/products/42" }));
 		});
 
-		it("should encode empty model", async () => {
-			expect(encodeQuery({})).toBe(JSON.stringify({}));
+		it("should encode empty template", async () => {
+			expect(encodeTemplate({})).toBe(JSON.stringify({}));
 		});
 
-		it("should encode model with primitive templates", async () => {
-			const model: Query = {
+		it("should encode template with primitive values", async () => {
+			const template: Template = {
 				id: "",
 				name: "",
 				price: 0,
 				available: true
 			};
 
-			expect(encodeQuery(model)).toBe(JSON.stringify(model));
+			expect(encodeTemplate(template)).toBe(JSON.stringify(template));
 		});
 
-		it("should encode model with nested model", async () => {
-			const model: Query = {
+		it("should encode template with nested template", async () => {
+			const template: Template = {
 				id: "",
 				vendor: { id: "", name: "" }
 			};
 
-			expect(encodeQuery(model)).toBe(JSON.stringify(model));
+			expect(encodeTemplate(template)).toBe(JSON.stringify(template));
 		});
 
-		it("should encode model with array templates", async () => {
-			const model: Query = {
+		it("should encode template with array values", async () => {
+			const template: Template = {
 				id: "",
 				tags: [""]
 			};
 
-			expect(encodeQuery(model)).toBe(JSON.stringify(model));
+			expect(encodeTemplate(template)).toBe(JSON.stringify(template));
 		});
 
-		it("should encode model with locale templates", async () => {
-			const model: Query = {
+		it("should encode template with locale values", async () => {
+			const template: Template = {
 				id: "",
 				name: { en: "", fr: "" }
 			};
 
-			expect(encodeQuery(model)).toBe(JSON.stringify(model));
-		});
-
-		it("should encode model with binding keys", async () => {
-			const model: Query = {
-				"vendorName=vendor.name": ""
-			};
-
-			expect(encodeQuery(model)).toBe(JSON.stringify(model));
-		});
-
-		it("should encode model with indexed filtering options", async () => {
-			const model: Query = {
-				"?category": { xsd_string: ["https://example.com/cat/electronics"] }
-			};
-
-			expect(encodeQuery(model, { base: "https://example.com/" }))
-				.toBe(JSON.stringify({ "?category": { xsd_string: ["/cat/electronics"] } }));
-		});
-
-		it("should encode model with indexed focus options", async () => {
-			const model: Query = {
-				"*category": { xsd_string: ["https://example.com/cat/featured"] }
-			};
-
-			expect(encodeQuery(model, { base: "https://example.com/" }))
-				.toBe(JSON.stringify({ "*category": { xsd_string: ["/cat/featured"] } }));
-		});
-
-		it("should encode model with collection query", async () => {
-			const model: Query = {
-				items: [{
-					id: "",
-					name: "",
-					">=price": 50,
-					"#": 25
-				}]
-			};
-
-			expect(encodeQuery(model)).toBe(JSON.stringify(model));
+			expect(encodeTemplate(template)).toBe(JSON.stringify(template));
 		});
 
 	});
 
-	describe("decodeQuery()", () => {
+	describe("decodeTemplate()", () => {
 
 		describe("base option", () => {
 
 			it("should reject relative IRI base", async () => {
 				const json = JSON.stringify({ id: "/products/42" });
 
-				expect(() => decodeQuery(json, { base: "/relative/path" })).toThrow(TypeError);
+				expect(() => decodeTemplate(json, { base: "/relative/path" })).toThrow(TypeError);
 			});
 
 			it("should resolve root-relative IRI to absolute", async () => {
 				const json = JSON.stringify({ id: "/products/42" });
 
-				expect(decodeQuery(json, { base: "https://example.com/" }))
+				expect(decodeTemplate(json, { base: "https://example.com/" }))
 					.toEqual({ id: "https://example.com/products/42" });
 			});
 
@@ -857,15 +828,15 @@ describe("codecs", () => {
 		it("should use defaultBase when base option is omitted", async () => {
 			const json = JSON.stringify({ id: "/products/42" });
 
-			expect(decodeQuery(json))
+			expect(decodeTemplate(json))
 				.toEqual({ id: "app:/products/42" });
 		});
 
-		it("should decode empty model", async () => {
-			expect(decodeQuery(JSON.stringify({}))).toEqual({});
+		it("should decode empty template", async () => {
+			expect(decodeTemplate(JSON.stringify({}))).toEqual({});
 		});
 
-		it("should decode model with primitive templates", async () => {
+		it("should decode template with primitive values", async () => {
 			const json = JSON.stringify({
 				id: "",
 				name: "",
@@ -873,7 +844,7 @@ describe("codecs", () => {
 				available: true
 			});
 
-			expect(decodeQuery(json)).toEqual({
+			expect(decodeTemplate(json)).toEqual({
 				id: "",
 				name: "",
 				price: 0,
@@ -881,7 +852,7 @@ describe("codecs", () => {
 			});
 		});
 
-		it("should decode model with nested model", async () => {
+		it("should decode template with nested template", async () => {
 			const json = JSON.stringify({
 				id: "",
 				vendor: {
@@ -890,7 +861,7 @@ describe("codecs", () => {
 				}
 			});
 
-			expect(decodeQuery(json)).toEqual({
+			expect(decodeTemplate(json)).toEqual({
 				id: "",
 				vendor: {
 					id: "app:/vendors/acme",
@@ -899,69 +870,42 @@ describe("codecs", () => {
 			});
 		});
 
-		it("should decode model with binding keys", async () => {
-			const json = JSON.stringify({
-				"vendorName=vendor.name": ""
-			});
-
-			expect(decodeQuery(json)).toEqual({
-				"vendorName=vendor.name": ""
-			});
-		});
-
-		it("should decode model with indexed filtering options", async () => {
-			const json = JSON.stringify({
-				"?category": { xsd_string: ["/cat/electronics"] }
-			});
-
-			expect(decodeQuery(json, { base: "https://example.com/" }))
-				.toEqual({ "?category": { xsd_string: ["https://example.com/cat/electronics"] } });
-		});
-
-		it("should decode model with indexed focus options", async () => {
-			const json = JSON.stringify({
-				"*category": { xsd_string: ["/cat/featured"] }
-			});
-
-			expect(decodeQuery(json, { base: "https://example.com/" }))
-				.toEqual({ "*category": { xsd_string: ["https://example.com/cat/featured"] } });
-		});
-
-		it("should roundtrip with encodeQuery", async () => {
-			const model: Query = {
+		it("should roundtrip with encodeTemplate", async () => {
+			const template: Template = {
 				id: "",
 				name: "",
 				price: 0,
 				vendor: { id: "app:/vendors/acme", name: "" }
 			};
 
-			expect(decodeQuery(encodeQuery(model))).toEqual(model);
+			expect(decodeTemplate(encodeTemplate(template))).toEqual(template);
 		});
 
 		it("should throw on invalid JSON", async () => {
-			expect(() => decodeQuery("not valid json")).toThrow();
+			expect(() => decodeTemplate("not valid json")).toThrow();
 		});
 
-		it("should throw on non-model JSON", async () => {
-			expect(() => decodeQuery(JSON.stringify([1, 2, 3]))).toThrow(TypeError);
+		it("should throw on non-template JSON", async () => {
+			expect(() => decodeTemplate(JSON.stringify([1, 2, 3]))).toThrow(TypeError);
 		});
 
 	});
 
-	describe("encodeQueryString()", () => {
+
+	describe("encodeQuery()", () => {
 
 		describe("base option", () => {
 
 			it("should reject relative IRI base", async () => {
 				const query = { id: "/products/42" };
 
-				expect(() => encodeQueryString(query, { mode: "json", base: "/relative/path" })).toThrow(TypeError);
+				expect(() => encodeQuery(query, { mode: "json", base: "/relative/path" })).toThrow(TypeError);
 			});
 
 			it("should internalize absolute IRI to root-relative in json format", async () => {
 				const query = { id: "https://example.com/products/42" } as Query;
 
-				const encoded = encodeQueryString(query, { mode: "json", base: "https://example.com/" });
+				const encoded = encodeQuery(query, { mode: "json", base: "https://example.com/" });
 
 				expect(encoded).toBe(encodeURIComponent(JSON.stringify({ id: "/products/42" })));
 			});
@@ -969,15 +913,15 @@ describe("codecs", () => {
 			it("should internalize absolute IRI to root-relative in base64 format", async () => {
 				const query = { id: "https://example.com/products/42" } as Query;
 
-				const encoded = encodeQueryString(query, { mode: "base64", base: "https://example.com/" });
+				const encoded = encodeQuery(query, { mode: "base64", base: "https://example.com/" });
 
-				expect(decodeQueryString(encoded, { base: "https://example.com/" })).toEqual(query);
+				expect(decodeQuery(encoded, { base: "https://example.com/" })).toEqual(query);
 			});
 
 			it("should internalize absolute IRI to root-relative in form format", async () => {
 				const query = { id: "https://example.com/products/42" } as Query;
 
-				const encoded = encodeQueryString(query, { mode: "form", base: "https://example.com/" });
+				const encoded = encodeQuery(query, { mode: "form", base: "https://example.com/" });
 
 				expect(encoded).toBe("id=%22%2Fproducts%2F42%22");
 			});
@@ -986,7 +930,7 @@ describe("codecs", () => {
 
 		it("should use defaultBase when base option is omitted", async () => {
 			const query = { id: "app:/products/42" } as Query;
-			const encoded = encodeQueryString(query, { mode: "json" });
+			const encoded = encodeQuery(query, { mode: "json" });
 
 			expect(encoded).toBe(encodeURIComponent(JSON.stringify({ id: "/products/42" })));
 		});
@@ -1064,15 +1008,15 @@ describe("codecs", () => {
 			];
 
 			it.each(jsonCases)("should encode %s", async (_, query) => {
-				const encoded = encodeQueryString(query as Query, { mode: "json" });
+				const encoded = encodeQuery(query as Query, { mode: "json" });
 
 				expect(encoded).toBe(encodeURIComponent(JSON.stringify(query)));
 			});
 
 			it("should use json format when no format specified", async () => {
 				const query = { name: "" } as Query;
-				const encodedDefault = encodeQueryString(query);
-				const encodedExplicit = encodeQueryString(query, { mode: "json" });
+				const encodedDefault = encodeQuery(query);
+				const encodedExplicit = encodeQuery(query, { mode: "json" });
 
 				expect(encodedDefault).toBe(encodedExplicit);
 			});
@@ -1085,7 +1029,7 @@ describe("codecs", () => {
 
 			it("should produce URL-safe output", async () => {
 				const query = { name: "" } as Query;
-				const encoded = encodeQueryString(query, { mode: "base64" });
+				const encoded = encodeQuery(query, { mode: "base64" });
 
 				// base64url should not contain URL-unsafe characters needing encoding
 				expect(encoded).toBe(encodeURIComponent(encoded));
@@ -1093,7 +1037,7 @@ describe("codecs", () => {
 
 			it("should handle unicode in values", async () => {
 				const query = { "~name": "日本語" } as Query;
-				const encoded = encodeQueryString(query, { mode: "base64" });
+				const encoded = encodeQuery(query, { mode: "base64" });
 				const decoded = JSON.parse(decodeBase64(encoded));
 
 				expect(decoded).toEqual(query);
@@ -1108,14 +1052,14 @@ describe("codecs", () => {
 
 				it("should encode empty query", async () => {
 					const query = {} as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					expect(encoded).toBe("");
 				});
 
 				it("should encode single constraint", async () => {
 					const query = { "?name": "widget" } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// ?name="widget"
 					expect(encoded).toBe("%3Fname=%22widget%22");
@@ -1123,7 +1067,7 @@ describe("codecs", () => {
 
 				it("should encode multiple constraints", async () => {
 					const query = { "?name": "widget", ">=price": 100 } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// ?name="widget"&>=price=100
 					expect(encoded).toBe("%3Fname=%22widget%22&%3E%3Dprice=100");
@@ -1135,7 +1079,7 @@ describe("codecs", () => {
 
 				it("should encode less than", async () => {
 					const query = { "<price": 100 } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// <price=100
 					expect(encoded).toBe("%3Cprice=100");
@@ -1143,7 +1087,7 @@ describe("codecs", () => {
 
 				it("should encode less than or equal", async () => {
 					const query = { "<=price": 100 } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// <=price=100
 					expect(encoded).toBe("%3C%3Dprice=100");
@@ -1151,7 +1095,7 @@ describe("codecs", () => {
 
 				it("should encode greater than", async () => {
 					const query = { ">price": 50 } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// >price=50
 					expect(encoded).toBe("%3Eprice=50");
@@ -1159,7 +1103,7 @@ describe("codecs", () => {
 
 				it("should encode greater than or equal", async () => {
 					const query = { ">=price": 50 } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// >=price=50
 					expect(encoded).toBe("%3E%3Dprice=50");
@@ -1171,7 +1115,7 @@ describe("codecs", () => {
 
 				it("should encode prefix word search", async () => {
 					const query = { "~name": "widget" } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// ~name="widget"  (~ not encoded - unreserved in RFC 3986)
 					expect(encoded).toBe("~name=%22widget%22");
@@ -1179,7 +1123,7 @@ describe("codecs", () => {
 
 				it("should encode search with spaces", async () => {
 					const query = { "~name": "red widget" } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// ~name="red widget"
 					expect(encoded).toBe("~name=%22red%20widget%22");
@@ -1191,7 +1135,7 @@ describe("codecs", () => {
 
 				it("should encode single value", async () => {
 					const query = { "?category": "electronics" } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// ?category="electronics"
 					expect(encoded).toBe("%3Fcategory=%22electronics%22");
@@ -1199,7 +1143,7 @@ describe("codecs", () => {
 
 				it("should encode multiple values as repeated parameters", async () => {
 					const query = { "?category": ["electronics", "home"] } as unknown as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// ?category="electronics"&?category="home"
 					expect(encoded).toBe("%3Fcategory=%22electronics%22&%3Fcategory=%22home%22");
@@ -1207,7 +1151,7 @@ describe("codecs", () => {
 
 				it("should encode null option for undefined matching", async () => {
 					const query = { "?vendor": null } as unknown as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// ?vendor=null
 					expect(encoded).toBe("%3Fvendor=null");
@@ -1219,7 +1163,7 @@ describe("codecs", () => {
 
 				it("should encode all-match constraint", async () => {
 					const query = { "!tags": ["featured", "sale"] } as unknown as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// !tags="featured"&!tags="sale"  (! not encoded - unreserved in RFC 3986)
 					expect(encoded).toBe("!tags=%22featured%22&!tags=%22sale%22");
@@ -1231,7 +1175,7 @@ describe("codecs", () => {
 
 				it("should encode single focus value", async () => {
 					const query = { "*category": "electronics" } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// *category="electronics"
 					expect(encoded).toBe("*category=%22electronics%22");
@@ -1239,7 +1183,7 @@ describe("codecs", () => {
 
 				it("should encode multiple focus values", async () => {
 					const query = { "*category": ["electronics", "home"] } as unknown as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// *category="electronics"&*category="home"
 					expect(encoded).toBe("*category=%22electronics%22&*category=%22home%22");
@@ -1251,7 +1195,7 @@ describe("codecs", () => {
 
 				it("should encode ascending sort", async () => {
 					const query = { "^price": 1 } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// ^price=1
 					expect(encoded).toBe("%5Eprice=1");
@@ -1259,7 +1203,7 @@ describe("codecs", () => {
 
 				it("should encode descending sort", async () => {
 					const query = { "^price": -1 } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// ^price=-1
 					expect(encoded).toBe("%5Eprice=-1");
@@ -1267,7 +1211,7 @@ describe("codecs", () => {
 
 				it("should encode multiple sort priorities", async () => {
 					const query = { "^price": 1, "^name": -2 } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// ^price=1&^name=-2
 					expect(encoded).toBe("%5Eprice=1&%5Ename=-2");
@@ -1279,7 +1223,7 @@ describe("codecs", () => {
 
 				it("should encode offset", async () => {
 					const query = { "@": 10 } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// @=10
 					expect(encoded).toBe("%40=10");
@@ -1287,7 +1231,7 @@ describe("codecs", () => {
 
 				it("should encode limit", async () => {
 					const query = { "#": 25 } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// #=25
 					expect(encoded).toBe("%23=25");
@@ -1295,7 +1239,7 @@ describe("codecs", () => {
 
 				it("should encode offset and limit together", async () => {
 					const query = { "@": 0, "#": 25 } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// @=0&#=25
 					expect(encoded).toBe("%40=0&%23=25");
@@ -1307,7 +1251,7 @@ describe("codecs", () => {
 
 				it("should encode dotted property paths", async () => {
 					const query = { ">=vendor.rating": 4 } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// >=vendor.rating=4
 					expect(encoded).toBe("%3E%3Dvendor.rating=4");
@@ -1319,7 +1263,7 @@ describe("codecs", () => {
 
 				it("should encode constraint with single transform", async () => {
 					const query = { ">=year:releaseDate": 2020 } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// >=year:releaseDate=2020
 					expect(encoded).toBe("%3E%3Dyear%3AreleaseDate=2020");
@@ -1327,7 +1271,7 @@ describe("codecs", () => {
 
 				it("should encode constraint with transform pipeline", async () => {
 					const query = { ">=round:avg:items.price": 100 } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// >=round:avg:items.price=100
 					expect(encoded).toBe("%3E%3Dround%3Aavg%3Aitems.price=100");
@@ -1336,7 +1280,7 @@ describe("codecs", () => {
 				it("should encode disjunction with transform", async () => {
 					// @ts-expect-error Testing array values in filtering constraints
 					const query: Query = { "?month:releaseDate": [1, 6, 12] };
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// ?month:releaseDate=1&?month:releaseDate=6&?month:releaseDate=12
 					expect(encoded).toBe("%3Fmonth%3AreleaseDate=1&%3Fmonth%3AreleaseDate=6&%3Fmonth%3AreleaseDate=12");
@@ -1344,7 +1288,7 @@ describe("codecs", () => {
 
 				it("should encode ordering with transform", async () => {
 					const query = { "^year:releaseDate": 1 } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// ^year:releaseDate=1
 					expect(encoded).toBe("%5Eyear%3AreleaseDate=1");
@@ -1356,7 +1300,7 @@ describe("codecs", () => {
 
 				it("should encode true value", async () => {
 					const query = { "?available": true } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// ?available=true
 					expect(encoded).toBe("%3Favailable=true");
@@ -1364,7 +1308,7 @@ describe("codecs", () => {
 
 				it("should encode false value", async () => {
 					const query = { "?available": false } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// ?available=false
 					expect(encoded).toBe("%3Favailable=false");
@@ -1376,7 +1320,7 @@ describe("codecs", () => {
 
 				it("should encode zero", async () => {
 					const query = { "@": 0 } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// @=0
 					expect(encoded).toBe("%40=0");
@@ -1384,7 +1328,7 @@ describe("codecs", () => {
 
 				it("should encode positive integer", async () => {
 					const query = { ">=price": 100 } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// >=price=100
 					expect(encoded).toBe("%3E%3Dprice=100");
@@ -1392,7 +1336,7 @@ describe("codecs", () => {
 
 				it("should encode negative integer", async () => {
 					const query = { ">=balance": -50 } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// >=balance=-50
 					expect(encoded).toBe("%3E%3Dbalance=-50");
@@ -1400,7 +1344,7 @@ describe("codecs", () => {
 
 				it("should encode decimal", async () => {
 					const query = { ">=price": 99.99 } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// >=price=99.99
 					expect(encoded).toBe("%3E%3Dprice=99.99");
@@ -1408,7 +1352,7 @@ describe("codecs", () => {
 
 				it("should encode scientific notation", async () => {
 					const query = { ">=count": 1.5e21 } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// >=count=1.5e+21  (+ encoded as %2B to avoid space interpretation)
 					expect(encoded).toBe("%3E%3Dcount=1.5e%2B21");
@@ -1420,7 +1364,7 @@ describe("codecs", () => {
 
 				it("should encode empty string", async () => {
 					const query = { "~name": "" } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// ~name=""
 					expect(encoded).toBe("~name=%22%22");
@@ -1428,7 +1372,7 @@ describe("codecs", () => {
 
 				it("should encode simple string", async () => {
 					const query = { "~name": "widget" } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// ~name="widget"
 					expect(encoded).toBe("~name=%22widget%22");
@@ -1436,7 +1380,7 @@ describe("codecs", () => {
 
 				it("should encode string with spaces", async () => {
 					const query = { "~name": "my widget" } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// ~name="my widget"
 					expect(encoded).toBe("~name=%22my%20widget%22");
@@ -1444,7 +1388,7 @@ describe("codecs", () => {
 
 				it("should encode string with quotes", async () => {
 					const query = { "~name": "say \"hello\"" } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// ~name="say \"hello\""  (inner quotes escaped as \")
 					expect(encoded).toBe("~name=%22say%20%5C%22hello%5C%22%22");
@@ -1452,7 +1396,7 @@ describe("codecs", () => {
 
 				it("should encode unicode characters", async () => {
 					const query = { "~name": "café" } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// ~name="café"  (é encoded as UTF-8 bytes %C3%A9)
 					expect(encoded).toBe("~name=%22caf%C3%A9%22");
@@ -1460,7 +1404,7 @@ describe("codecs", () => {
 
 				it("should encode newlines", async () => {
 					const query = { "~description": "line1\nline2" } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// ~description="line1\nline2"
 					expect(encoded).toBe("~description=%22line1%0Aline2%22");
@@ -1468,7 +1412,7 @@ describe("codecs", () => {
 
 				it("should encode tabs", async () => {
 					const query = { "~description": "col1\tcol2" } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// ~description="col1\tcol2"
 					expect(encoded).toBe("~description=%22col1%09col2%22");
@@ -1476,7 +1420,7 @@ describe("codecs", () => {
 
 				it("should encode ampersand", async () => {
 					const query = { "~name": "foo&bar" } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// ~name="foo&bar"  (& encoded to avoid parameter separator)
 					expect(encoded).toBe("~name=%22foo%26bar%22");
@@ -1484,7 +1428,7 @@ describe("codecs", () => {
 
 				it("should encode equals sign", async () => {
 					const query = { "~name": "a=b" } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// ~name="a=b"  (= encoded to avoid key/value separator)
 					expect(encoded).toBe("~name=%22a%3Db%22");
@@ -1492,7 +1436,7 @@ describe("codecs", () => {
 
 				it("should encode plus sign", async () => {
 					const query = { "~name": "a+b" } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// ~name="a+b"  (+ encoded to avoid space interpretation)
 					expect(encoded).toBe("~name=%22a%2Bb%22");
@@ -1500,7 +1444,7 @@ describe("codecs", () => {
 
 				it("should encode percent sign", async () => {
 					const query = { "~name": "100%" } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// ~name="100%"  (% encoded to avoid escape sequence)
 					expect(encoded).toBe("~name=%22100%25%22");
@@ -1512,7 +1456,7 @@ describe("codecs", () => {
 
 				it("should encode single tagged string", async () => {
 					const query = { "?name": { "en": "Widget" } } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// ?name="Widget"@en
 					expect(encoded).toBe("%3Fname=%22Widget%22%40en");
@@ -1520,7 +1464,7 @@ describe("codecs", () => {
 
 				it("should encode multiple tagged strings", async () => {
 					const query = { "?name": { "en": "Widget", "fr": "Gadget" } } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// ?name="Widget"@en&?name="Gadget"@fr
 					expect(encoded).toBe("%3Fname=%22Widget%22%40en&%3Fname=%22Gadget%22%40fr");
@@ -1529,7 +1473,7 @@ describe("codecs", () => {
 				it("should encode dictionary with multi-value tags", async () => {
 					// @ts-expect-error Testing multi-value language maps in filtering constraints
 					const query: Query = { "?name": { "en": ["Widget", "Gadget"], "fr": ["Bidule"] } };
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// ?name="Widget"@en&?name="Gadget"@en&?name="Bidule"@fr
 					expect(encoded).toBe("%3Fname=%22Widget%22%40en&%3Fname=%22Gadget%22%40en&%3Fname=%22Bidule%22%40fr");
@@ -1541,15 +1485,15 @@ describe("codecs", () => {
 
 				it("should encode single-level indexed plain option", async () => {
 					const query = { "?category": { xsd_string: "electronics" } } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// ?category="electronics"@xsd_string
 					expect(encoded).toBe("%3Fcategory=%22electronics%22%40xsd_string");
 				});
 
 				it("should encode single-level indexed array options", async () => {
-					const query = { "?category": { xsd_string: ["electronics", "home"] } } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const query = { "?category": { xsd_string: ["electronics", "home"] } } as unknown as Query;
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// ?category="electronics"@xsd_string&?category="home"@xsd_string
 					expect(encoded).toBe("%3Fcategory=%22electronics%22%40xsd_string&%3Fcategory=%22home%22%40xsd_string");
@@ -1557,7 +1501,7 @@ describe("codecs", () => {
 
 				it("should encode two-level indexed localised option", async () => {
 					const query = { "?name": { xsd_string: { en: "Widget" } } } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// ?name="Widget"@en@xsd_string
 					expect(encoded).toBe("%3Fname=%22Widget%22%40en%40xsd_string");
@@ -1565,7 +1509,7 @@ describe("codecs", () => {
 
 				it("should encode two-level indexed localised options", async () => {
 					const query = { "?name": { xsd_string: { en: "Widget", fr: "Gadget" } } } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// ?name="Widget"@en@xsd_string&?name="Gadget"@fr@xsd_string
 					expect(encoded).toBe("%3Fname=%22Widget%22%40en%40xsd_string&%3Fname=%22Gadget%22%40fr%40xsd_string");
@@ -1573,7 +1517,7 @@ describe("codecs", () => {
 
 				it("should encode multiple indexed keys", async () => {
 					const query = { "?value": { xsd_integer: 42, xsd_string: "42" } } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
+					const encoded = encodeQuery(query, { mode: "form" });
 
 					// ?value=42@xsd_integer&?value="42"@xsd_string
 					expect(encoded).toBe("%3Fvalue=42%40xsd_integer&%3Fvalue=%2242%22%40xsd_string");
@@ -1585,8 +1529,8 @@ describe("codecs", () => {
 
 				it("should reconstruct single-tag Local as Locals", async () => {
 					const query = { "?name": { "en": "Widget" } } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
-					const decoded = decodeQueryString(encoded);
+					const encoded = encodeQuery(query, { mode: "form" });
+					const decoded = decodeQuery(encoded);
 
 					// Local normalizes to Locals (form mode is lossy for Local vs Locals)
 					expect(decoded).toEqual({ "?name": { "en": ["Widget"] } });
@@ -1594,8 +1538,8 @@ describe("codecs", () => {
 
 				it("should reconstruct multi-tag Local as Locals", async () => {
 					const query = { "?name": { "en": "Widget", "fr": "Gadget" } } as Query;
-					const encoded = encodeQueryString(query, { mode: "form" });
-					const decoded = decodeQueryString(encoded);
+					const encoded = encodeQuery(query, { mode: "form" });
+					const decoded = decodeQuery(encoded);
 
 					// Local normalizes to Locals (form mode is lossy for Local vs Locals)
 					expect(decoded).toEqual({ "?name": { "en": ["Widget"], "fr": ["Gadget"] } });
@@ -1603,8 +1547,8 @@ describe("codecs", () => {
 
 				it("should roundtrip single-element Locals", async () => {
 					const query: Query = { "?name": { "en": ["Widget"] } };
-					const encoded = encodeQueryString(query, { mode: "form" });
-					const decoded = decodeQueryString(encoded);
+					const encoded = encodeQuery(query, { mode: "form" });
+					const decoded = decodeQuery(encoded);
 
 					expect(decoded).toEqual(query);
 				});
@@ -1612,8 +1556,8 @@ describe("codecs", () => {
 				it("should roundtrip multi-value Locals", async () => {
 					// @ts-expect-error Testing multi-value language maps in filtering constraints
 					const query: Query = { "?name": { "en": ["Widget", "Gadget"], "fr": ["Bidule"] } };
-					const encoded = encodeQueryString(query, { mode: "form" });
-					const decoded = decodeQueryString(encoded);
+					const encoded = encodeQuery(query, { mode: "form" });
+					const decoded = decodeQuery(encoded);
 
 					expect(decoded).toEqual(query);
 				});
@@ -1624,29 +1568,29 @@ describe("codecs", () => {
 
 	});
 
-	describe("decodeQueryString()", () => {
+	describe("decodeQuery()", () => {
 
 		describe("base option", () => {
 
 			it("should reject relative IRI base", async () => {
 				const encoded = encodeURIComponent(JSON.stringify({ id: "/products/42" }));
 
-				expect(() => decodeQueryString(encoded, { base: "/relative/path" })).toThrow(TypeError);
+				expect(() => decodeQuery(encoded, { base: "/relative/path" })).toThrow(TypeError);
 			});
 
 			it("should resolve root-relative IRI to absolute in json format", async () => {
 				const encoded = encodeURIComponent(JSON.stringify({ id: "/products/42" }));
 
-				const decoded = decodeQueryString(encoded, { base: "https://example.com/" });
+				const decoded = decodeQuery(encoded, { base: "https://example.com/" });
 
 				expect(decoded).toEqual({ id: "https://example.com/products/42" } as Query);
 			});
 
 			it("should resolve root-relative IRI to absolute in base64 format", async () => {
 				const query = { id: "/products/42" } as Query;
-				const encoded = encodeQueryString(query, { mode: "base64" });
+				const encoded = encodeQuery(query, { mode: "base64" });
 
-				const decoded = decodeQueryString(encoded, { base: "https://example.com/" });
+				const decoded = decodeQuery(encoded, { base: "https://example.com/" });
 
 				expect(decoded).toEqual({ id: "https://example.com/products/42" } as Query);
 			});
@@ -1654,7 +1598,7 @@ describe("codecs", () => {
 			it("should resolve root-relative IRI to absolute in form format", async () => {
 				const encoded = "id=%22%2Fproducts%2F42%22";
 
-				const decoded = decodeQueryString(encoded, { base: "https://example.com/" });
+				const decoded = decodeQuery(encoded, { base: "https://example.com/" });
 
 				expect(decoded).toEqual({ "?id": "https://example.com/products/42" } as Query);
 			});
@@ -1664,7 +1608,7 @@ describe("codecs", () => {
 		it("should use defaultBase when base option is omitted", async () => {
 			const encoded = encodeURIComponent(JSON.stringify({ id: "/products/42" }));
 
-			expect(decodeQueryString(encoded))
+			expect(decodeQuery(encoded))
 				.toEqual({ id: "app:/products/42" } as Query);
 		});
 
@@ -1672,24 +1616,24 @@ describe("codecs", () => {
 
 			it("should detect and decode JSON format", async () => {
 				const query = { name: "", price: 0 } as Query;
-				const encoded = encodeQueryString(query, { mode: "json" });
-				const decoded = decodeQueryString(encoded);
+				const encoded = encodeQuery(query, { mode: "json" });
+				const decoded = decodeQuery(encoded);
 
 				expect(decoded).toEqual(query);
 			});
 
 			it("should detect and decode base64 format", async () => {
 				const query = { name: "", price: 0 } as Query;
-				const encoded = encodeQueryString(query, { mode: "base64" });
-				const decoded = decodeQueryString(encoded);
+				const encoded = encodeQuery(query, { mode: "base64" });
+				const decoded = decodeQuery(encoded);
 
 				expect(decoded).toEqual(query);
 			});
 
 			it("should detect and decode form format", async () => {
 				const query = { "~name": "widget", ">=price": 50 } as Query;
-				const encoded = encodeQueryString(query, { mode: "form" });
-				const decoded = decodeQueryString(encoded);
+				const encoded = encodeQuery(query, { mode: "form" });
+				const decoded = decodeQuery(encoded);
 
 				expect(decoded).toEqual(query);
 			});
@@ -1700,7 +1644,7 @@ describe("codecs", () => {
 
 			it("should decode empty query", async () => {
 				const encoded = encodeURIComponent("{}");
-				const decoded = decodeQueryString(encoded);
+				const decoded = decodeQuery(encoded);
 
 				expect(decoded).toEqual({});
 			});
@@ -1708,7 +1652,7 @@ describe("codecs", () => {
 			it("should decode query with properties", async () => {
 				const query = { id: "", name: "", price: 0, available: true } as Query;
 				const encoded = encodeURIComponent(JSON.stringify(query));
-				const decoded = decodeQueryString(encoded);
+				const decoded = decodeQuery(encoded);
 
 				expect(decoded).toEqual(query);
 			});
@@ -1718,7 +1662,7 @@ describe("codecs", () => {
 					vendor: { id: "", name: "" }
 				} as Query;
 				const encoded = encodeURIComponent(JSON.stringify(query));
-				const decoded = decodeQueryString(encoded);
+				const decoded = decodeQuery(encoded);
 
 				expect(decoded).toEqual(query);
 			});
@@ -1728,7 +1672,7 @@ describe("codecs", () => {
 					items: [{ id: "", name: "" }]
 				} as Query;
 				const encoded = encodeURIComponent(JSON.stringify(query));
-				const decoded = decodeQueryString(encoded);
+				const decoded = decodeQuery(encoded);
 
 				expect(decoded).toEqual(query);
 			});
@@ -1743,7 +1687,7 @@ describe("codecs", () => {
 					"#": 25
 				} as Query;
 				const encoded = encodeURIComponent(JSON.stringify(query));
-				const decoded = decodeQueryString(encoded);
+				const decoded = decodeQuery(encoded);
 
 				expect(decoded).toEqual(query);
 			});
@@ -1754,7 +1698,7 @@ describe("codecs", () => {
 					"total=count:": 0
 				} as Query;
 				const encoded = encodeURIComponent(JSON.stringify(query));
-				const decoded = decodeQueryString(encoded);
+				const decoded = decodeQuery(encoded);
 
 				expect(decoded).toEqual(query);
 			});
@@ -1765,7 +1709,7 @@ describe("codecs", () => {
 
 			it("should decode empty query", async () => {
 				const encoded = btoa("{}");
-				const decoded = decodeQueryString(encoded);
+				const decoded = decodeQuery(encoded);
 
 				expect(decoded).toEqual({});
 			});
@@ -1773,7 +1717,7 @@ describe("codecs", () => {
 			it("should decode query with properties", async () => {
 				const query = { id: "", name: "", price: 0 } as Query;
 				const encoded = btoa(JSON.stringify(query));
-				const decoded = decodeQueryString(encoded);
+				const decoded = decodeQuery(encoded);
 
 				expect(decoded).toEqual(query);
 			});
@@ -1783,7 +1727,7 @@ describe("codecs", () => {
 					order: { customer: { address: { city: "" } } }
 				} as Query;
 				const encoded = btoa(JSON.stringify(query));
-				const decoded = decodeQueryString(encoded);
+				const decoded = decodeQuery(encoded);
 
 				expect(decoded).toEqual(query);
 			});
@@ -1791,8 +1735,8 @@ describe("codecs", () => {
 			it("should decode unicode content", async () => {
 				const query = { "~name": "日本語" } as Query;
 				// Use encodeQuery to produce proper UTF-8 base64 encoding
-				const encoded = encodeQueryString(query, { mode: "base64" });
-				const decoded = decodeQueryString(encoded);
+				const encoded = encodeQuery(query, { mode: "base64" });
+				const decoded = decodeQuery(encoded);
 
 				expect(decoded).toEqual(query);
 			});
@@ -1809,13 +1753,13 @@ describe("codecs", () => {
 			describe("basic parameters", () => {
 
 				it("should decode single parameter", async () => {
-					const decoded = decodeQueryString("name=test");
+					const decoded = decodeQuery("name=test");
 
 					expect(decoded).toHaveProperty("?name");
 				});
 
 				it("should decode multiple parameters", async () => {
-					const decoded = decodeQueryString("name=test&price=100");
+					const decoded = decodeQuery("name=test&price=100");
 
 					expect(decoded).toHaveProperty("?name");
 					expect(decoded).toHaveProperty("?price");
@@ -1836,7 +1780,7 @@ describe("codecs", () => {
 					[">= (unencoded)", "price>=50", ">=price", 50],
 					[">= (prefix)", "%3E%3Dprice=50", ">=price", 50]
 				] as const)("should decode %s", async (_, input, key, value) => {
-					expect(decodeQueryString(input)).toHaveProperty(key, value);
+					expect(decodeQuery(input)).toHaveProperty(key, value);
 				});
 
 			});
@@ -1849,7 +1793,7 @@ describe("codecs", () => {
 					["spaces (%20)", "%7Ename=red%20widget", "red widget"],
 					["plus as space", "%7Ename=red+widget", "red widget"]
 				] as const)("should decode search (%s)", async (_, input, value) => {
-					expect(decodeQueryString(input)).toHaveProperty("~name", value);
+					expect(decodeQuery(input)).toHaveProperty("~name", value);
 				});
 
 			});
@@ -1857,25 +1801,25 @@ describe("codecs", () => {
 			describe("disjunctive matching", () => {
 
 				it("should decode single value as array", async () => {
-					const decoded = decodeQueryString("category=electronics");
+					const decoded = decodeQuery("category=electronics");
 
 					expect(decoded).toHaveProperty("?category");
 				});
 
 				it("should decode repeated parameters as array", async () => {
-					const decoded = decodeQueryString("category=electronics&category=home") as Record<string, unknown>;
+					const decoded = decodeQuery("category=electronics&category=home") as Record<string, unknown>;
 
 					expect(decoded["?category"]).toEqual(["electronics", "home"]);
 				});
 
 				it("should decode explicit prefix operator", async () => {
-					const decoded = decodeQueryString("%3Fcategory=electronics");
+					const decoded = decodeQuery("%3Fcategory=electronics");
 
 					expect(decoded).toHaveProperty("?category");
 				});
 
 				it("should decode null for undefined matching", async () => {
-					const decoded = decodeQueryString("%3Fvendor=null") as Record<string, unknown>;
+					const decoded = decodeQuery("%3Fvendor=null") as Record<string, unknown>;
 
 					expect(decoded["?vendor"]).toBe(null);
 				});
@@ -1888,7 +1832,7 @@ describe("codecs", () => {
 					["encoded", "%21tags=featured&%21tags=sale"],
 					["unencoded", "!tags=featured&!tags=sale"]
 				])("should decode all-match constraint (%s)", async (_, input) => {
-					const decoded = decodeQueryString(input) as Record<string, unknown>;
+					const decoded = decodeQuery(input) as Record<string, unknown>;
 
 					expect(decoded["!tags"]).toEqual(["featured", "sale"]);
 				});
@@ -1897,7 +1841,7 @@ describe("codecs", () => {
 					["encoded", "%21tags=premium"],
 					["unencoded", "!tags=premium"]
 				])("should decode explicit prefix operator (%s)", async (_, input) => {
-					expect(decodeQueryString(input)).toHaveProperty("!tags");
+					expect(decodeQuery(input)).toHaveProperty("!tags");
 				});
 
 			});
@@ -1906,14 +1850,14 @@ describe("codecs", () => {
 
 				it("should decode focus constraint with single value encoded", async () => {
 					// *category=featured
-					const decoded = decodeQueryString("*category=featured");
+					const decoded = decodeQuery("*category=featured");
 
 					expect(decoded).toHaveProperty("*category");
 				});
 
 				it("should decode focus constraint with multiple values", async () => {
 					// *category=featured&*category=popular
-					const decoded = decodeQueryString("*category=featured&*category=popular") as Record<string, unknown>;
+					const decoded = decodeQuery("*category=featured&*category=popular") as Record<string, unknown>;
 
 					expect(decoded["*category"]).toEqual(["featured", "popular"]);
 				});
@@ -1932,7 +1876,7 @@ describe("codecs", () => {
 					["negative priority (encoded)", "%5Eprice=-2", "^price", -2],
 					["negative priority (unencoded)", "^price=-2", "^price", -2]
 				] as const)("should decode %s", async (_, input, key, value) => {
-					expect(decodeQueryString(input)).toHaveProperty(key, value);
+					expect(decodeQuery(input)).toHaveProperty(key, value);
 				});
 
 			});
@@ -1947,7 +1891,7 @@ describe("codecs", () => {
 					["zero offset", "%40=0", "@", 0],
 					["zero offset (unencoded)", "@=0", "@", 0]
 				] as const)("should decode %s", async (_, input, key, value) => {
-					expect(decodeQueryString(input)).toHaveProperty(key, value);
+					expect(decodeQuery(input)).toHaveProperty(key, value);
 				});
 
 			});
@@ -1955,96 +1899,96 @@ describe("codecs", () => {
 			describe("value parsing", () => {
 
 				it("should parse numeric strings as numbers", async () => {
-					const decoded = decodeQueryString("%3E%3Dprice=100") as Record<string, unknown>;
+					const decoded = decodeQuery("%3E%3Dprice=100") as Record<string, unknown>;
 
 					expect(decoded[">=price"]).toBe(100);
 					expect(typeof decoded[">=price"]).toBe("number");
 				});
 
 				it("should parse decimal numbers", async () => {
-					const decoded = decodeQueryString("%3E%3Dprice=99.99") as Record<string, unknown>;
+					const decoded = decodeQuery("%3E%3Dprice=99.99") as Record<string, unknown>;
 
 					expect(decoded[">=price"]).toBe(99.99);
 				});
 
 				it("should parse negative numbers", async () => {
-					const decoded = decodeQueryString("%5Eprice=-1") as Record<string, unknown>;
+					const decoded = decodeQuery("%5Eprice=-1") as Record<string, unknown>;
 
 					expect(decoded["^price"]).toBe(-1);
 				});
 
 				it("should parse boolean true", async () => {
-					const decoded = decodeQueryString("available=true") as Record<string, unknown>;
+					const decoded = decodeQuery("available=true") as Record<string, unknown>;
 
 					expect(decoded["?available"]).toBe(true);
 				});
 
 				it("should parse boolean false", async () => {
-					const decoded = decodeQueryString("available=false") as Record<string, unknown>;
+					const decoded = decodeQuery("available=false") as Record<string, unknown>;
 
 					expect(decoded["?available"]).toBe(false);
 				});
 
 				it("should preserve non-numeric strings", async () => {
-					const decoded = decodeQueryString("%7Ename=widget") as Record<string, unknown>;
+					const decoded = decodeQuery("%7Ename=widget") as Record<string, unknown>;
 
 					expect(decoded["~name"]).toBe("widget");
 					expect(typeof decoded["~name"]).toBe("string");
 				});
 
 				it("should decode percent-encoded special characters", async () => {
-					const decoded = decodeQueryString("%7Ename=foo%26bar") as Record<string, unknown>;
+					const decoded = decodeQuery("%7Ename=foo%26bar") as Record<string, unknown>;
 
 					expect(decoded["~name"]).toBe("foo&bar");
 				});
 
 				it("should decode percent-encoded unicode", async () => {
-					const decoded = decodeQueryString("%7Ename=caf%C3%A9") as Record<string, unknown>;
+					const decoded = decodeQuery("%7Ename=caf%C3%A9") as Record<string, unknown>;
 
 					expect(decoded["~name"]).toBe("café");
 				});
 
 				it("should decode empty value", async () => {
-					const decoded = decodeQueryString("~name=") as Record<string, unknown>;
+					const decoded = decodeQuery("~name=") as Record<string, unknown>;
 
 					expect(decoded["~name"]).toBe("");
 				});
 
 				it("should decode equals in value", async () => {
 					// ~name=a=b (= in value must be encoded)
-					const decoded = decodeQueryString("~name=a%3Db") as Record<string, unknown>;
+					const decoded = decodeQuery("~name=a%3Db") as Record<string, unknown>;
 
 					expect(decoded["~name"]).toBe("a=b");
 				});
 
 				it("should parse null", async () => {
-					const decoded = decodeQueryString("value=null") as Record<string, unknown>;
+					const decoded = decodeQuery("value=null") as Record<string, unknown>;
 
 					expect(decoded["?value"]).toBe(null);
 				});
 
 				it("should parse scientific notation", async () => {
-					const decoded = decodeQueryString("value=1e10") as Record<string, unknown>;
+					const decoded = decodeQuery("value=1e10") as Record<string, unknown>;
 
 					expect(decoded["?value"]).toBe(1e10);
 				});
 
 				it("should parse negative exponent", async () => {
-					const decoded = decodeQueryString("value=1.5e-10") as Record<string, unknown>;
+					const decoded = decodeQuery("value=1.5e-10") as Record<string, unknown>;
 
 					expect(decoded["?value"]).toBe(1.5e-10);
 				});
 
 				it("should parse quoted string preserving type", async () => {
 					// "123" should remain string, not convert to number
-					const decoded = decodeQueryString("value=%22123%22") as Record<string, unknown>;
+					const decoded = decodeQuery("value=%22123%22") as Record<string, unknown>;
 
 					expect(decoded["?value"]).toBe("123");
 					expect(typeof decoded["?value"]).toBe("string");
 				});
 
 				it("should parse quoted null as string", async () => {
-					const decoded = decodeQueryString("value=%22null%22") as Record<string, unknown>;
+					const decoded = decodeQuery("value=%22null%22") as Record<string, unknown>;
 
 					expect(decoded["?value"]).toBe("null");
 					expect(typeof decoded["?value"]).toBe("string");
@@ -2052,49 +1996,49 @@ describe("codecs", () => {
 
 				it("should decode JSON escape sequences", async () => {
 					// "a\nb" encoded
-					const decoded = decodeQueryString("value=%22a%5Cnb%22") as Record<string, unknown>;
+					const decoded = decodeQuery("value=%22a%5Cnb%22") as Record<string, unknown>;
 
 					expect(decoded["?value"]).toBe("a\nb");
 				});
 
 				it("should decode escaped quotes in strings", async () => {
 					// "a\"b" encoded
-					const decoded = decodeQueryString("value=%22a%5C%22b%22") as Record<string, unknown>;
+					const decoded = decodeQuery("value=%22a%5C%22b%22") as Record<string, unknown>;
 
 					expect(decoded["?value"]).toBe("a\"b");
 				});
 
 				it("should decode unicode escapes", async () => {
 					// "\u0041" = "A"
-					const decoded = decodeQueryString("value=%22%5Cu0041%22") as Record<string, unknown>;
+					const decoded = decodeQuery("value=%22%5Cu0041%22") as Record<string, unknown>;
 
 					expect(decoded["?value"]).toBe("A");
 				});
 
 				it("should decode localized string", async () => {
 					// "Hello"@en → always reconstructed as Locals (Options are multi-valued)
-					const decoded = decodeQueryString("label=%22Hello%22%40en") as Record<string, unknown>;
+					const decoded = decodeQuery("label=%22Hello%22%40en") as Record<string, unknown>;
 
 					expect(decoded["?label"]).toEqual({ "en": ["Hello"] });
 				});
 
 				it("should decode localized string with region", async () => {
 					// "Colour"@en-GB → always reconstructed as Locals (Options are multi-valued)
-					const decoded = decodeQueryString("label=%22Colour%22%40en-GB") as Record<string, unknown>;
+					const decoded = decodeQuery("label=%22Colour%22%40en-GB") as Record<string, unknown>;
 
 					expect(decoded["?label"]).toEqual({ "en-GB": ["Colour"] });
 				});
 
 				it("should decode multiple tagged values into Locals object", async () => {
 					// ?name="Widget"@en&?name="Gadget"@fr → always Locals
-					const decoded = decodeQueryString("%3Fname=%22Widget%22%40en&%3Fname=%22Gadget%22%40fr") as Record<string, unknown>;
+					const decoded = decodeQuery("%3Fname=%22Widget%22%40en&%3Fname=%22Gadget%22%40fr") as Record<string, unknown>;
 
 					expect(decoded["?name"]).toEqual({ "en": ["Widget"], "fr": ["Gadget"] });
 				});
 
 				it("should decode multiple values per tag into Locals object", async () => {
 					// ?name="Widget"@en&?name="Gadget"@en&?name="Bidule"@fr
-					const decoded = decodeQueryString("%3Fname=%22Widget%22%40en&%3Fname=%22Gadget%22%40en&%3Fname=%22Bidule%22%40fr") as Record<string, unknown>;
+					const decoded = decodeQuery("%3Fname=%22Widget%22%40en&%3Fname=%22Gadget%22%40en&%3Fname=%22Bidule%22%40fr") as Record<string, unknown>;
 
 					expect(decoded["?name"]).toEqual({ "en": ["Widget", "Gadget"], "fr": ["Bidule"] });
 				});
@@ -2105,14 +2049,14 @@ describe("codecs", () => {
 
 				it("should decode single-level indexed plain option", async () => {
 					// ?category="electronics"@xsd_string → { xsd_string: ["electronics"] }
-					const decoded = decodeQueryString("%3Fcategory=%22electronics%22%40xsd_string") as Record<string, unknown>;
+					const decoded = decodeQuery("%3Fcategory=%22electronics%22%40xsd_string") as Record<string, unknown>;
 
 					expect(decoded["?category"]).toEqual({ "xsd_string": ["electronics"] });
 				});
 
 				it("should decode single-level indexed multiple options", async () => {
 					// ?category="electronics"@xsd_string&?category="home"@xsd_string
-					const decoded = decodeQueryString(
+					const decoded = decodeQuery(
 						"%3Fcategory=%22electronics%22%40xsd_string&%3Fcategory=%22home%22%40xsd_string"
 					) as Record<string, unknown>;
 
@@ -2121,14 +2065,14 @@ describe("codecs", () => {
 
 				it("should decode two-level indexed localised option", async () => {
 					// ?name="Widget"@en@xsd_string → { xsd_string: { en: ["Widget"] } }
-					const decoded = decodeQueryString("%3Fname=%22Widget%22%40en%40xsd_string") as Record<string, unknown>;
+					const decoded = decodeQuery("%3Fname=%22Widget%22%40en%40xsd_string") as Record<string, unknown>;
 
 					expect(decoded["?name"]).toEqual({ "xsd_string": { "en": ["Widget"] } });
 				});
 
 				it("should decode two-level indexed localised options", async () => {
 					// ?name="Widget"@en@xsd_string&?name="Gadget"@fr@xsd_string
-					const decoded = decodeQueryString(
+					const decoded = decodeQuery(
 						"%3Fname=%22Widget%22%40en%40xsd_string&%3Fname=%22Gadget%22%40fr%40xsd_string"
 					) as Record<string, unknown>;
 
@@ -2137,7 +2081,7 @@ describe("codecs", () => {
 
 				it("should decode multiple indexed keys", async () => {
 					// ?value=42@xsd_integer&?value="42"@xsd_string
-					const decoded = decodeQueryString(
+					const decoded = decodeQuery(
 						"%3Fvalue=42%40xsd_integer&%3Fvalue=%2242%22%40xsd_string"
 					) as Record<string, unknown>;
 
@@ -2150,14 +2094,14 @@ describe("codecs", () => {
 
 				it("should decode unencoded dots in paths", async () => {
 					// >=vendor.rating=4 (dot unreserved, no encoding needed)
-					const decoded = decodeQueryString("%3E%3Dvendor.rating=4");
+					const decoded = decodeQuery("%3E%3Dvendor.rating=4");
 
 					expect(decoded).toHaveProperty(">=vendor.rating", 4);
 				});
 
 				it("should decode percent-encoded dots in paths", async () => {
 					// >=vendor.rating=4 (dot encoded as %2E)
-					const decoded = decodeQueryString("%3E%3Dvendor%2Erating=4");
+					const decoded = decodeQuery("%3E%3Dvendor%2Erating=4");
 
 					expect(decoded).toHaveProperty(">=vendor.rating", 4);
 				});
@@ -2168,35 +2112,35 @@ describe("codecs", () => {
 
 				it("should decode identifier with unicode letter (Greek)", async () => {
 					// πrice=100 (Greek pi as first character)
-					const decoded = decodeQueryString("%CF%80rice=100");
+					const decoded = decodeQuery("%CF%80rice=100");
 
 					expect(decoded).toHaveProperty("?πrice", 100);
 				});
 
 				it("should decode identifier with unicode letter (Cyrillic)", async () => {
 					// цена=100 (Russian "price")
-					const decoded = decodeQueryString("%D1%86%D0%B5%D0%BD%D0%B0=100");
+					const decoded = decodeQuery("%D1%86%D0%B5%D0%BD%D0%B0=100");
 
 					expect(decoded).toHaveProperty("?цена", 100);
 				});
 
 				it("should decode identifier with unicode letter (CJK)", async () => {
 					// 价格=100 (Chinese "price")
-					const decoded = decodeQueryString("%E4%BB%B7%E6%A0%BC=100");
+					const decoded = decodeQuery("%E4%BB%B7%E6%A0%BC=100");
 
 					expect(decoded).toHaveProperty("?价格", 100);
 				});
 
 				it("should decode identifier with unicode continuation characters", async () => {
 					// na\u0301me=test (combining acute accent in identifier)
-					const decoded = decodeQueryString("na%CC%81me=test");
+					const decoded = decodeQuery("na%CC%81me=test");
 
 					expect(decoded).toHaveProperty("?na\u0301me", "test");
 				});
 
 				it("should decode path with unicode identifiers", async () => {
 					// >=производитель.рейтинг=4 (Russian vendor.rating)
-					const decoded = decodeQueryString("%3E%3D%D0%BF%D1%80%D0%BE%D0%B8%D0%B7%D0%B2%D0%BE%D0%B4%D0%B8%D1%82%D0%B5%D0%BB%D1%8C.%D1%80%D0%B5%D0%B9%D1%82%D0%B8%D0%BD%D0%B3=4");
+					const decoded = decodeQuery("%3E%3D%D0%BF%D1%80%D0%BE%D0%B8%D0%B7%D0%B2%D0%BE%D0%B4%D0%B8%D1%82%D0%B5%D0%BB%D1%8C.%D1%80%D0%B5%D0%B9%D1%82%D0%B8%D0%BD%D0%B3=4");
 
 					expect(decoded).toHaveProperty(">=производитель.рейтинг", 4);
 				});
@@ -2207,28 +2151,28 @@ describe("codecs", () => {
 
 				it("should decode constraint with single transform", async () => {
 					// >=year:releaseDate=2020
-					const decoded = decodeQueryString("%3E%3Dyear%3AreleaseDate=2020");
+					const decoded = decodeQuery("%3E%3Dyear%3AreleaseDate=2020");
 
 					expect(decoded).toHaveProperty(">=year:releaseDate", 2020);
 				});
 
 				it("should decode constraint with transform pipeline", async () => {
 					// >=round:avg:items.price=100
-					const decoded = decodeQueryString("%3E%3Dround%3Aavg%3Aitems.price=100");
+					const decoded = decodeQuery("%3E%3Dround%3Aavg%3Aitems.price=100");
 
 					expect(decoded).toHaveProperty(">=round:avg:items.price", 100);
 				});
 
 				it("should decode disjunction with transform", async () => {
 					// ?month:releaseDate=1&?month:releaseDate=6&?month:releaseDate=12
-					const decoded = decodeQueryString("%3Fmonth%3AreleaseDate=1&%3Fmonth%3AreleaseDate=6&%3Fmonth%3AreleaseDate=12") as Record<string, unknown>;
+					const decoded = decodeQuery("%3Fmonth%3AreleaseDate=1&%3Fmonth%3AreleaseDate=6&%3Fmonth%3AreleaseDate=12") as Record<string, unknown>;
 
 					expect(decoded["?month:releaseDate"]).toEqual([1, 6, 12]);
 				});
 
 				it("should decode ordering with transform", async () => {
 					// ^year:releaseDate=1
-					const decoded = decodeQueryString("%5Eyear%3AreleaseDate=1");
+					const decoded = decodeQuery("%5Eyear%3AreleaseDate=1");
 
 					expect(decoded).toHaveProperty("^year:releaseDate", 1);
 				});
@@ -2239,31 +2183,31 @@ describe("codecs", () => {
 				// The decoder is lenient with common URL parsing quirks
 
 				it("should handle empty string", async () => {
-					const decoded = decodeQueryString("");
+					const decoded = decodeQuery("");
 
 					expect(decoded).toEqual({});
 				});
 
 				it("should handle parameter without value", async () => {
-					const decoded = decodeQueryString("name");
+					const decoded = decodeQuery("name");
 
 					expect(decoded).toHaveProperty("?name");
 				});
 
 				it("should handle leading ampersand", async () => {
-					const decoded = decodeQueryString("&name=test");
+					const decoded = decodeQuery("&name=test");
 
 					expect(decoded).toHaveProperty("?name");
 				});
 
 				it("should handle trailing ampersand", async () => {
-					const decoded = decodeQueryString("name=test&");
+					const decoded = decodeQuery("name=test&");
 
 					expect(decoded).toHaveProperty("?name");
 				});
 
 				it("should handle multiple ampersands", async () => {
-					const decoded = decodeQueryString("name=test&&price=100");
+					const decoded = decodeQuery("name=test&&price=100");
 
 					expect(decoded).toHaveProperty("?name");
 					expect(decoded).toHaveProperty("?price");
@@ -2275,7 +2219,7 @@ describe("codecs", () => {
 
 				it("should decode complex query with multiple operators", async () => {
 					// status=active&status=pending&~name=corp&price>=100&price<=1000&^date=desc&@=0&#=25
-					const decoded = decodeQueryString(
+					const decoded = decodeQuery(
 						"status=active&status=pending&~name=corp&price%3E%3D100&price%3C%3D1000&%5Edate=desc&%40=0&%23=25"
 					) as Record<string, unknown>;
 
@@ -2316,8 +2260,8 @@ describe("codecs", () => {
 			it.each(testQueries.map((q, i) => [i, q] as const))(
 				"should roundtrip query %i via json format",
 				async (_, query) => {
-					const encoded = encodeQueryString(query as Query, { mode: "json" });
-					const decoded = decodeQueryString(encoded);
+					const encoded = encodeQuery(query as Query, { mode: "json" });
+					const decoded = decodeQuery(encoded);
 
 					expect(decoded).toEqual(query);
 				}
@@ -2326,8 +2270,8 @@ describe("codecs", () => {
 			it.each(testQueries.map((q, i) => [i, q] as const))(
 				"should roundtrip query %i via base64 format",
 				async (_, query) => {
-					const encoded = encodeQueryString(query as Query, { mode: "base64" });
-					const decoded = decodeQueryString(encoded);
+					const encoded = encodeQuery(query as Query, { mode: "base64" });
+					const decoded = decodeQuery(encoded);
 
 					expect(decoded).toEqual(query);
 				}
@@ -2340,11 +2284,11 @@ describe("codecs", () => {
 			it("should skip structural validation when lenient", async () => {
 				const json = encodeURIComponent(JSON.stringify({ "!invalid": true }));
 
-				expect(() => decodeQueryString(json, { lenient: true })).not.toThrow();
+				expect(() => decodeQuery(json, { lenient: true })).not.toThrow();
 			});
 
 			it("should still throw on syntax errors when lenient", async () => {
-				expect(() => decodeQueryString(encodeURIComponent("{invalid"), { lenient: true })).toThrow();
+				expect(() => decodeQuery(encodeURIComponent("{invalid"), { lenient: true })).toThrow();
 			});
 
 		});
@@ -2352,24 +2296,24 @@ describe("codecs", () => {
 		describe("error handling", () => {
 
 			it("should handle malformed JSON gracefully", async () => {
-				expect(() => decodeQueryString(encodeURIComponent("{invalid"))).toThrow();
+				expect(() => decodeQuery(encodeURIComponent("{invalid"))).toThrow();
 			});
 
 			it("should throw on invalid base64 JSON", async () => {
 				// Valid base64 but invalid JSON throws with cause
-				expect(() => decodeQueryString("eyJpbnZhbGlk")).toThrow("malformed query");
+				expect(() => decodeQuery("eyJpbnZhbGlk")).toThrow("malformed query");
 			});
 
 			it("should handle truncated percent-encoding", async () => {
-				expect(() => decodeQueryString("%")).toThrow();
+				expect(() => decodeQuery("%")).toThrow();
 			});
 
 			it("should handle invalid percent-encoding sequence", async () => {
-				expect(() => decodeQueryString("%ZZ")).toThrow();
+				expect(() => decodeQuery("%ZZ")).toThrow();
 			});
 
 			it("should handle incomplete percent-encoding", async () => {
-				expect(() => decodeQueryString("%2")).toThrow();
+				expect(() => decodeQuery("%2")).toThrow();
 			});
 
 		});

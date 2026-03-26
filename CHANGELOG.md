@@ -10,6 +10,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - Add `Indexable<T>` type alias and `isIndexable` guard for plain or key-indexed values
+- Add `encodeTemplate`/`decodeTemplate` codecs for `Template` JSON serialization with IRI internalization/resolution
 - Add `encodeQuery`/`decodeQuery` codecs for `Query` JSON serialization with IRI internalization/resolution
 - Add `lower`, `upper`, `length` string transforms to `Transform` enum
 - Add `indent` option to `EncoderOpts` for pretty-printing encoded JSON output
@@ -17,6 +18,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Restrict computed values, filtering constraints, sorting criteria, and pagination limits to singleton collection query
+  tuples
 - Split `CodecOpts` into separate `EncoderOpts` and `DecoderOpts` types
 - Extract type guards into companion `.core.ts` modules
 - Replace `zxx` language tag with `und` for language-neutral values
@@ -30,12 +33,12 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Rename `ValuesModel` to `Template`, `LocalModel` to `Locale`, `LocalsModel` to `Locales`
 - Rename `Criterion` to `Probe`; rename `isCriterion`, `encodeCriterion`, `decodeCriterion` accordingly
 - Inline `ValueModel` into `Template` union; remove `isValueModel` guard
-- Split `Templates` / `Template` into separate types mirroring `Values` / `Value`; add `isTemplates` guard
+- Rename `Templates` type to `Placeholders`; rename `isTemplates` guard to `isPlaceholders`
 - Move `Literal` and `Reference` types from `state` module to `index` module
 - Rename `./index` package export to `.` (root entry point)
 - Merge `Model` and `Query` into unified `Query` type combining projection, filtering, ordering, and pagination
-- Rename `encodeModel`/`decodeModel` to `encodeQuery`/`decodeQuery`
-- Rename `encodeQuery`/`decodeQuery` to `encodeQueryString`/`decodeQueryString`
+- Rename `encodeModel`/`decodeModel` to `encodeTemplate`/`decodeTemplate`
+- Rename `encodeQueryString`/`decodeQueryString` to `encodeQuery`/`decodeQuery`
 
 ### Removed
 

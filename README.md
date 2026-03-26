@@ -25,12 +25,14 @@ Developers seek these features in frameworks like GraphQL; **@metreeca/qest** br
 and publishing as they see fit; its standardised data model is the foundation of an integrated ecosystem that delivers a
 powerful model-driven stack for rapid development of linked data applications:
 
-| Package                                                | Description                                                    |
-|--------------------------------------------------------|----------------------------------------------------------------|
-| **@metreeca/qest**                                     | Data types for client-driven, queryable REST/JSON APIs         |
-| [**@metreeca/blue**](https://github.com/metreeca/blue) | Declarative blueprints for model-driven linked data processing |
-| @metreeca/keep _(upcoming)_                            | Shape-driven storage framework with pluggable adapters         |
-| @metreeca/gate _(upcoming)_                            | Shape-driven REST/JSON API publishing                          |
+| Package                     | Description                                                    |
+|-----------------------------|----------------------------------------------------------------|
+| **@metreeca/qest**          | Data types for client-driven, queryable REST/JSON APIs         |
+| [**@metreeca/blue**][]      | Declarative blueprints for model-driven linked data processing |
+| @metreeca/keep _(upcoming)_ | Shape-driven storage framework with pluggable adapters         |
+| @metreeca/gate _(upcoming)_ | Shape-driven REST/JSON API publishing                          |
+
+[**@metreeca/blue**]: https://github.com/metreeca/blue
 
 # Installation
 
@@ -49,11 +51,17 @@ npm install @metreeca/qest
 >
 > This section introduces essential concepts; for complete coverage, see the API reference:
 >
-> | Module                                                                     | Description                      |
-> |----------------------------------------------------------------------------|----------------------------------|
-> | [@metreeca/qest](https://metreeca.github.io/qest/modules/index.html)       | Shared values, types, and guards |
-> | [@metreeca/qest/state](https://metreeca.github.io/qest/modules/state.html) | Resource state management        |
-> | [@metreeca/qest/model](https://metreeca.github.io/qest/modules/model.html) | Client-driven retrieval          |
+> | Module                   | Description                      |
+> |--------------------------|----------------------------------|
+> | [@metreeca/qest][]       | Shared values, types, and guards |
+> | [@metreeca/qest/state][] | Resource state management        |
+> | [@metreeca/qest/model][] | Client-driven retrieval          |
+
+[@metreeca/qest]: https://metreeca.github.io/qest/modules/index.html
+
+[@metreeca/qest/state]: https://metreeca.github.io/qest/modules/state.html
+
+[@metreeca/qest/model]: https://metreeca.github.io/qest/modules/model.html
 
 **@metreeca/qest** types define payload semantics and formats for standard REST operations:
 
@@ -61,13 +69,15 @@ npm install @metreeca/qest
 |--------|---------------|------------------------------------|
 | GET    | [Resource][]  | Resource retrieval                 |
 | GET    | [Resource][]  | Collection retrieval               |
-| GET    | [Query][]     | Client-driven resource retrieval   |
+| GET    | [Template][]  | Client-driven resource retrieval   |
 | GET    | [Query][]     | Client-driven collection retrieval |
 | POST   | [Resource][]  | Resource creation                  |
 | PUT    | [Resource][]  | Complete resource state update     |
 | DELETE | [Reference][] | Resource deletion                  |
 
 [Resource]: https://metreeca.github.io/qest/types/state.Resource.html
+
+[Template]: https://metreeca.github.io/qest/types/model.Template.html
 
 [Query]: https://metreeca.github.io/qest/types/model.Query.html
 
@@ -129,14 +139,14 @@ fills this gap, supporting precise control over responses while remaining fully 
 > Client-driven retrieval is fully optional. Servers may provide defaults, typically derived from the underlying data
 > model, preserving standard REST/JSON behaviour while enabling advanced capabilities when needed.
 
-**Resources** — A [**Query**](https://metreeca.github.io/qest/types/model.Query.html) defines the data retrieval
+**Resources** — A [**Template**](https://metreeca.github.io/qest/types/model.Template.html) defines the data retrieval
 envelope: which properties to include and how deeply and in how much detail to expand linked resources.
 
 ```http request
-GET https://data.example.com/products/123?<query>
+GET https://data.example.com/products/123?<template>
 ```
 
-where `<query>` is the following URL-encoded JSON:
+where `<template>` is the URL-encoded JSON [**Template**](https://metreeca.github.io/qest/types/model.Template.html):
 
 ```js
 ({
@@ -165,14 +175,16 @@ The response includes only the requested properties, with the linked `vendor` ex
 ```
 
 **Collections** — For resources included in a collection, a
-[**Query**](https://metreeca.github.io/qest/types/model.Query.html) may also specify filtering constraints, ordering
-criteria, and pagination limits, as well as computed projections including aggregates for faceted search and analytics.
+[**Query**](https://metreeca.github.io/qest/types/model.Query.html) specifies filtering constraints, ordering criteria,
+and pagination limits for individual items, as well as computed projections including aggregates for faceted search and
+analytics.
 
 ```http request
-GET https://data.example.com/products/?<query>
+GET https://data.example.com/products/?<template>
 ```
 
-where `<query>` is the following URL-encoded JSON:
+where `<template>` is the URL-encoded JSON [**Template**](https://metreeca.github.io/qest/types/model.Template.html)
+containing a [**Query**](https://metreeca.github.io/qest/types/model.Query.html) tuple for the collection property:
 
 ```js
 ({

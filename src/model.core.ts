@@ -15,7 +15,7 @@
  */
 
 /**
- * Type guards for model and query types.
+ * Type guards for retrieval template and query types.
  *
  * @module
  */
@@ -42,18 +42,30 @@ import type {
 	Probe,
 	Query,
 	Template,
-	Templates,
+	Placeholders,
 	Transform
 } from "./model.js";
 import { isLocalised } from "./state.core.js";
 
 
 /**
+ * Checks if a value is a {@link Template}.
+ *
+ * @param value The value to check
+ *
+ * @returns True if the value is a resource retrieval property map with {@link Identifier} keys
+ * and {@link Indexable}<{@link Placeholders}> values
+ */
+export function isTemplate(value: unknown): value is Template {
+	return isObject(value, (v, k) => isIdentifier(k) && isIndexable(v, isPlaceholders));
+}
+
+/**
  * Checks if a value is a {@link Query}.
  *
  * @param value The value to check
  *
- * @returns True if the value is a valid query combining projection, filtering, ordering, and pagination
+ * @returns True if the value is a valid collection item query combining projection, filtering, ordering, and pagination
  */
 export function isQuery(value: unknown): value is Query {
 	return isObject(value, (v, k) => {
@@ -62,7 +74,7 @@ export function isQuery(value: unknown): value is Query {
 
 		if ( isBinding(k) as boolean ) {
 
-			return isIndexable(v, isTemplates);
+			return isIndexable(v, isPlaceholders);
 
 		}
 
@@ -115,25 +127,25 @@ export function isQuery(value: unknown): value is Query {
 
 
 /**
- * Checks if a value is a {@link Templates}.
+ * Checks if a value is a {@link Placeholders}.
  *
  * @param value The value to check
  *
- * @returns True if the value is a {@link Template}, {@link Locale}, or tuple of templates
+ * @returns True if the value is a scalar template ({@link Literal}, {@link Reference}, {@link Template}, or
+ * {@link Locale}) or a singleton tuple denoting a collection projection
  */
-export function isTemplates(value: unknown): value is Templates {
-	return isUnion(value, [isTemplate, isLocale, v => isArray(v, [isTemplate])]);
-}
-
-/**
- * Checks if a value is a {@link Template}.
- *
- * @param value The value to check
- *
- * @returns True if the value is a {@link Literal}, {@link Reference}, or {@link Query}
- */
-export function isTemplate(value: unknown): value is Template {
-	return isUnion(value, [isLiteral, isReference, isQuery]);
+export function isPlaceholders(value: unknown): value is Placeholders {
+	return isUnion(value, [
+		isLiteral,
+		isReference,
+		isTemplate,
+		isLocale,
+		v => isArray(v, [v => isUnion(v, [
+			isLiteral,
+			isReference,
+			isQuery]
+		)])
+	]);
 }
 
 /**
