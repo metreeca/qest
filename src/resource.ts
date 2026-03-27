@@ -15,7 +15,7 @@
  */
 
 /**
- * Resource state management.
+ * Resource state representation.
  *
  * Defines types for describing resource states and partial updates in REST/JSON APIs, using native JSON types
  * with localised text support:
@@ -25,7 +25,7 @@
  * - {@link Value} — Individual property values
  * - {@link Localised} — Localised text value set
  *
- * <img src="index/state.svg" alt="State type hierarchy" style="zoom: 1.75; display: block; margin: auto;" />
+ * <img src="index/resource.svg" alt="State type hierarchy" style="zoom: 1.75; display: block; margin: auto;" />
  *
  * # Resource Operations
  *
@@ -265,7 +265,7 @@ import {
 	type Literal,
 	type Reference
 } from "./index.js";
-import { isResource } from "./state.core.js";
+import { isResource } from "./resource.core.js";
 
 
 /**
@@ -277,7 +277,7 @@ import { isResource } from "./state.core.js";
  *
  * Used for both retrieving resource state (HTTP GET) and complete state replacement (HTTP PUT).
  *
- * @see {@link model!Query} for the corresponding retrieval template
+ * @see {@link template!Query} for the corresponding retrieval template
  * @see {@link https://datatracker.ietf.org/doc/html/rfc9110#section-9.3.1 RFC 9110 - HTTP GET Method}
  * @see {@link https://datatracker.ietf.org/doc/html/rfc9110#section-9.3.4 RFC 9110 - HTTP PUT Method}
  */
@@ -296,7 +296,7 @@ export type Resource =
  *
  * {@link Indexed} containers are accepted at the property level but excluded from `Values` to prevent nesting.
  *
- * @see {@link model!Placeholders} for the corresponding retrieval template
+ * @see {@link template!Placeholders} for the corresponding retrieval template
  */
 export type Values =
 	| Value
@@ -312,7 +312,7 @@ export type Values =
  * - {@link Reference}: IRI reference to a resource
  * - {@link Resource}: nested resource state
  *
- * @see {@link model!Template} for the corresponding retrieval template
+ * @see {@link template!Template} for the corresponding retrieval template
  */
 export type Value =
 	| Literal
@@ -345,7 +345,7 @@ export type Value =
  * >   `und` denotes text not bound to a specific language, while `zxx` is reserved for non-linguistic content
  * >   such as instrumental music or binary data
  *
- * @see {@link model!Locale} for the corresponding retrieval template
+ * @see {@link template!Locale} for the corresponding retrieval template
  * @see {@link https://www.rfc-editor.org/rfc/rfc5646.html RFC 5646 - Tags for Identifying Languages}
  * @see {@link https://iso639-3.sil.org/code/und ISO 639 und - Undetermined Language}
  */

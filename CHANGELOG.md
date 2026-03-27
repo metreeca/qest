@@ -36,6 +36,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Rename `Templates` type to `Placeholders`; rename `isTemplates` guard to `isPlaceholders`
 - Move `Literal` and `Reference` types from `state` module to `index` module
 - Rename `./index` package export to `.` (root entry point)
+- Rename `./state` module to `./resource`; rename `./model` module to `./template`
 - Merge `Model` and `Query` into unified `Query` type combining projection, filtering, ordering, and pagination
 - Rename `encodeModel`/`decodeModel` to `encodeTemplate`/`decodeTemplate`
 - Rename `encodeQueryString`/`decodeQueryString` to `encodeQuery`/`decodeQuery`

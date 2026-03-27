@@ -24,7 +24,7 @@ import { isArray, isIdentifier, isObject, isString, isUnion } from "@metreeca/co
 import { isTag } from "@metreeca/core/language";
 import { isIndexable, isLiteral, isReference } from "./index.core.js";
 import type { Literal, Reference } from "./index.js";
-import type { Localised, Resource, Value, Values } from "./state.js";
+import type { Localised, Resource, Value, Values } from "./resource.js";
 
 
 /**

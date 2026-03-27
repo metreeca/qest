@@ -85,7 +85,7 @@ export type Indexable<T> =
  * Resource reference.
  *
  * An absolute {@link IRI} identifying a linked resource without embedding its state. Contrast with
- * {@link state!Resource}, which includes the linked resource's properties inline.
+ * {@link resource!Resource}, which includes the linked resource's properties inline.
  *
  * > [!WARNING]
  * > This is a type alias for documentation purposes only. Branding was considered but not adopted due to

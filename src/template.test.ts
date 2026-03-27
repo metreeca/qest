@@ -28,7 +28,7 @@ import {
 	isTemplate,
 	isPlaceholders,
 	isTransform
-} from "./model.core.js";
+} from "./template.core.js";
 import {
 	decodeProbe,
 	decodeQuery,
@@ -38,7 +38,7 @@ import {
 	encodeTemplate,
 	type Query,
 	type Template
-} from "./model.js";
+} from "./template.js";
 
 
 describe("guards", () => {

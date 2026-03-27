@@ -17,8 +17,8 @@
 /**
  * Client-driven resource retrieval.
  *
- * Defines types for specifying what data to retrieve in REST/JSON APIs, including property selection, linked
- * resource expansion, and—for collections—filtering, ordering, and pagination:
+ * Defines types for specifying the data envelope to retrieve in REST/JSON APIs, including property selection, linked
+ * resource expansion, and — for collections — filtering, ordering, and pagination:
  *
  * - {@link Template} — Resource retrieval template
  * - {@link Query} — Collection retrieval template
@@ -35,14 +35,14 @@
  * - {@link Operator} — Constraint operator symbols
  * - {@link Transform} — Value transforms
  *
- * <img src="index/model.svg" alt="Model type hierarchy" style="zoom: 1.75; display: block; margin: auto;" />
+ * <img src="index/template.svg" alt="Model type hierarchy" style="zoom: 1.75; display: block; margin: auto;" />
  *
  * Comparison and sorting operators rely on a total ordering over values defined by
  * {@link https://www.w3.org/TR/xpath-functions-20/#comparison-operators XPath 2.0 comparison operators};
  * see the {@link Query | Value Ordering} section for details.
  *
  * > [!NOTE]
- * > The [Model Design](./model.md) companion document covers the design rationale for the client-driven
+ * > The [Template Design](./template.md) companion document covers the design rationale for the client-driven
  * > retrieval approach, including cross-backend semantics and query normalisation strategies.
  *
  * # Retrieval Patterns
@@ -133,7 +133,7 @@
  * ```
  *
  * Aggregate transforms operate on collections; non-aggregate bindings implicitly define the grouping key,
- * analogous to SQL `GROUP BY` (see [Aggregate Transforms](./model.md#aggregate-transforms) for details):
+ * analogous to SQL `GROUP BY` (see [Aggregate Transforms](./template.md#aggregate-transforms) for details):
  *
  * ```typescript
  * const template: Template = {
@@ -321,7 +321,7 @@
  *   information to distinguish {@link Localised} dictionaries from {@link Indexed} containers
  * - The encoder always produces double-quoted strings; the decoder accepts unquoted strings as a shorthand
  *
- * @document ./model.md
+ * @document ./template.md
  *
  * @module
  */
@@ -342,9 +342,9 @@ import {
 	type Literal,
 	type Reference
 } from "./index.js";
-import { isProbe, isQuery, isTemplate } from "./model.core.js";
-import * as QueryParser from "./model.pegjs.js";
-import { Localised, Resource } from "./state.js";
+import { isProbe, isQuery, isTemplate } from "./template.core.js";
+import * as QueryParser from "./template.pegjs.js";
+import { Localised, Resource } from "./resource.js";
 
 
 /**
@@ -374,7 +374,7 @@ const Aggregates: ReadonlySet<Transform> = new Set<Transform>([
  * > {@link Template} values must match the type of their defined {@link Identifier} keys.
  * > Processors must reject with an error queries that provide mismatched templates.
  *
- * @see {@link state!Resource} for the corresponding state type
+ * @see {@link resource!Resource} for the corresponding state type
  */
 export type Template = {
 
@@ -399,8 +399,8 @@ export type Template = {
  * > References to undefined properties in expressions resolve to `undefined` in the JSON output, consistently
  * > across all storage backends. When any path step is undefined, the entire path resolves to `undefined`.
  *
- * @see {@link state!Resource} for the corresponding state type
- * @see [Value Ordering](./model.md#comparison-and-collation) for comparison and sorting semantics
+ * @see {@link resource!Resource} for the corresponding state type
+ * @see [Value Ordering](./template.md#comparison-and-collation) for comparison and sorting semantics
  */
 export type Query = {
 
@@ -418,7 +418,7 @@ export type Query = {
 	 * Less-than filter (`"<expression": value`).
 	 *
 	 * Includes resources where at least one expression value is strictly less than the literal
-	 * under [value ordering](./model.md#comparison-and-collation) rules.
+	 * under [value ordering](./template.md#comparison-and-collation) rules.
 	 *
 	 * Applicable to boolean, numeric, and string properties.
 	 */
@@ -428,7 +428,7 @@ export type Query = {
 	 * Greater-than filter (`">expression": value`).
 	 *
 	 * Includes resources where at least one expression value is strictly greater than the literal
-	 * under [value ordering](./model.md#comparison-and-collation) rules.
+	 * under [value ordering](./template.md#comparison-and-collation) rules.
 	 *
 	 * Applicable to boolean, numeric, and string properties.
 	 */
@@ -438,7 +438,7 @@ export type Query = {
 	 * Less-than-or-equal filter (`"<=expression": value`).
 	 *
 	 * Includes resources where at least one expression value is less than or equal to the literal
-	 * under [value ordering](./model.md#comparison-and-collation) rules.
+	 * under [value ordering](./template.md#comparison-and-collation) rules.
 	 *
 	 * Applicable to boolean, numeric, and string properties.
 	 */
@@ -448,7 +448,7 @@ export type Query = {
 	 * Greater-than-or-equal filter (`">=expression": value`).
 	 *
 	 * Includes resources where at least one expression value is greater than or equal to the literal
-	 * under [value ordering](./model.md#comparison-and-collation) rules.
+	 * under [value ordering](./template.md#comparison-and-collation) rules.
 	 *
 	 * Applicable to boolean, numeric, and string properties.
 	 */
@@ -470,7 +470,7 @@ export type Query = {
 	 * > [!WARNING]
 	 * > Matching is diacritics-sensitive: diacritics normalisation is not uniformly supported across storage
 	 * > backends and would require extensive application-level pre-processing at storage time. For detailed
-	 * > matching rules and cross-backend semantics, see [prefix word search](./model.md#prefix-word-search).
+	 * > matching rules and cross-backend semantics, see [prefix word search](./template.md#prefix-word-search).
 	 */
 	readonly [like: `~${Expression}`]: string
 
@@ -503,7 +503,7 @@ export type Query = {
 	/**
 	 * Sort ordering (`"^expression": priority`).
 	 *
-	 * Orders results by expression value according to [value ordering](./model.md#comparison-and-collation) rules; the
+	 * Orders results by expression value according to [value ordering](./template.md#comparison-and-collation) rules; the
 	 * sign gives direction
 	 * (positive for ascending, negative for descending); the absolute value gives 1-based precedence (1 is highest
 	 * priority); zero is ignored; `"asc"` and `"desc"` are shorthands for `±1`.
@@ -539,7 +539,7 @@ export type Query = {
  * {@link Template}, or {@link Locale}) or a singleton tuple denoting a collection projection with support for
  * filtering, ordering, and pagination via {@link Query}.
  *
- * @see {@link state!Values} for the corresponding state type
+ * @see {@link resource!Values} for the corresponding state type
  * @see {@link https://www.rfc-editor.org/rfc/rfc4647.html RFC 4647 - Matching of Language Tags}
  */
 export type Placeholders =
@@ -576,7 +576,7 @@ export type Placeholders =
  * > - The `@none` key for non-localised values is not supported; use the `und` tag or the plain string/string
  * >   array shorthand for language-neutral values
  *
- * @see {@link state!Localised} for the corresponding state type
+ * @see {@link resource!Localised} for the corresponding state type
  */
 export type Locale =
 	| string
@@ -620,7 +620,7 @@ export type Binding =
  * > [!WARNING]
  * > This is a type alias for documentation purposes only; expression syntax is validated at runtime
  * > by query processors. Processors reject expressions that reference unsupported transforms; references to
- * > undefined properties resolve to `undefined` in the output (see [Property Paths](./model.md#property-paths)).
+ * > undefined properties resolve to `undefined` in the output (see [Property Paths](./template.md#property-paths)).
  *
  * @example
  *
@@ -644,7 +644,7 @@ export type Expression =
  * order; the empty pipe denotes the identity transformation, passing the value through unchanged.
  *
  * Composition rules and valid/invalid combinations are defined in
- * [Transform Pipes](./model.md#transform-pipes).
+ * [Transform Pipes](./template.md#transform-pipes).
  *
  * > [!WARNING]
  * > This is a type alias for documentation purposes only; pipe syntax is validated at runtime by query processors.
@@ -661,7 +661,7 @@ export type Pipe =
  * defined by {@link Binding bindings}.
  *
  * Resolution semantics (including multi-valued and union properties) are defined in
- * [Property Paths](./model.md#property-paths).
+ * [Property Paths](./template.md#property-paths).
  *
  * > [!WARNING]
  * > This is a type alias for documentation purposes only; path syntax is validated at runtime by query processors.
@@ -755,7 +755,7 @@ export type Probe = {
  * Constraint operator symbols for {@link Query} keys.
  *
  * @see {@link Query} for constraint semantics
- * @see [Value Ordering](./model.md#comparison-and-collation) for comparison and sorting semantics
+ * @see [Value Ordering](./template.md#comparison-and-collation) for comparison and sorting semantics
  */
 export type Operator =
 	| "<"
@@ -804,9 +804,9 @@ export type Operator =
  * |----------------|------------------------------------------------------------------|--------------|---------------|
  * | **aggregates** | Summarise a set of values                                        |              |               |
  * | `count`        | Count values; `0` for empty sets                                 | any          | `xsd:integer` |
- * | `min`          | Select [minimum value](./model.md#aggregate-transforms); `undefined` for empty sets | any
+ * | `min`          | Select [minimum value](./template.md#aggregate-transforms); `undefined` for empty sets | any
  *  | same as input |
- * | `max`          | Select [maximum value](./model.md#aggregate-transforms); `undefined` for empty sets | any
+ * | `max`          | Select [maximum value](./template.md#aggregate-transforms); `undefined` for empty sets | any
  *  | same as input |
  * | `sum`          | Sum numeric values; `0` for empty sets                           | numeric      | same as input |
  * | `avg`          | Average numeric values; `undefined` for empty sets               | numeric      | `xsd:decimal` |
@@ -831,12 +831,12 @@ export type Operator =
  *
  * Scalar transforms produce `undefined` for undefined inputs and domain violations (for example, `abs` on a string);
  * aggregate transforms silently skip invalid values before computing the result. See [Scalar
- * Transforms](./model.md#scalar-transforms) and [Aggregate Transforms](./model.md#aggregate-transforms) for the full
+ * Transforms](./template.md#scalar-transforms) and [Aggregate Transforms](./template.md#aggregate-transforms) for the full
  * adopted semantics, including empty set behaviour, multi-valued properties, and type promotion rules.
  *
  * The supported set is restricted to the intersection of well-defined counterparts across XPath 2.0, SPARQL 1.1,
- * SQL:2011, and GQL:2024/openCypher; see the [Design Rationale](./model.md#design-rationale) for the cross-backend
- * design approach and [Query Normalisation](./model.md#query-normalisation) for backend-specific adjustments.
+ * SQL:2011, and GQL:2024/openCypher; see the [Design Rationale](./template.md#design-rationale) for the cross-backend
+ * design approach and [Query Normalisation](./template.md#query-normalisation) for backend-specific adjustments.
  */
 export type Transform =
 

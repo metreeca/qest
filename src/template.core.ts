@@ -44,8 +44,8 @@ import type {
 	Template,
 	Placeholders,
 	Transform
-} from "./model.js";
-import { isLocalised } from "./state.core.js";
+} from "./template.js";
+import { isLocalised } from "./resource.core.js";
 
 
 /**

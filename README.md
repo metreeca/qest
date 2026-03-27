@@ -51,17 +51,17 @@ npm install @metreeca/qest
 >
 > This section introduces essential concepts; for complete coverage, see the API reference:
 >
-> | Module                   | Description                      |
-> |--------------------------|----------------------------------|
-> | [@metreeca/qest][]       | Shared values, types, and guards |
-> | [@metreeca/qest/state][] | Resource state management        |
-> | [@metreeca/qest/model][] | Client-driven retrieval          |
+> | Module                      | Description                      |
+> |-----------------------------|----------------------------------|
+> | [@metreeca/qest][]          | Shared values, types, and guards |
+> | [@metreeca/qest/resource][] | Resource state representation    |
+> | [@metreeca/qest/template][] | Client-driven resource retrieval |
 
 [@metreeca/qest]: https://metreeca.github.io/qest/modules/index.html
 
-[@metreeca/qest/state]: https://metreeca.github.io/qest/modules/state.html
+[@metreeca/qest/resource]: https://metreeca.github.io/qest/modules/resource.html
 
-[@metreeca/qest/model]: https://metreeca.github.io/qest/modules/model.html
+[@metreeca/qest/template]: https://metreeca.github.io/qest/modules/template.html
 
 **@metreeca/qest** types define payload semantics and formats for standard REST operations:
 
@@ -75,18 +75,18 @@ npm install @metreeca/qest
 | PUT    | [Resource][]  | Complete resource state update     |
 | DELETE | [Reference][] | Resource deletion                  |
 
-[Resource]: https://metreeca.github.io/qest/types/state.Resource.html
+[Resource]: https://metreeca.github.io/qest/types/resource.Resource.html
 
-[Template]: https://metreeca.github.io/qest/types/model.Template.html
+[Template]: https://metreeca.github.io/qest/types/template.Template.html
 
-[Query]: https://metreeca.github.io/qest/types/model.Query.html
+[Query]: https://metreeca.github.io/qest/types/template.Query.html
 
 [Reference]: https://metreeca.github.io/core/types/resource.Reference.html
 
 ## Resources
 
-A [**Resource**](https://metreeca.github.io/qest/types/state.Resource.html) is a property map describing data returned
-by a REST endpoint, with optional links to other endpoints:
+A [**Resource**](https://metreeca.github.io/qest/types/resource.Resource.html) is a property map describing data
+returned by a REST endpoint, with optional links to other endpoints:
 
 ```http request
 GET https://data.example.com/products/123
@@ -139,14 +139,14 @@ fills this gap, supporting precise control over responses while remaining fully 
 > Client-driven retrieval is fully optional. Servers may provide defaults, typically derived from the underlying data
 > model, preserving standard REST/JSON behaviour while enabling advanced capabilities when needed.
 
-**Resources** — A [**Template**](https://metreeca.github.io/qest/types/model.Template.html) defines the data retrieval
-envelope: which properties to include and how deeply and in how much detail to expand linked resources.
+**Resources** — A [**Template**](https://metreeca.github.io/qest/types/template.Template.html) defines the data
+retrieval envelope: which properties to include and how deeply and in how much detail to expand linked resources.
 
 ```http request
 GET https://data.example.com/products/123?<template>
 ```
 
-where `<template>` is the URL-encoded JSON [**Template**](https://metreeca.github.io/qest/types/model.Template.html):
+where `<template>` is the URL-encoded JSON [**Template**](https://metreeca.github.io/qest/types/template.Template.html):
 
 ```js
 ({
@@ -175,16 +175,16 @@ The response includes only the requested properties, with the linked `vendor` ex
 ```
 
 **Collections** — For resources included in a collection, a
-[**Query**](https://metreeca.github.io/qest/types/model.Query.html) specifies filtering constraints, ordering criteria,
-and pagination limits for individual items, as well as computed projections including aggregates for faceted search and
-analytics.
+[**Query**](https://metreeca.github.io/qest/types/template.Query.html) specifies filtering constraints, ordering
+criteria, and pagination limits for individual items, as well as computed projections including aggregates for faceted
+search and analytics.
 
 ```http request
 GET https://data.example.com/products/?<template>
 ```
 
-where `<template>` is the URL-encoded JSON [**Template**](https://metreeca.github.io/qest/types/model.Template.html)
-containing a [**Query**](https://metreeca.github.io/qest/types/model.Query.html) tuple for the collection property:
+where `<template>` is the URL-encoded JSON [**Template**](https://metreeca.github.io/qest/types/template.Template.html)
+containing a [**Query**](https://metreeca.github.io/qest/types/template.Query.html) tuple for the collection property:
 
 ```js
 ({
@@ -273,7 +273,7 @@ Resource properties can hold localised text using language maps, which map
 }
 ```
 
-A [`Localised`](https://metreeca.github.io/qest/types/state.Localised.html) value set supports both single-valued and
+A [`Localised`](https://metreeca.github.io/qest/types/resource.Localised.html) value set supports both single-valued and
 multi-valued forms per language. Within a single map, all values must be uniformly scalar or uniformly array. Plain
 strings and string arrays are accepted as shorthands for language-neutral values, equivalent to tagging them with the
 [`und`](https://iso639-3.sil.org/code/und) (Undetermined) language tag:

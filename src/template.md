@@ -1,6 +1,6 @@
 ---
-title: Model Design
-summary: Cross-backend semantics for property paths and transform pipes
+title: Template Design
+summary: Cross-backend semantics for template query operations
 description: |
   Documents the design rationale and cross-backend comparison for property path
   resolution, transform pipe composition, type coercion, collation, and prefix
