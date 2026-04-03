@@ -32,6 +32,7 @@ import {
 } from "@metreeca/core";
 import { isTagRange } from "@metreeca/core/language";
 import { isIndexable, isLiteral, isReference } from "./index.core.js";
+import { isLocalised } from "./resource.core.js";
 import type {
 	Binding,
 	Expression,
@@ -39,13 +40,12 @@ import type {
 	Operator,
 	Option,
 	Options,
+	Placeholders,
 	Probe,
 	Query,
 	Template,
-	Placeholders,
 	Transform
 } from "./template.js";
-import { isLocalised } from "./resource.core.js";
 
 
 /**

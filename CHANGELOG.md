@@ -19,7 +19,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 
 - Restrict computed values, filtering constraints, sorting criteria, and pagination limits to singleton collection query
-  tuples
+	tuples
 - Split `CodecOpts` into separate `EncoderOpts` and `DecoderOpts` types
 - Extract type guards into companion `.core.ts` modules
 - Replace `zxx` language tag with `und` for language-neutral values

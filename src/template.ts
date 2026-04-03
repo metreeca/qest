@@ -35,7 +35,7 @@
  * - {@link Operator} — Constraint operator symbols
  * - {@link Transform} — Value transforms
  *
- * <img src="index/template.svg" alt="Model type hierarchy" style="zoom: 1.75; display: block; margin: auto;" />
+ * <img src="template.svg" alt="Model type hierarchy" style="zoom: 1.75; display: block; margin: auto;" />
  *
  * Comparison and sorting operators rely on a total ordering over values defined by
  * {@link https://www.w3.org/TR/xpath-functions-20/#comparison-operators XPath 2.0 comparison operators};
@@ -342,9 +342,9 @@ import {
 	type Literal,
 	type Reference
 } from "./index.js";
+import { Localised, Resource } from "./resource.js";
 import { isProbe, isQuery, isTemplate } from "./template.core.js";
 import * as QueryParser from "./template.pegjs.js";
-import { Localised, Resource } from "./resource.js";
 
 
 /**
@@ -503,10 +503,9 @@ export type Query = {
 	/**
 	 * Sort ordering (`"^expression": priority`).
 	 *
-	 * Orders results by expression value according to [value ordering](./template.md#comparison-and-collation) rules; the
-	 * sign gives direction
-	 * (positive for ascending, negative for descending); the absolute value gives 1-based precedence (1 is highest
-	 * priority); zero is ignored; `"asc"` and `"desc"` are shorthands for `±1`.
+	 * Orders results by expression value according to [value ordering](./template.md#comparison-and-collation) rules;
+	 * the sign gives direction (positive for ascending, negative for descending); the absolute value gives 1-based
+	 * precedence (1 is highest priority); zero is ignored; `"asc"` and `"desc"` are shorthands for `±1`.
 	 *
 	 * > [!WARNING]
 	 * > When targeting a localised property, the target language must be communicated to the server
@@ -831,8 +830,8 @@ export type Operator =
  *
  * Scalar transforms produce `undefined` for undefined inputs and domain violations (for example, `abs` on a string);
  * aggregate transforms silently skip invalid values before computing the result. See [Scalar
- * Transforms](./template.md#scalar-transforms) and [Aggregate Transforms](./template.md#aggregate-transforms) for the full
- * adopted semantics, including empty set behaviour, multi-valued properties, and type promotion rules.
+ * Transforms](./template.md#scalar-transforms) and [Aggregate Transforms](./template.md#aggregate-transforms) for the
+ * full adopted semantics, including empty set behaviour, multi-valued properties, and type promotion rules.
  *
  * The supported set is restricted to the intersection of well-defined counterparts across XPath 2.0, SPARQL 1.1,
  * SQL:2011, and GQL:2024/openCypher; see the [Design Rationale](./template.md#design-rationale) for the cross-backend

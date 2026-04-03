@@ -23,10 +23,10 @@ import {
 	isOperator,
 	isOption,
 	isOptions,
+	isPlaceholders,
 	isProbe,
 	isQuery,
 	isTemplate,
-	isPlaceholders,
 	isTransform
 } from "./template.core.js";
 import {

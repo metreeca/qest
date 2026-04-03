@@ -25,7 +25,7 @@
  * - {@link Value} — Individual property values
  * - {@link Localised} — Localised text value set
  *
- * <img src="index/resource.svg" alt="State type hierarchy" style="zoom: 1.75; display: block; margin: auto;" />
+ * <img src="resource.svg" alt="State type hierarchy" style="zoom: 1.75; display: block; margin: auto;" />
  *
  * # Resource Operations
  *
