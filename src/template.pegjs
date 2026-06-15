@@ -27,7 +27,7 @@
     '"': '"', '/': '/', '\\': '\\'
   };
 
-  const KeyPattern = /^[_$\p{L}][_$\u200C\u200D\p{L}\p{N}]*(?:-[a-zA-Z0-9]+)*$/u;
+  const TagPattern = /^[a-zA-Z]{2,8}(?:-[a-zA-Z0-9]{1,8})*$/;  // BCP 47 language tag [RFC5646]
   const NumberPattern = /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/;
   const IdentifierPattern = /^[_$\p{ID_Start}][$\u200C\u200D\p{ID_Continue}]*$/u;
 
@@ -44,7 +44,7 @@
     );
   }
 
-  // keyed value marker for values with postfix @key suffixes (stacked for nested containers)
+  // keyed value marker for a string value carrying a single postfix @tag suffix
 
   class Keyed {
     constructor(value, keys) {
@@ -56,17 +56,25 @@
   function parseValue(str) {
     const decoded = decodeValue(str);
 
-    // split on @ from the right, collecting valid keys
+    // split on @ from the right, collecting trailing language tags
 
     const parts = decoded.split("@");
     const keys = [];
 
-    while ( parts.length > 1 && KeyPattern.test(parts[parts.length - 1]) ) {
+    while ( parts.length > 1 && TagPattern.test(parts[parts.length - 1]) ) {
       keys.unshift(parts.pop());
     }
 
     const literal = parts.join("@");
     const value = parseLiteral(literal);
+
+    if ( keys.length > 1 ) {
+      throw new Error(`a value carries at most one language tag: ${decoded}`);
+    }
+
+    if ( keys.length === 1 && typeof value !== "string" ) {
+      throw new Error(`only strings carry a language tag: ${decoded}`);
+    }
 
     return keys.length > 0 ? new Keyed(value, keys) : value;
   }
@@ -78,6 +86,22 @@
       : decoded === "null" ? null
       : NumberPattern.test(decoded) ? Number(decoded)
       : decoded;
+  }
+
+  function literalValue(str) {
+    const value = parseValue(str);
+    if ( value === null || typeof value === "object" ) {
+      throw new Error(`a comparison value must be a literal: ${str}`);
+    }
+    return value;
+  }
+
+  function stringValue(str) {
+    const value = parseValue(str);
+    if ( typeof value !== "string" ) {
+      throw new Error(`a search value must be a string: ${str}`);
+    }
+    return value;
   }
 
   // reconstruct Keyed values into nested container objects;
@@ -116,17 +140,22 @@
   }
 
   function mergePairs(pairs) {
-    const isOperator = ([key]) => /^[@#^~?!*<>]/.test(key);
-    const isMultiValue = ([key]) => /^[?!*]/.test(key);
+    const isOperator = ([key]) => /^[@#^~?!+<>]/.test(key);
+    const isMultiValue = ([key]) => /^[?!+]/.test(key);
 
     const operators = pairs
       .filter(isOperator)
-      .reduce((merged, [key, value]) => ({
-        ...merged,
-        [key]: isMultiValue([key]) && key in merged
-          ? (Array.isArray(merged[key]) ? [...merged[key], value] : [merged[key], value])
-          : value
-      }), {});
+      .reduce((merged, [key, value]) => {
+        if (key in merged && !isMultiValue([key])) {
+          throw new Error(`repeated single-valued constraint: ${key}`);
+        }
+        return {
+          ...merged,
+          [key]: isMultiValue([key]) && key in merged
+            ? (Array.isArray(merged[key]) ? [...merged[key], value] : [merged[key], value])
+            : value
+        };
+      }, {});
 
     const grouped = pairs
       .filter(p => !isOperator(p))
@@ -180,8 +209,6 @@ Pair
   / GtPair
   / LtePostfixPair  // postfix before equality
   / GtePostfixPair
-  / LtPostfixPair
-  / GtPostfixPair
   / LikePair
   / DisjunctivePair
   / ConjunctivePair
@@ -190,40 +217,33 @@ Pair
   / OffsetPair
   / LimitPair
   / EqualityPair
-  / BareExprPair
 
 
 /// Comparisons ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 LtPair
-  = "<" expr:Expr "=" value:Value { return ["<" + expr, parseValue(value)]; }
+  = "<" expr:Expr "=" value:Value { return ["<" + expr, literalValue(value)]; }
 
 GtPair
-  = ">" expr:Expr "=" value:Value { return [">" + expr, parseValue(value)]; }
+  = ">" expr:Expr "=" value:Value { return [">" + expr, literalValue(value)]; }
 
 LtePrefixPair
-  = "<=" expr:Expr "=" value:Value { return ["<=" + expr, parseValue(value)]; }
+  = "<=" expr:Expr "=" value:Value { return ["<=" + expr, literalValue(value)]; }
 
 GtePrefixPair
-  = ">=" expr:Expr "=" value:Value { return [">=" + expr, parseValue(value)]; }
+  = ">=" expr:Expr "=" value:Value { return [">=" + expr, literalValue(value)]; }
 
 LtePostfixPair
-  = expr:Expr "<=" value:Value { return ["<=" + expr, parseValue(value)]; }
+  = expr:Expr "<=" value:Value { return ["<=" + expr, literalValue(value)]; }
 
 GtePostfixPair
-  = expr:Expr ">=" value:Value { return [">=" + expr, parseValue(value)]; }
-
-LtPostfixPair
-  = expr:Expr "<" value:Value { return ["<" + expr, parseValue(value)]; }
-
-GtPostfixPair
-  = expr:Expr ">" value:Value { return [">" + expr, parseValue(value)]; }
+  = expr:Expr ">=" value:Value { return [">=" + expr, literalValue(value)]; }
 
 
 /// Matching ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 LikePair
-  = "~" expr:Expr "=" value:Value { return ["~" + expr, parseValue(value)]; }
+  = "~" expr:Expr "=" value:Value { return ["~" + expr, stringValue(value)]; }
 
 DisjunctivePair
   = "?" expr:Expr "=" value:Value { return ["?" + expr, parseValue(value)]; }
@@ -235,14 +255,14 @@ ConjunctivePair
 /// Ordering ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 FocusPair
-  = "*" expr:Expr "=" value:Value { return ["*" + expr, parseValue(value)]; }
+  = "+" expr:Expr "=" value:Value { return ["+" + expr, parseValue(value)]; }
 
 SortPair
   = "^" expr:Expr "=" value:Direction { return ["^" + expr, value]; }
 
 Direction
-  = $("asc"i ("ending"i)?)
-  / $("desc"i ("ending"i)?)
+  = "asc"  &([&] / !.) { return "asc"; }
+  / "desc" &([&] / !.) { return "desc"; }
   / n:Integer &([&] / !.) { return n; }
   / $[^&]+ { error(`expected sort direction <${text()}>`) }
 
@@ -264,9 +284,6 @@ Pagination
 
 EqualityPair
   = expr:Expr "=" value:Value { return [expr, value === "*" ? "*" : parseValue(value)]; }
-
-BareExprPair
-  = expr:Expr { return [expr, ""]; }
 
 
 /// Expressions ////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -304,7 +321,7 @@ ConstraintProbe
     }
 
 ProbeId
-  = id:$[^.=<>&:!?~^@#*\[\]]+ &{ return IdentifierPattern.test(id); } { return id; }
+  = id:$[^.=<>&:!?~^@#+\[\]]+ &{ return IdentifierPattern.test(id); } { return id; }
 
 ProbeTransform
   = id:ProbeId ":" { return id; }
@@ -313,7 +330,7 @@ ProbePath
   = first:ProbeId rest:("." id:ProbeId { return id; })* { return [first, ...rest]; }
 
 ProbeOp
-  = "<=" / ">=" / "<" / ">" / "~" / "?" / "!" / "*" / "^" / "@" / "#"
+  = "<=" / ">=" / "<" / ">" / "~" / "?" / "!" / "+" / "^" / "@" / "#"
 
 
 /// Values /////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -2,14 +2,14 @@
 
 [![npm](https://img.shields.io/npm/v/@metreeca/qest)](https://www.npmjs.com/package/@metreeca/qest)
 
-Minimalist foundations for client-driven, queryable REST/JSON APIs.
+Minimalist foundations for client-driven, queryable REST/JSON APIs
 
-**@metreeca/qest** standardises critical capabilities that vanilla REST/JSON APIs typically lack or implement in ad‑hoc,
-non‑portable ways:
+**@metreeca/qest** standardises critical capabilities that vanilla REST/JSON APIs typically lack or implement in ad-hoc,
+non-portable ways:
 
 - **Client-Driven**: clients specify what they need, retrieving complex envelopes in a single call
 - **Queryable**: advanced filtering and aggregation, supporting faceted search and analytics
-- **Localised**: full support for internationalised content with language-tagged text maps
+- **Localised content**: full support for internationalised content with language-tagged text maps
 
 Developers seek these features in frameworks like GraphQL; **@metreeca/qest** brings them to REST/JSON, achieving:
 
@@ -17,7 +17,9 @@ Developers seek these features in frameworks like GraphQL; **@metreeca/qest** br
 - **Simple Clients**: no specialised libraries, preprocessors, or code generators
 - **Automated Servers**: model-driven development, dramatically reducing implementation effort
 - **Standard Caching**: compatibility with CDNs and browser caches using standard GET requests
-- **URL-Based Versioning**: standard REST versioning without field deprecation complexity
+
+For a formal specification of the data model and query protocol, see the
+[QEST: Queryable REST/JSON APIs](src/index.md) memo.
 
 # Ecosystem
 
@@ -70,23 +72,18 @@ npm install @metreeca/qest
 | GET    | [Resource][]  | Resource retrieval                 |
 | GET    | [Resource][]  | Collection retrieval               |
 | GET    | [Template][]  | Client-driven resource retrieval   |
-| GET    | [Query][]     | Client-driven collection retrieval |
 | POST   | [Resource][]  | Resource creation                  |
 | PUT    | [Resource][]  | Complete resource state update     |
-| DELETE | [Reference][] | Resource deletion                  |
+| DELETE | none          | Resource deletion                  |
 
 [Resource]: https://metreeca.github.io/qest/types/resource.Resource.html
 
 [Template]: https://metreeca.github.io/qest/types/template.Template.html
 
-[Query]: https://metreeca.github.io/qest/types/template.Query.html
-
-[Reference]: https://metreeca.github.io/core/types/resource.Reference.html
-
 ## Resources
 
-A [**Resource**](https://metreeca.github.io/qest/types/resource.Resource.html) is a property map describing data
-returned by a REST endpoint, with optional links to other endpoints:
+A [**Resource**](https://metreeca.github.io/qest/types/resource.Resource.html) is a property map describing the state of
+a resource, with optional links to other resources:
 
 ```http request
 GET https://data.example.com/products/123
@@ -139,8 +136,8 @@ fills this gap, supporting precise control over responses while remaining fully 
 > Client-driven retrieval is fully optional. Servers may provide defaults, typically derived from the underlying data
 > model, preserving standard REST/JSON behaviour while enabling advanced capabilities when needed.
 
-**Resources** — A [**Template**](https://metreeca.github.io/qest/types/template.Template.html) defines the data
-retrieval envelope: which properties to include and how deeply and in how much detail to expand linked resources.
+**Resources** — A [**Template**](https://metreeca.github.io/qest/types/template.Template.html) specifies which
+properties to retrieve from a single resource and how deeply to expand linked resources.
 
 ```http request
 GET https://data.example.com/products/123?<template>
@@ -174,17 +171,22 @@ The response includes only the requested properties, with the linked `vendor` ex
 }
 ```
 
-**Collections** — For resources included in a collection, a
-[**Query**](https://metreeca.github.io/qest/types/template.Query.html) specifies filtering constraints, ordering
-criteria, and pagination limits for individual items, as well as computed projections including aggregates for faceted
-search and analytics.
+**Collections** — A [**Query**](https://metreeca.github.io/qest/types/template.Query.html) is to a resource collection
+what a [**Template**](https://metreeca.github.io/qest/types/template.Template.html) is to a single resource: the
+collection-shaped retrieval template. It pairs a per-item element with a
+[**Selection**](https://metreeca.github.io/qest/types/template.Selection.html) for filtering, sorting, and pagination.
+The per-item element is a nested
+[**Template**](https://metreeca.github.io/qest/types/template.Template.html), or a
+[**Projection**](https://metreeca.github.io/qest/types/template.Projection.html) for computed aggregates (faceted
+search and analytics).
 
 ```http request
 GET https://data.example.com/products/?<template>
 ```
 
 where `<template>` is the URL-encoded JSON [**Template**](https://metreeca.github.io/qest/types/template.Template.html)
-containing a [**Query**](https://metreeca.github.io/qest/types/template.Query.html) tuple for the collection property:
+hosting a [**Query**](https://metreeca.github.io/qest/types/template.Query.html) under the collection property, a
+tuple pairing the per-item element with an optional collection-wide selection:
 
 ```js
 ({
@@ -197,10 +199,12 @@ containing a [**Query**](https://metreeca.github.io/qest/types/template.Query.ht
                 id: "",
                 name: "",
             },
-            ">=price": 50, // filter: price ≥ 50
-            "<=price": 150, // filter: price ≤ 150
-            "^price": "asc", // sort: by price ascending
-            "#": 25, // limit: 25 results
+        },
+        {
+            ">=price": 50,                // filter: price ≥ 50
+            "<=price": 150,               // filter: price ≤ 150
+            "^price": "asc",              // sort: by price ascending
+            "#": 25,                      // limit: 25 results
         },
     ],
 });
@@ -248,7 +252,47 @@ A single call returns exactly what the client requested:
 }
 ```
 
-## Localised Content
+**Analytics** — A [**Projection**](https://metreeca.github.io/qest/types/template.Projection.html) replaces the nested
+template with computed property bindings, enabling faceted search and analytics in a single call.
+
+```http request
+GET https://data.example.com/products/?<template>
+```
+
+where `<template>` groups products by category, counting each group and sorting by count:
+
+```js
+({
+    items: [{
+        "category": "",                  // grouping column (non-aggregate)
+        "count=count:": 0,               // count per group
+        "^count": "desc",                // sort groups by count descending
+    }],
+});
+```
+
+A single call returns pre-aggregated category counts, ready for UI faceting or analytics dashboards:
+
+```json
+{
+  "items": [
+    {
+      "category": "Electronics",
+      "count": 150
+    },
+    {
+      "category": "Home",
+      "count": 89
+    },
+    {
+      "category": "Garden",
+      "count": 34
+    }
+  ]
+}
+```
+
+## Localised Text
 
 Resource properties can hold localised text using language maps, which map
 [BCP 47](https://www.rfc-editor.org/rfc/rfc5646.html) language tags to text values:
@@ -273,24 +317,40 @@ Resource properties can hold localised text using language maps, which map
 }
 ```
 
-A [`Localised`](https://metreeca.github.io/qest/types/resource.Localised.html) value set supports both single-valued and
-multi-valued forms per language. Within a single map, all values must be uniformly scalar or uniformly array. Plain
-strings and string arrays are accepted as shorthands for language-neutral values, equivalent to tagging them with the
-[`und`](https://iso639-3.sil.org/code/und) (Undetermined) language tag:
+A [`Text`](https://metreeca.github.io/qest/types/resource.Text.html) value set supports both single-valued and
+multi-valued forms per language. Within a single map, all values must be uniformly scalar or uniformly array.
+Language-neutral values are tagged with the [`und`](https://iso639-3.sil.org/code/und) (Undetermined) language tag:
 
 ```js
 ({
-    name: "Widget",              // equivalent to { und: "Widget" }
-    tags: ["compact", "durable"] // equivalent to { und: ["compact", "durable"] }
+    name: { und: "Widget" },
+    tags: { und: ["compact", "durable"] }
 });
 ```
+
+Projections can target localised properties through tag-range placeholders. Each row carries a complete `Text`
+value (the localised text map for the tags the binding's pattern matches) rather than fanning out one row per tag:
+
+```js
+({
+    items: [{
+        id: "",
+        "label=title": { "*": "" }          // all matching tags, as one Text map
+    }]
+});
+```
+
+Localised properties can also be filtered and sorted through their **coalesced label**: the value, or values, resolved
+from the localised text map by a request-level language priority (derived server-side, for example from
+`Accept-Language`). Search (`~`) acts on the resolved label, and sort order (`^`) and focus (`+`) on its single-valued
+form; the priority is supplied out of band, never in the query. See the [memo](src/index.md) for the full semantics.
 
 # JSON-LD Foundations
 
 [JSON-LD](https://www.w3.org/TR/json-ld11/) (JSON for Linked Data) is a [W3C](https://www.w3.org/) standard for
 publishing linked data on the web. It extends JSON with web identifiers ([IRIs](https://www.rfc-editor.org/rfc/rfc3987))
 to link resources across systems and domains, and to give property names precise, machine-readable meaning by mapping
-them to shared vocabularies — a capability at the heart of the
+them to shared vocabularies, a capability at the heart of the
 [Web Data Activity](https://www.w3.org/2013/data/) (Semantic Web) and modern knowledge graphs.
 
 **@metreeca/qest** defines a controlled JSON-LD subset designed to feel like plain idiomatic JSON, letting JavaScript
@@ -312,11 +372,7 @@ This controlled subset is specified by:
 	represented as strings with [datatype coercion](https://www.w3.org/TR/json-ld11/#type-coercion) declared in `@context`
 - [language maps](https://www.w3.org/TR/json-ld11/#language-indexing) for localised text;
 	[`@none`](https://www.w3.org/TR/json-ld11/#dfn-none) keys for non-localised values in language maps are not allowed
-	and must be handled using the [`und`](https://iso639-3.sil.org/code/und) language tag or plain string / string array
-	shorthands, which are equivalent to `{ und: value }`
-- [index maps](https://www.w3.org/TR/json-ld11/#data-indexing) for key-indexed property values; indexed semantics must
-	be signalled by application-provided `@context` declarations, as indexed values are otherwise indistinguishable from
-	nested resources
+	and must be handled using the [`und`](https://iso639-3.sil.org/code/und) (Undetermined) language tag
 - [IRI references](https://www.w3.org/TR/json-ld11/#node-identifiers) for linking resources across systems and domains;
 	data structures require absolute IRIs; codec functions handle conversion to/from root-relative forms
 
@@ -327,5 +383,5 @@ This controlled subset is specified by:
 
 # License
 
-This project is licensed under the Apache 2.0 License –
-see [LICENSE](https://github.com/metreeca/qest?tab=Apache-2.0-1-ov-file) file for details.
+This project is licensed under the Apache 2.0 License. See
+[LICENSE](https://github.com/metreeca/qest?tab=Apache-2.0-1-ov-file) for details.

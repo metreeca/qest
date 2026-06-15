@@ -17,11 +17,31 @@
 /**
  * Shared primitive types and codec options.
  *
+ * Defines the primitive building blocks used throughout the resource and template modules, along with the
+ * encoder / decoder option bags that configure IRI rewriting and output formatting for the codec functions.
+ *
+ * **Primitive types**
+ *
+ * - {@link Reference} — absolute IRI identifying a linked resource
+ * - {@link Literal} — JSON scalar primitives (`boolean`, `number`, `string`)
+ *
+ * **Codec configuration**
+ *
+ * - {@link defaultBase} — default base IRI (`app:/`) used by encode / decode operations
+ * - {@link EncoderOpts} — options for encoding operations (base IRI, indentation)
+ * - {@link DecoderOpts} — options for decoding operations (base IRI, lenient mode)
+ *
+ * **Type guards**
+ *
+ * - {@link isLiteral} — checks if a value is a {@link Literal}
+ * - {@link isReference} — checks if a value is a {@link Reference}
+ *
  * @module index
  */
 
-import { Identifier } from "@metreeca/core";
 import { asIRI, type IRI } from "@metreeca/core/resource";
+
+export * from "./index.core.js";
 
 
 /**
@@ -38,48 +58,15 @@ export const defaultBase: IRI = asIRI("app:/");
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
- * Key-indexed container for property values.
+ * Literal value.
  *
- * Maps arbitrary {@link Identifier} keys to values of type `T`, supporting index-based organisation of property values.
- * Useful for representing union-typed properties or dynamically-keyed structures.
- *
- * @typeParam T The type of values in the container
- *
- * @remarks
- *
- * - Corresponds to JSON-LD's `@index` container semantics; requires `@context` to distinguish from nested resources
- * - Keys are limited to valid JavaScript identifiers
- * - Allowed only as top-level property values; no nesting
- *
- * @example
- *
- * ```typescript
- * const variants: Indexed<number> = {
- *   small: 19.99,
- *   medium: 29.99,
- *   large: 39.99
- * };
- * ```
- *
- * @see {@link https://www.w3.org/TR/json-ld11/#data-indexing JSON-LD 1.1 - Data Indexing}
+ * Convenience alias grouping `boolean`, `number`, and `string` JSON primitives used as property values in
+ * resources. Corresponds to JSON-LD's primitive value types.
  */
-export type Indexed<T> =
-	| { readonly [key: Identifier]: T }
-
-/**
- * Optionally key-indexed property value.
- *
- * Accepts `T` directly or wrapped in an {@link Indexed} container, allowing properties to support both plain and
- * union-discriminated values.
- *
- * @typeParam T The type of values in the container
- *
- * @see {@link https://www.w3.org/TR/json-ld11/#data-indexing JSON-LD 1.1 - Data Indexing}
- */
-export type Indexable<T> =
-	| T
-	| Indexed<T>;
-
+export type Literal =
+	| boolean
+	| number
+	| string
 
 /**
  * Resource reference.
@@ -96,17 +83,6 @@ export type Indexable<T> =
 export type Reference =
 	| IRI
 
-/**
- * Literal value.
- *
- * JSON primitives used as property values in resources. Corresponds to JSON-LD's primitive value types
- * for boolean, numeric, and string data.
- */
-export type Literal =
-	| boolean
-	| number
-	| string
-
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -116,7 +92,7 @@ export type Literal =
 export type EncoderOpts = {
 
 	/**
-	 * Base IRI for IRI internalization (must be absolute and hierarchical).
+	 * Base IRI for IRI internalisation (must be absolute and hierarchical).
 	 *
 	 * Converts absolute IRIs to internal (root-relative) form.
 	 *

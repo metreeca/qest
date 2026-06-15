@@ -3,6 +3,11 @@ title: Project Guidelines
 description: Development guidelines and conventions for the @metreeca/qest package.
 ---
 
+> [!CAUTION]
+> The `.claude/skills/rfc-editor.md` skill is **REQUIRED** for any work on the specs [`src/index.md`](../src/index.md).
+> Activate and apply it before editing: it enforces IETF editorial conventions (RFC 7322 structure, RFC 2119 / RFC 8174
+> requirement keywords, reference and citation style).
+
 # References
 
 - JSON-LD 1.1 W3C Recommendations:
@@ -18,6 +23,12 @@ description: Development guidelines and conventions for the @metreeca/qest packa
 
 - Dependencies:
 - [@metreeca/core](https://github.com/metreeca/core) - Core utilities and shared types
+
+- Target backends (Appendix A companions, for the paywalled ISO standards):
+	- [GQL Language Guide — Microsoft Fabric](https://learn.microsoft.com/fabric/graph/gql-language-guide) - GQL:2024
+	  syntax reference
+	- [ISO GQL documentation — Ultipa](https://www.ultipa.com/docs/gql/) - GQL:2024 functions and predicates reference
+	- [GQL ANTLR4 grammar — TuGraph](https://github.com/TuGraph-family/gql-grammar) - formal ISO/IEC 39075 grammar
 
 # NPM Scripts
 

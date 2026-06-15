@@ -17,61 +17,34 @@
 /**
  * Type guards for shared types.
  *
+ * Runtime validators for the primitive types declared in the `index` module, re-exported through it.
+ *
  * @module
  */
 
-import { isBoolean, isIdentifier, isNumber, isObject, isString, isUnion } from "@metreeca/core";
+import { isBoolean, isNumber, isString, isUnion } from "@metreeca/core";
 import { isIRI } from "@metreeca/core/resource";
-import type { Indexable, Indexed, Literal, Reference } from "./index.js";
+import type { Literal, Reference } from "./index.js";
 
-
-/**
- * Checks if a value is {@link Indexed} (key-indexed).
- *
- * @typeParam T The expected type of contained values
- *
- * @param value The value to check
- * @param is Type guard for validating contained values
- *
- * @returns True if the value is a plain object with identifier keys and values satisfying `is`
- */
-export function isIndexed<T>(value: unknown, is: (value: unknown) => value is T): value is Indexed<T> {
-	return isObject(value, (v, k) => isIdentifier(k) && is(v));
-}
-
-/**
- * Checks if a value is {@link Indexable} (plain or key-indexed).
- *
- * @typeParam T The expected type of contained values
- *
- * @param value The value to check
- * @param is Type guard for validating contained values
- *
- * @returns True if the value satisfies `is` directly or is a valid {@link Indexed} container
- */
-export function isIndexable<T>(value: unknown, is: (value: unknown) => value is T): value is Indexable<T> {
-	return isUnion(value, [is, v => isIndexed(v, is)]);
-}
-
-
-/**
- * Checks if a value is a {@link Reference}.
- *
- * @param value The value to check
- *
- * @returns True if the value is an absolute IRI
- */
-export function isReference(value: unknown): value is Reference {
-	return isIRI(value, "absolute");
-}
 
 /**
  * Checks if a value is a {@link Literal}.
  *
  * @param value The value to check
  *
- * @returns True if the value is a boolean, finite number, or string
+ * @returns True if `value` is a `boolean`, a `number`, or a `string`; false otherwise
  */
 export function isLiteral(value: unknown): value is Literal {
 	return isUnion(value, [isBoolean, isNumber, isString]);
+}
+
+/**
+ * Checks if a value is a {@link Reference}.
+ *
+ * @param value The value to check
+ *
+ * @returns True if `value` is an absolute IRI; false otherwise
+ */
+export function isReference(value: unknown): value is Reference {
+	return isIRI(value, "absolute");
 }

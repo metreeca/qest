@@ -17,14 +17,16 @@
 /**
  * Type guards for resource state types.
  *
+ * Runtime validators for the state types declared in the `resource` module, re-exported through it.
+ *
  * @module
  */
 
-import { isArray, isIdentifier, isObject, isString, isUnion } from "@metreeca/core";
+import { type Identifier, isArray, isIdentifier, isObject, isString, isUnion } from "@metreeca/core";
 import { isTag } from "@metreeca/core/language";
-import { isIndexable, isLiteral, isReference } from "./index.core.js";
+import { isLiteral, isReference } from "./index.core.js";
 import type { Literal, Reference } from "./index.js";
-import type { Localised, Resource, Value, Values } from "./resource.js";
+import type { Text, Resource, Value, Values } from "./resource.js";
 
 
 /**
@@ -32,22 +34,30 @@ import type { Localised, Resource, Value, Values } from "./resource.js";
  *
  * @param value The value to check
  *
- * @returns True if the value is a plain object with identifier keys and {@link Values} or {@link Indexed} values
+ * @returns True if `value` is a plain object whose keys are all {@link Identifier}s and whose values
+ * are all valid {@link Values} sets; false otherwise
  */
 export function isResource(value: unknown): value is Resource {
-	return isObject(value, (v, k) => isIdentifier(k) && isIndexable(v, isValues));
+	return isObject(value, (v, k) => isIdentifier(k) && isValues(v));
 }
 
 
 /**
- * Checks if a value is a {@link Values}.
+ * Checks if a value is a {@link Values} set.
+ *
+ * Accepts the absent marker `undefined`, a single {@link Value} scalar, a {@link Text} map, or an
+ * array of {@link Value} elements.
  *
  * @param value The value to check
  *
- * @returns True if the value is a {@link Value}, {@link Localised}, or array of values
+ * @returns True if `value` is a valid Values set; false otherwise
  */
 export function isValues(value: unknown): value is Values {
-	return isUnion(value, [isValue, isLocalised, v => isArray(v, isValue)]);
+	return value === undefined || isUnion(value, [
+		isValue,
+		isText,
+		v => isArray(v, isValue)
+	]);
 }
 
 /**
@@ -55,23 +65,26 @@ export function isValues(value: unknown): value is Values {
  *
  * @param value The value to check
  *
- * @returns True if the value is a {@link Literal}, {@link Reference}, or {@link Resource}
+ * @returns True if `value` is a {@link Literal}, a {@link Reference}, or a nested {@link Resource}; false otherwise
  */
 export function isValue(value: unknown): value is Value {
-	return isUnion(value, [isLiteral, isReference, isResource]);
+	return isUnion(value, [
+		isLiteral,
+		isReference,
+		isResource
+	]);
 }
 
+
 /**
- * Checks if a value is a {@link Localised}.
+ * Checks if a value is a localised {@link Text} value set.
  *
  * @param value The value to check
  *
- * @returns True if the value is a string, string array, or a plain object with language tag keys
- * and uniformly string or string array values
+ * @returns True if `value` is a plain object with language tag keys mapping uniformly to strings or uniformly to
+ * string arrays; false otherwise
  */
-export function isLocalised(value: unknown): value is Localised {
-	return isString(value)
-		|| isArray(value, isString)
-		|| isObject(value, (v, k) => isTag(k) && isString(v))
+export function isText(value: unknown): value is Text {
+	return isObject(value, (v, k) => isTag(k) && isString(v))
 		|| isObject(value, (v, k) => isTag(k) && isArray(v, isString));
 }

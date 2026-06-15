@@ -3,6 +3,10 @@
   "highlightLanguages": [
     "http"
   ],
+  "ignoredHighlightLanguages": [
+    "abnf",
+    "cddl"
+  ],
   "externalSymbolLinkMappings": {
     "@metreeca/core": {
       "isIdentifier": "https://metreeca.github.io/core/functions/index.isIdentifier.html",
@@ -14,6 +18,9 @@
       "Tag": "https://metreeca.github.io/core/types/language.Tag.html",
       "TagRange": "https://metreeca.github.io/core/types/language.TagRange.html",
       "immutable": "https://metreeca.github.io/core/functions/nested.immutable.html"
+    },
+    "typescript": {
+      "encodeURIComponent": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/encodeURIComponent"
     }
   },
   "includeVersion": true,

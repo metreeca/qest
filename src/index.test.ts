@@ -14,137 +14,58 @@
  * limitations under the License.
  */
 
-import { isAny, isString } from "@metreeca/core";
 import { describe, expect, it } from "vitest";
-import { isIndexable, isIndexed, isLiteral, isReference } from "./index.core.js";
+import { defaultBase, isLiteral, isReference } from "./index.js";
 
 
 describe("guards", () => {
 
-	describe("isIndexed", () => {
-
-		it("should accept object with matching values", async () => {
-			expect(isIndexed({ key1: "value1", key2: "value2" }, isString)).toBeTruthy();
-		});
-
-		it("should reject object with non-matching values", async () => {
-			expect(isIndexed({ str: "value", num: 42 }, isString)).toBeFalsy();
-		});
-
-		it("should accept empty object", async () => {
-			expect(isIndexed({}, isString)).toBeTruthy();
-		});
-
-		it("should reject primitives", async () => {
-			expect(isIndexed("string", isAny)).toBeFalsy();
-			expect(isIndexed(42, isAny)).toBeFalsy();
-			expect(isIndexed(null, isAny)).toBeFalsy();
-		});
-
-		it("should reject arrays", async () => {
-			expect(isIndexed([], isAny)).toBeFalsy();
-			expect(isIndexed(["a", "b"], isAny)).toBeFalsy();
-		});
-
-	});
-
-	describe("isIndexable", () => {
-
-		it("should accept plain value satisfying guard", async () => {
-			expect(isIndexable("hello", isString)).toBeTruthy();
-		});
-
-		it("should accept indexed container with matching values", async () => {
-			expect(isIndexable({ key1: "value1", key2: "value2" }, isString)).toBeTruthy();
-		});
-
-		it("should accept empty indexed container", async () => {
-			expect(isIndexable({}, isString)).toBeTruthy();
-		});
-
-		it("should reject plain value not satisfying guard", async () => {
-			expect(isIndexable(42, isString)).toBeFalsy();
-		});
-
-		it("should reject indexed container with non-matching values", async () => {
-			expect(isIndexable({ str: "value", num: 42 }, isString)).toBeFalsy();
-		});
-
-		it("should reject null", async () => {
-			expect(isIndexable(null, isString)).toBeFalsy();
-		});
-
-		it("should reject arrays", async () => {
-			expect(isIndexable([], isString)).toBeFalsy();
-			expect(isIndexable(["a", "b"], isString)).toBeFalsy();
-		});
-
-	});
-
-
 	describe("isLiteral", () => {
 
-		it("should accept boolean", async () => {
-			expect(isLiteral(true)).toBeTruthy();
-			expect(isLiteral(false)).toBeTruthy();
-		});
-
-		it("should accept number", async () => {
-			expect(isLiteral(42)).toBeTruthy();
-			expect(isLiteral(3.14)).toBeTruthy();
-			expect(isLiteral(0)).toBeTruthy();
-			expect(isLiteral(-1)).toBeTruthy();
-		});
-
-		it("should accept string", async () => {
-			expect(isLiteral("")).toBeTruthy();
-			expect(isLiteral("hello")).toBeTruthy();
-		});
-
-		it("should reject null", async () => {
-			expect(isLiteral(null)).toBeFalsy();
-		});
-
-		it("should reject undefined", async () => {
-			expect(isLiteral(undefined)).toBeFalsy();
-		});
-
-		it("should reject objects", async () => {
-			expect(isLiteral({})).toBeFalsy();
-			expect(isLiteral({ value: 42 })).toBeFalsy();
-		});
-
-		it("should reject arrays", async () => {
-			expect(isLiteral([])).toBeFalsy();
-			expect(isLiteral([1, 2, 3])).toBeFalsy();
+		it.each([
+			[ true, true ],
+			[ false, true ],
+			[ 42, true ],
+			[ 3.14, true ],
+			[ 0, true ],
+			[ -1, true ],
+			[ "", true ],
+			[ "hello", true ],
+			[ null, false ],
+			[ undefined, false ],
+			[ {}, false ],
+			[ { value: 42 }, false ],
+			[ [], false ],
+			[ [ 1, 2, 3 ], false ]
+		])("should classify %p as %p", (value, expected) => {
+			expect(isLiteral(value)).toBe(expected);
 		});
 
 	});
 
 	describe("isReference", () => {
 
-		it("should accept absolute IRI", async () => {
-			expect(isReference("https://example.com/resource")).toBeTruthy();
+		it.each([
+			[ "https://example.com/resource", true ],
+			[ "urn:isbn:0451450523", true ],
+			[ "/path/to/resource", false ],
+			[ "relative/path", false ],
+			[ "", false ],
+			[ 42, false ],
+			[ null, false ],
+			[ {}, false ]
+		])("should classify %p as %p", (value, expected) => {
+			expect(isReference(value)).toBe(expected);
 		});
 
-		it("should reject root-relative IRI", async () => {
-			expect(isReference("/path/to/resource")).toBeFalsy();
-		});
+	});
 
-		it("should reject relative IRI", async () => {
-			expect(isReference("relative/path")).toBeFalsy();
-		});
+});
 
-		it("should reject empty string", async () => {
-			expect(isReference("")).toBeFalsy();
-		});
+describe("defaultBase", () => {
 
-		it("should reject non-strings", async () => {
-			expect(isReference(42)).toBeFalsy();
-			expect(isReference(null)).toBeFalsy();
-			expect(isReference({})).toBeFalsy();
-		});
-
+	it("should be the app: base IRI", () => {
+		expect(defaultBase).toBe("app:/");
 	});
 
 });
