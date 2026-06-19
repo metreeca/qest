@@ -16,7 +16,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Add `encodeSelection`/`decodeSelection` codecs for `Selection` form serialization
 - Add `Placeholders`/`Placeholder` types and `isPlaceholders`/`isPlaceholder` guards for property template value forms
 - Add `TransformSignature` type and expose per-transform signatures through the `Transforms` registry
-- Add `Instance<T>`, `Slots<T>`, and `Name<K>` type-inference utilities deriving fetched resource shapes from templates
+- Add `Instance<T>`, `Slots<T>`, `Name<K>`, and `Index<T>` type-inference utilities deriving fetched resource shapes from templates
 - Add `Pipe` and `Path` type aliases extracted from `Expression`
 - Add `isSelector`, `isAggregate`, and `isVacuous` type guards
 - Add `lower`, `upper`, `length` string transforms

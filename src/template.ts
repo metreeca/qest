@@ -1391,10 +1391,27 @@ export type TransformSignature = {
 export type Instance<T> =
 	T extends readonly [infer I, Selection?] ? readonly Instance<I>[]   // collection tuple → array of element
 		: T extends object                                     // object
-			? [Extract<keyof T, `${number}`>] extends [never]  //   numeric keys?
+			? [Index<T>] extends [never]                       //   numeric keys?
 				? Slots<T>                                     //     no → map fields
-				: Instance<T[Extract<keyof T, `${number}`>]>   //     yes → unwrap branch union
+				: Instance<T[Index<T>]>                        //     yes → unwrap branch union
 			: T;                                               // primitive
+
+/**
+ * Extracts the numeric-literal keys of a union frame, in both string (`"0"`) and numeric (`0`) form.
+ *
+ * Declaration emit serialises numeric keys as bare numerics (`{ 0; 1 }`) rather than string
+ * literals (`{ "0"; "1" }`), so both forms must be matched for the collapse to survive a
+ * cross-package `.d.ts` round-trip. Wide `number` / `string` index signatures (for example
+ * {@link Locale} maps) are excluded so they keep mapping through {@link Slots}.
+ *
+ * @typeParam T The object type whose numeric-literal keys to extract
+ */
+export type Index<T> =
+	keyof T extends infer K ?                              // distribute over each key
+		K extends `${number}` ? K                          // string form (`"0"`)
+			: K extends number ? (number extends K ? never : K)  // numeric form (`0`), excluding wide `number`
+				: never
+		: never;
 
 /**
  * Projects a template-shaped object through {@link Instance}.

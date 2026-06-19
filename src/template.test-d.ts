@@ -310,6 +310,35 @@ describe("Instance", () => {
 
 		});
 
+		describe("numeric-literal key form", () => {
+
+			// TypeScript declaration emit serialises a `${number}`-keyed union frame with bare numeric
+			// keys (`{ 0; 1 }`) rather than string-literal keys (`{ "0"; "1" }`), so the collapse must
+			// recognise both forms to survive a cross-package `.d.ts` round-trip.
+
+			test("two branches project to a union of branch types", () => {
+				type Indexed = {
+					readonly 0: { readonly id: Reference; readonly name: string };
+					readonly 1: { readonly id: Reference; readonly legalName: string };
+				};
+				type Expected = {
+					readonly creator:
+						| { readonly id: Reference; readonly name: string }
+						| { readonly id: Reference; readonly legalName: string };
+				};
+
+				expectTypeOf<Instance<{ readonly creator: Indexed }>>().toEqualTypeOf<Expected>();
+			});
+
+			test("primitive branches pass through", () => {
+				type Indexed = { readonly 0: string; readonly 1: number };
+				type Expected = { readonly label: string | number };
+
+				expectTypeOf<Instance<{ readonly label: Indexed }>>().toEqualTypeOf<Expected>();
+			});
+
+		});
+
 		describe("template distinction", () => {
 
 			test("plain template with identifier keys is not treated as indexed form", () => {
