@@ -35,7 +35,9 @@ import type { Literal, Reference } from "./index.js";
  * @returns True if `value` is a `boolean`, a `number`, or a `string`; false otherwise
  */
 export function isLiteral(value: unknown): value is Literal {
-	return isUnion(value, [isBoolean, isNumber, isString]);
+	return isBoolean(value)
+		|| isNumber(value)
+		|| isString(value);
 }
 
 /**
