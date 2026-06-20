@@ -42,7 +42,7 @@
   },
   "scripts": {
     "clean": "rm -rf dist docs node_modules src/*.pegjs.*",
-    "setup": "npm install && npm audit fix",
+    "setup": "npm install",
     "peggy": "npx peggy --dts --format es --allowed-start-rules '*' --output src/template.pegjs.js src/template.pegjs",
     "build": "rm -rf dist docs && npm run peggy && tsc -p tsconfig.build.json && cp src/*.pegjs.* dist && npx typedoc",
     "check": "npx vitest --typecheck run",
