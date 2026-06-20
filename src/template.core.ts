@@ -154,9 +154,9 @@ export function isQuery(value: unknown): value is Query {
 /**
  * Checks if a value is a {@link Locale} template.
  *
- * Accepts a tag-range-keyed map with values uniformly scalar or uniformly singleton-tuple string. A `Locale` carries
- * no {@link Selection}; filtering by localised text attaches at the enclosing collection's `Selection` through an
- * {@link Expression}, not on the map.
+ * Accepts a map keyed by RFC 4647 basic language ranges (a subtag sequence or the standalone `*`) with values
+ * uniformly scalar or uniformly singleton-tuple string. A `Locale` carries no {@link Selection}; filtering by
+ * localised text attaches at the enclosing collection's `Selection` through an {@link Expression}, not on the map.
  *
  * @param value The value to check
  *

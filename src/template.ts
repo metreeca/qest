@@ -77,7 +77,7 @@
  * - {@link isAggregate} — checks whether a value is an aggregate {@link Transform}
  * - {@link isVacuous} — checks if a value is vacuous per the template elision rule
  *
- * **Serialisation**
+ * **Codecs**
  *
  * - {@link encodeTemplate} — encode a {@link Template} as URL-safe JSON
  * - {@link decodeTemplate} — decode a {@link Template} from URL-safe JSON
@@ -156,8 +156,9 @@
  *
  * A localised property is a single structured value, the localised counterpart of a nested resource
  * rather than a multi-valued property: a language-tagged {@link Text} map reached through
- * {@link Locale} as its own {@link Placeholders} arm. The `TagRange` keys filter which locales
- * populate the map (a wildcard such as `*` may expand to several tags), while the per-tag value
+ * {@link Locale} as its own {@link Placeholders} arm. The `TagRange` keys are RFC 4647 basic language
+ * ranges that filter which locales populate the map (the standalone `*` matches every tag, and a plain
+ * range such as `en` also matches more specific tags like `en-US`), while the per-tag value
  * shape (`""` or `[""]`) only selects each entry's cardinality. Tag ranges select retrieved content only and
  * are independent of {@link Selection}: a `Locale` map carries `TagRange` keys, never `Selection` operator keys.
  * Resource matching by localised text is done separately, at the enclosing collection's `Selection` via `?`/`!`.
@@ -632,9 +633,11 @@ export type Query =
  *
  * Retrieves a localised property as a single structured {@link Text} value: the localised
  * counterpart of a nested {@link Template}, not a multi-valued or collection property. The
- * {@link TagRange | tag range} keys select which locales populate that structured value; each range
- * filters the available language tags, and a wildcard range (for example `*` or `en-*`) may expand
- * to several tag entries in the retrieved map.
+ * {@link TagRange | tag range} keys are RFC 4647 basic language ranges (a subtag sequence or the
+ * standalone `*`) and select which locales populate that structured value; each range filters the
+ * available language tags by basic filtering, and a range may expand to several tag entries in the
+ * retrieved map (the standalone `*` matches every tag, and a range such as `en` matches `en` along
+ * with more specific tags like `en-US`).
  *
  * The umbrella union admits two value-shape forms that fix the per-tag cardinality of the retrieved
  * entries, not the property's own cardinality:

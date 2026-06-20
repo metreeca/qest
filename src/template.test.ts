@@ -618,7 +618,7 @@ describe("guards", () => {
 		it("should accept localised tag-range placeholders", () => {
 			expect(isProjection({ "label=title": { "*": "" } })).toBe(true);
 			expect(isProjection({ "label=title": { "en": "", "fr": "" } })).toBe(true);
-			expect(isProjection({ "label=title": { "en-*": "" } })).toBe(true);
+			expect(isProjection({ "label=title": { "en-US": "" } })).toBe(true);
 		});
 
 		it("should accept localised bindings alongside scalar bindings", () => {
@@ -632,7 +632,7 @@ describe("guards", () => {
 		it("should accept multi-valued localised placeholders", () => {
 			// projection cells admit the full Locale (single- or multi-valued)
 			expect(isProjection({ "label=title": { "*": [""] } })).toBe(true);
-			expect(isProjection({ "label=title": { "en-*": [""] } })).toBe(true);
+			expect(isProjection({ "label=title": { "en-US": [""] } })).toBe(true);
 		});
 
 		it("should reject duplicate binding result names", () => {
@@ -1978,9 +1978,11 @@ describe("guards", () => {
 				expect(isLocale({ "": [""] })).toBe(false);
 			});
 
-			it("should accept combined wildcard subtags", () => {
-				expect(isLocale({ "en-*": "" })).toBe(true);
-				expect(isLocale({ "*-CH": "" })).toBe(true);
+			it("should reject extended language ranges", () => {
+				// RFC 4647 basic ranges only: trailing, interior, and leading `*` subtags are invalid
+				expect(isLocale({ "en-*": "" })).toBe(false);
+				expect(isLocale({ "de-*-DE": "" })).toBe(false);
+				expect(isLocale({ "*-CH": "" })).toBe(false);
 			});
 
 			it("should reject singleton-tuple strictness violations in map values", () => {

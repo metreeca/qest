@@ -36,7 +36,7 @@
  * - {@link isValue} — checks if a value is a {@link Value}
  * - {@link isText} — checks if a value is a {@link Text} value set
  *
- * **Serialisation**
+ * **Codecs**
  *
  * - {@link encodeResource} — encode a {@link Resource} as JSON
  * - {@link decodeResource} — decode a {@link Resource} from JSON

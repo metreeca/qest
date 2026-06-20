@@ -623,7 +623,7 @@ options    = option / text / [* option]
 option     = null / literal / reference
 
 iri        = tstr   ; IRI reference [RFC3987], relative or absolute (Section 5.2)
-tag-range  = tstr   ; BCP 47 language range [RFC4647]
+tag-range  = tstr   ; RFC 4647 basic language range [RFC4647] (Section 5.3)
 index      = tstr   ; non-negative integer string (a Union variant key)
 binding    = tstr   ; see ABNF below
 ```
@@ -773,11 +773,17 @@ of any other length.
 
 ## 5.3. Locale
 
-Tag-range keys [RFC4647] select which locales to retrieve. The placeholder returns the subset of the property's
-localised text map (Section 4.3) matching the ranges by RFC 4647 **filtering** (all matching tags) rather than
-**lookup** (a single best match), as a structured map. Each tag-range value is itself a placeholder typed to the
-expected result: a string where the property holds one value per tag, or a single-element array where it holds several (
-Section 4.3). Only the type matters, so the array carries exactly one element.
+Tag-range keys [RFC4647] select which locales to retrieve. A tag-range key MUST be a basic language range
+[RFC4647] (Section 2.1): a sequence of subtags, or the standalone `*` wildcard. Extended language ranges
+[RFC4647] (Section 2.2), carrying `*` in a leading, interior, or trailing subtag position (for example `de-*`
+or `*-CH`), MUST be rejected; under the basic filtering used here they add no matching power over their basic
+prefix, and a processor MUST NOT attempt to interpret them.
+
+The placeholder returns the subset of the property's localised text map (Section 4.3) matching the ranges by RFC 4647
+basic **filtering** (Section 3.3.1; all matching tags) rather than **lookup** (a single best match), as a structured
+map. Each tag-range value is itself a placeholder typed to the expected result: a string where the property holds one
+value per tag, or a single-element array where it holds several (Section 4.3). Only the type matters, so the array
+carries exactly one element.
 
 A localised property MAY also be retrieved through a plain string placeholder, yielding its **coalesced label**
 (Section 6): the value or values resolved by the request's negotiated language priority (Section 6.1). The placeholder

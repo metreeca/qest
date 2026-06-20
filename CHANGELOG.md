@@ -46,6 +46,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Restrict `Union` template branches to `Placeholder`; `Locale` is no longer admitted as a union branch
 - Rename the focus-ordering `Operator` from `*` to `+`
 - Replace `zxx` language tag with `und` for language-neutral values
+- Restrict `Locale` map keys to RFC 4647 basic language ranges (a subtag sequence or the standalone `*`); extended
+	ranges (for example `de-*` or `*-CH`) are no longer accepted
+- Require `@metreeca/core` `^0.9.19` for RFC 4647 basic-filtering language ranges
 
 ### Removed
 
