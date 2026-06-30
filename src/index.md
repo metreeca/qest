@@ -244,7 +244,9 @@ The following terms are used throughout this document:
 - **undefined**: the result of resolving an expression, path, or transform (Section 5.8) to no value; an absent value
   (Section 4.2) resolves to `undefined`
 - **template**: a JSON object specifying which properties to retrieve from a resource
-- **placeholder**: a template value standing in for a property value, signalling the expected type rather than data
+- **placeholder**: a template value standing in for a property value, signalling its expected type rather than carrying
+  retrieved data; a literal placeholder is itself a legal value of that type, by which a union-typed property (Section
+  5.4) matches it to a variant
 - **selection**: a set of constraints (filtering, sorting, pagination) applied to a collection
 - **expression**: a property path, optionally piped through transforms, targeted by selection and projection keys
 - **binding**: a projection key naming a computed expression (a plain identifier, or `name=expression`)
@@ -289,20 +291,31 @@ only).
 Processors resolve payloads and templates against the **expected type** of each property they process. A property's
 expected type is one of:
 
-- an ordered list of one or more **variants**, each a processing type, a reference, or a nested resource; a property
-  with several variants is **union-typed**, and the variant ordering fixes the index space of per-branch retrieval
-  (Section 5.4);
+- one or more **variants**, each a processing type, optionally narrowed to a sub-domain of its values, a reference, or a
+  nested resource; a property with several variants is **union-typed**, its variants expected to be disjoint and
+  resolved per branch by matching, not by position (Section 5.4);
 - **localised text** (Section 4.3), together with its per-tag shape, a single string or an array per tag; localised text
-  is a whole-property type, never a union variant (Section 5.4).
+  is a whole-property type, not one of a property's declared variants, though a path may resolve to it per branch
+  downstream of a union-typed step (Section 5.8.1).
 
 Alongside its type, each property carries an expected **cardinality**, single- or multi-valued.
+
+Because the variants are expected disjoint, any value resolved against them, whether a state value (Section 3.2), a
+template placeholder (Sections 5.2 and 5.4), or a selection bound or option (Section 5.7), matches at most one; matching
+tests value-domain membership, so variants narrowed within one processing type are told apart by value, not by type
+alone. Matching is the single classification step that drives mapping: a value matching exactly one variant is mapped to
+that variant's type (Section 3.2); a value matching no variant is **unsatisfiable**, and one matching several is
+**ambiguous**. Processors MUST reject an unsatisfiable or ambiguous match wherever this specification calls for one (
+Sections 3.2, 5.4, and 5.7). Disjointness is a property of the declared variants, supplied out of band like the variants
+themselves, and adds no conformance requirement of its own; a processor that observes a multiple match at runtime
+reports it as ambiguous.
 
 Expected types are supplied out of band, whether declared by a static property schema or derived dynamically by the
 application; this specification constrains neither their source nor their provisioning, and they add no conformance
 requirement of their own. They are definitional: the rules that reference an expected or declared characteristic, among
 them ingress mapping (Section 3.2), placeholder matching (Section 5.2), locale classification (Section 5.3), union
-retrieval (Section 5.4), collection queries (Section 5.5), and path resolution (Section 5.8.1), are evaluated against
-them, and a property without an expected type is unknown (Section 5.8.1).
+retrieval (Section 5.4), collection queries (Section 5.5), selection (Section 5.7), and path resolution (Section 5.8.1),
+are evaluated against them, and a property without an expected type is unknown (Section 5.8.1).
 
 ## 3.2. Ingress Mapping
 
@@ -312,6 +325,11 @@ specific processing type is expected for the value (Section 3.1).
 A value that cannot be represented as the processing type expected for it, such as a literal whose JSON kind does not
 match or a string that is not a valid lexical form of the expected temporal type, is malformed and MUST be rejected by
 processors.
+
+Over a union-typed property (Section 3.1), the value is matched against the variants and mapped to the one it singles
+out. Since the variants are expected disjoint, the value matches at most one: a value matching no variant is
+unsatisfiable and a value matching several is ambiguous, and processors MUST reject either (Section 3.1). The variant
+the value singles out fixes its processing type, so the same matching that admits the value also casts it.
 
 JSON [RFC8259] guarantees number interoperability only within IEEE 754 double precision, and this specification adopts
 that interoperable range as the transport number space, so mapping a `number` to `xsd:double` preserves every
@@ -379,10 +397,11 @@ satisfy the following constraints:
 5. Localised text is represented as JSON-LD language maps, declared with `"@container": "@language"` in `@context`; the
    `@none` language MUST NOT be used; `und` or `zxx` is used instead (Section 4.3)
 
-A property mapped to `@type` carries class references, so its expected type (Section 3.1) is `reference`. Such a property
-is commonly system-managed, derived from the expected model rather than supplied by clients; this provenance does not
-alter its retrieval semantics. It is an ordinary reference-typed property and MAY be targeted by the equality-based
-selection constraints, set matching (Section 5.7.3) and sort focus (Section 5.7.4), like any other reference.
+A property mapped to `@type` carries class references, so its expected type (Section 3.1) is `reference`. Such a
+property is commonly system-managed, derived from the expected model rather than supplied by clients; this provenance
+does not alter its retrieval semantics. It is an ordinary reference-typed property and MAY be targeted by the
+equality-based selection constraints, set matching (Section 5.7.3) and sort focus (Section 5.7.4), like any other
+reference.
 
 ## 4.1. Resource
 
@@ -586,7 +605,7 @@ model        = union / placeholder / locale
 query        = [ union, ? selection ] / [ placeholder, ? selection ] / [ projection, ? selection ]
 
 locale       = { * tag-range => tstr } / { * tag-range => [ tstr ] }
-union        = { * index => placeholder }
+union        = { * slot => placeholder / locale }
 
 projection   = { * binding => model }
 
@@ -624,7 +643,7 @@ option     = null / literal / reference
 
 iri        = tstr   ; IRI reference [RFC3987], relative or absolute (Section 5.2)
 tag-range  = tstr   ; RFC 4647 basic language range [RFC4647] (Section 5.3)
-index      = tstr   ; non-negative integer string (a Union variant key)
+slot       = tstr   ; opaque Union key: a non-negative integer string (Section 5.4)
 binding    = tstr   ; see ABNF below
 ```
 
@@ -695,9 +714,11 @@ category=electronics
 A **template** is a JSON object specifying which properties to retrieve from a resource and how deeply to expand linked
 resources.
 
-Template properties use **placeholder values** (Section 5.2) that indicate the expected type. The actual value of a
-literal placeholder is immaterial; only its type matters. A nested object is instead a template in its own right, whose
-structure does matter: it selects the properties of the linked resource to expand, and an empty one is elided
+Template properties use **placeholder values** (Section 5.2) that indicate the expected type. The value of a literal
+placeholder is never returned, but it MUST be a legal value of the property's type: for a single-type property any legal
+value serves, while for a union-typed property (Section 5.4) the value selects the matching variant. A nested object is
+instead a template in its own right, whose structure does matter: it selects the properties of the linked resource to
+expand, and an empty one is elided
 (Section 5).
 
 ```text
@@ -742,15 +763,17 @@ A **placeholder** stands in for one property value:
 - **Reference placeholder**: a relative IRI reference [RFC3987], requesting a linked resource identifier (Section 4.2)
 - **Template placeholder**: a nested object (Section 5.1), requesting inline expansion of the linked resource
 
-Placeholder values MUST match the expected type of their property keys (Section 3.1). Processors MUST reject templates
-that provide mismatched placeholders with an error.
+Placeholder values MUST match the expected type of their property keys (Section 3.1), a literal moreover lying within
+the expected value domain. Processors MUST reject templates that provide mismatched placeholders with an error.
 
-A placeholder stands for data and never carries it, so its value needs no resolution and its content beyond
-well-formedness is immaterial. A reference placeholder MUST match the `IRI-reference` production of [RFC3987], which
-admits the empty string together with the relative, root-relative, and absolute forms, excluding only a string that
-could not reference a resource; a placeholder outside the production is mismatched and is rejected as above. Reference
-values proper, the options and operands of a selection (Section 5.7), are instead resolved on decoding (Section 5) and
-are absolute thereafter.
+A placeholder stands for data and never carries it back: its value is never returned. A literal placeholder MUST
+nonetheless be a legal value of its property's type, the value by which a union-typed property matches it to a variant
+(Section 5.4); for a single-type property any legal value serves. A reference or template placeholder conveys only its
+kind. A reference placeholder MUST match the `IRI-reference` production of [RFC3987], which admits the empty string
+together with the relative, root-relative, and absolute forms, excluding only a string that could not reference a
+resource; a placeholder outside the production is mismatched and is rejected as above. Reference values proper, the
+options and operands of a selection (Section 5.7), are instead resolved on decoding (Section 5) and are absolute
+thereafter.
 
 The placeholder for a multi-valued property is a tuple, whose array form signals multi-valued cardinality. The first
 element is the per-item template; an optional second element is a collection-wide selection (Section 5.7) that filters,
@@ -776,8 +799,8 @@ of any other length.
 Tag-range keys [RFC4647] select which locales to retrieve. A tag-range key MUST be a basic language range
 [RFC4647] (Section 2.1): a sequence of subtags, or the standalone `*` wildcard. Extended language ranges
 [RFC4647] (Section 2.2), carrying `*` in a leading, interior, or trailing subtag position (for example `de-*`
-or `*-CH`), MUST be rejected; under the basic filtering used here they add no matching power over their basic
-prefix, and a processor MUST NOT attempt to interpret them.
+or `*-CH`), MUST be rejected; under the basic filtering used here they add no matching power over their basic prefix,
+and a processor MUST NOT attempt to interpret them.
 
 The placeholder returns the subset of the property's localised text map (Section 4.3) matching the ranges by RFC 4647
 basic **filtering** (Section 3.3.1; all matching tags) rather than **lookup** (a single best match), as a structured
@@ -816,23 +839,31 @@ localised property (Section 4.3) and a template (Section 5.1) otherwise.
 
 ## 5.4. Union
 
-For union-typed properties (Section 3.1), per-branch retrieval is expressed through an indexed object form. The indexed
-form is the only way to address such a property: a plain placeholder over one is mismatched and MUST be rejected
-(Section 5.2), whichever single branch it may resemble.
+For union-typed properties (Section 3.1), per-branch retrieval is expressed through a keyed object form whose values are
+the per-branch placeholders, each a plain placeholder or, only within a projection binding (Section 5.6), a locale
+placeholder (Section 5.3). This keyed form is the only way to address such a property: a plain placeholder over one is
+mismatched and MUST be rejected (Section 5.2), whichever single branch it may resemble.
 
 A variant carries a single value, never a collection: cardinality is defined for the property as a whole and applies to
 the union slot, not independently per branch.
 
-Localised text cannot appear as a union variant: a single localised text map cannot mix into the property's value set
-alongside the literals, references, and resources of other branches. Localised properties are obtained through the
-standalone locale placeholder (Section 5.3) instead. This bars localised text only as a declared variant; a path can
-still reach a localised property downstream of a union, where it contributes to the path's effective type
-(Section 5.8.1) without being a variant.
+A variant MAY be a locale placeholder (Section 5.3) only within a projection binding (Section 5.6), addressing a branch
+that resolves to a localised property (Section 4.3), as a path through a union-typed step can (Section 5.8.1); the
+branch then occupies its own cell (Section 5.6) as a localised text map. A localised text map is not a value and cannot
+be combined into a value set (Section 4.2) alongside the literals, references, and resources of sibling branches, so a
+union retrieving a resource property directly admits no locale variant; only the per-cell decomposition of a projection
+(Section 5.6) accommodates one. A locale variant carries its own per-tag cardinality (Section 5.3) and is therefore
+never wrapped in a collection.
 
-Per-branch retrieval uses an indexed object form: keys are non-negative integer strings indexing positions in the
-property's expected variant ordering (Section 3.1); unlisted variants are skipped at runtime. Processors MUST reject
-keys that are not valid non-negative integer strings (no decimals, negatives, or exponential forms), and MUST reject
-numeric keys that fall outside the declared variant index range.
+The keys are opaque: they label the alternatives but carry no positional or nominal meaning. Keys MUST be non-negative
+integer strings (no decimals, negatives, or exponential forms), a namespace disjoint from property identifiers, and a
+processor MUST NOT read positional meaning into them. Each value is an alternative placeholder, and the variant it
+retrieves is fixed by matching the placeholder against the property's variants (Section 5.2), not by the key, the
+variants being expected disjoint (Section 3.1): a processor MUST reject an alternative that matches no variant as
+unsatisfiable, and one that matches several as ambiguous, admitting it only when it singles out exactly one variant. A
+literal alternative is matched by value-domain membership (Section 3.1), so variants sharing a processing type are
+addressed by supplying a legal value of the intended branch (Section 5.2), while a reference or template alternative is
+matched by kind and shape. Variants left unmatched are skipped at retrieval, contributing no values.
 
 ```json
 {
@@ -850,9 +881,23 @@ numeric keys that fall outside the declared variant index range.
 }
 ```
 
+Where variants share a processing type, the alternative's value singles out the branch (Section 3.1): here `region` is
+either an ISO 3166 alpha-2 country code or an internal macro-zone code, two disjoint string domains, so the legal value
+`"US"` selects the country branch and `"EMEA"` the zone branch:
+
+```json
+{
+  "id": "",
+  "region": {
+    "0": "US",
+    "1": "EMEA"
+  }
+}
+```
+
 Numeric keys suit the machine-generated templates that tooling, code generation, and schema-driven translation produce
-and keep the surface syntax sigil-free; their key space is disjoint from the identifier, binding, and operator-prefixed
-keys, leaving a union structurally unambiguous.
+and keep the surface syntax sigil-free; being disjoint from the identifier, binding, and operator-prefixed key spaces,
+they leave a union structurally unambiguous while remaining opaque labels with no positional force.
 
 ## 5.5. Query
 
@@ -892,7 +937,7 @@ rather than naming an individual property, evaluated per item or, when an aggreg
 
 Each binding's value is a **model** (Section 5.1), taking one of three forms:
 
-- an indexed **union** (Section 5.4): one placeholder per branch, when the bound expression is union-typed;
+- a **union** (Section 5.4): one placeholder per branch, when the bound expression is union-typed;
 - a **placeholder** (Section 5.2): a literal, a reference, or a nested template expanding a linked resource;
 - a **locale** map (Section 5.3): a tag-range map declaring a localised result.
 
@@ -989,14 +1034,18 @@ Each operator below tabulates the **target types** and **cardinalities** it supp
 constraint whose target type or cardinality is not listed for its operator, or whose bound or option type does not match
 the target's resolved type, is unsupported and processors MUST reject it.
 
-Over a union-typed target (Section 3.1), admissibility is anchored on the declared variants: processors MUST reject a
-constraint whose bound or option type matches no variant (a `null` option is typeless and exempt, Section 5.7.3), and
-MUST otherwise evaluate it per branch. A value matches when its branch admits the bound or option type and the
-operator's regime holds there, per the tables below, the branch deciding the regime: a single option MAY match a
-temporal branch by value and a string branch lexically. Other branches contribute no match, as in the out-of-domain
-rule (Section 5.8.2). Since bounds are literals (Section 5), comparison and text search only ever select literal
-branches; sort (Section 5.7.5) instead orders all branches within the total order's tiers, selecting none. Appendix
-A.4.1's type guards realise per-branch matching on the target backends.
+Over a union-typed target (Section 3.1), a bound or option is resolved against the declared variants exactly as a state
+value is on ingress (Section 3.2): being expected disjoint (Section 3.1), the variants admit it on at most one branch,
+and the processor maps it to that branch's type. A bound or option matching no variant is unsatisfiable and MUST be
+rejected, and one matching several is ambiguous and MUST be rejected (a `null` option is typeless and exempt, Section
+5.7.3). The matched branch fixes the regime: a value matches when it lies on that branch and the operator's regime holds
+there, per the tables below; values on other branches are out of domain (Section 5.8.2) and contribute no match. Since
+bounds are literals (Section 5), comparison and text search only ever select a literal branch; set matching and sort
+focus (Sections 5.7.3 and 5.7.4) carry options, so the option's kind selects the branch: a literal option a literal
+branch, a reference option a reference branch, and a tagged option the localised text branch, with a `null` option
+selecting none and matching absence (Section 5.7.3); sort (Section 5.7.5), which carries no bound, instead orders all
+branches within the total order's tiers, selecting none. Appendix A.4.1's type guards realise this single-branch
+selection on the target backends.
 
 A constraint that no resource can satisfy (for example `null` beside a present value under `!`, Section 5.7.3) MAY be
 short-circuited to an empty result set rather than evaluated.
@@ -1175,9 +1224,8 @@ A path's **effective type** is that of its final step's property, or, for an emp
 it ranges over; a union-typed step yields a mixed-type set. Where a step downstream of a union-typed step resolves a
 distinct property per branch, the effective type is the disjunction of those per-branch types. That disjunction can
 include localised text, where a branch's resolved property is localised (Section 4.3) and addressed structurally
-(Section 6), even though localised text is barred as a union variant (Section 5.4): the bar is on declared variants, not
-on properties reachable through a path. A localised step yields `xsd:string` instead under coalesced access
-(Section 6.2), at the property's per-tag cardinality.
+(Section 6); such a branch is expressed by a locale variant (Section 5.4). A localised step yields `xsd:string` instead
+under coalesced access (Section 6.2), at the property's per-tag cardinality.
 
 An effective type is a derived type, not an expected type (Section 3.1), and is never materialised as a value set
 (Section 4.2): a mixed effective type that includes localised text is consumed per branch by a selection (Section 5.7)
@@ -1694,7 +1742,8 @@ All backends naturally produce multi-valued results → JSON arrays.
 ### A.3.3. Union Properties
 
 Union properties are transparent at the backend level: path resolution collects whatever values are available across all
-branches, and missing branches contribute no values. The "no property / no value → `undefined`" rule applies per branch.
+branches, each value belonging to exactly one branch (the variants being expected disjoint, Section 3.1), and missing
+branches contribute no values. The "no property / no value → `undefined`" rule applies per branch.
 
 ### A.3.4. Unknown Property Guards
 
@@ -1746,8 +1795,8 @@ The query builder admits only in-domain values to the transform, by one of two m
 
 GQL scalar functions **throw** on a mismatch, so the guard is mandatory there to obtain `undefined` rather than a query
 error; SPARQL 1.1, by contrast, resolves a scalar mismatch to unbound natively, so a guard is needed there only for
-aggregates. The same per-value guards realise per-branch constraint matching over union-typed targets (Section 5.7),
-admitting the values of the branch the bound or option type selects.
+aggregates. The same per-value guards realise constraint matching over union-typed targets (Section 5.7), admitting the
+values of the single branch the bound or option is mapped to and excluding the rest.
 
 The `year` from time and `hours` from date rows above are this same case at subtype granularity: a temporal transform's
 domain is the subtypes that bear the component it extracts, so `hours` over a `date` is out-of-domain (Section 5.8.2.4).

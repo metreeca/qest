@@ -55,14 +55,14 @@ import type {
 	Selection,
 	Template,
 	Transform,
-	Union
+	Union, UnionKey
 } from "./template.js";
 
 
 /**
- * Matches a {@link Union} branch index: a canonical non-negative integer string with no leading zeros.
+ * Matches a {@link Union} key: a canonical non-negative integer string with no leading zeros.
  */
-const UnionIndexPattern = /^(0|[1-9]\d*)$/;
+const UnionKeyPattern = /^(0|[1-9]\d*)$/;
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -133,7 +133,7 @@ export function isModel(value: unknown): value is Model {
 /**
  * Checks if a value is a {@link Query}.
  *
- * Accepts a tuple whose first element is the per-item placeholder (a {@link Union} (*indexed* form), a
+ * Accepts a tuple whose first element is the per-item placeholder (a {@link Union}, a
  * {@link Placeholder}, or a {@link Projection}), optionally followed by a {@link Selection} carrying filtering,
  * ordering, and pagination constraints.
  *
@@ -170,25 +170,26 @@ export function isLocale(value: unknown): value is Locale {
 /**
  * Checks if a value is a {@link Union}.
  *
- * Accepts an object whose keys are non-negative integer strings, each mapping to a per-branch {@link Placeholder}.
+ * Accepts an object whose keys are non-negative integer strings, each mapping to a per-branch {@link Placeholder} or
+ * {@link Locale} localised-text map.
  *
  * @param value The value to check
  *
  * @returns True if `value` is a valid Union; false otherwise
  */
 export function isUnion(value: unknown): value is Union {
-	return isObject(value, (v, k) => isUnionIndex(k) && isPlaceholder(v));
+	return isObject(value, (v, k) => isUnionKey(k) && (isPlaceholder(v) || isLocale(v)));
 }
 
 /**
- * Checks if a value is a {@link Union} branch index.
+ * Checks if a value is a {@link UnionKey | Union variant key}.
  *
  * @param value The value to check
  *
  * @returns True if `value` is a canonical non-negative integer string with no leading zeros; false otherwise
  */
-export function isUnionIndex(value: unknown): value is `${number}` {
-	return isString(value) && UnionIndexPattern.test(value);
+export function isUnionKey(value: unknown): value is UnionKey {
+	return isString(value) && UnionKeyPattern.test(value);
 }
 
 

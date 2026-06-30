@@ -9,7 +9,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- Add `Union` type and `isUnion`/`isUnionIndex` guards for indexed union-typed property templates with per-branch
+- Add `Union` type and `isUnion`/`isUnionKey` guards for keyed union-typed property templates with per-branch
 	placeholders
 - Add `Projection` type and `isProjection` guard for collection property projections mapping bindings to cell models
 - Add `Selection` type and `isSelection` guard for collection filtering, sorting, and pagination constraints
@@ -43,7 +43,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Extend `Binding` to accept a plain `Identifier` as shorthand for `{id}={id}`
 - Drop the `Indexed`/`Indexable` property wrapper from `Resource` and `Template`; property values are now optional
 	(`undefined | Values` and `undefined | Placeholders`)
-- Restrict `Union` template branches to `Placeholder`; `Locale` is no longer admitted as a union branch
+- Identify `Union` template variants by intrinsic type identity matched against the property's declared variants
+	rather than positional index, and admit a `Locale` map as a branch within a `Projection` path crossing a union step
+	to a localised property
 - Rename the focus-ordering `Operator` from `*` to `+`
 - Replace `zxx` language tag with `und` for language-neutral values
 - Restrict `Locale` map keys to RFC 4647 basic language ranges (a subtag sequence or the standalone `*`); extended

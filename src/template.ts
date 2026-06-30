@@ -35,6 +35,7 @@
  * - {@link Query} — Collection retrieval template
  * - {@link Locale} — Localised text template (structured language-tagged value)
  * - {@link Union} — Union-typed property template
+ * - {@link UnionKey} — Union variant key
  * - {@link Projection} — Collection property projection
  * - {@link Selection} — Collection retrieval constraints
  * - {@link Binding} — Named computed expression
@@ -63,7 +64,7 @@
  * - {@link isQuery} — checks if a value is a {@link Query}
  * - {@link isLocale} — checks if a value is a {@link Locale}
  * - {@link isUnion} — checks if a value is a {@link Union}
- * - {@link isUnionIndex} — checks if a value is a {@link Union} branch index
+ * - {@link isUnionKey} — checks if a value is a {@link UnionKey | Union variant key}
  * - {@link isProjection} — checks if a value is a {@link Projection}
  * - {@link isSelection} — checks if a value is a {@link Selection}
  * - {@link isBinding} — checks if a value is a {@link Binding}
@@ -276,26 +277,20 @@
  *
  * ## Union Branches
  *
- * For properties whose declared range is a union type, the *indexed* form of a {@link Union} declares
- * per-branch retrieval by mapping non-negative integer positions to the {@link Placeholder} to fetch for
- * each variant of interest. Indices reference the variant ordering of the property's declared union type;
- * unlisted variants are skipped at runtime:
+ * For properties whose declared range is a union type, a {@link Union} declares per-branch retrieval by mapping
+ * opaque keys to the {@link Placeholder} to fetch for each variant of interest. The keys carry no positional or
+ * nominal meaning: the variant a placeholder retrieves is fixed by matching it against the property's declared
+ * variants, and an unmatched variant is skipped at runtime:
  *
  * ```typescript
  * const template: Template = {
  *   id: "",
  *   creator: {
- *     "0": { id: "", name: "" },       // first declared variant
- *     "1": { id: "", legalName: "" }   // second declared variant
+ *     "0": { id: "", name: "" },       // a person-shaped branch
+ *     "1": { id: "", legalName: "" }   // an organisation-shaped branch
  *   }
  * };
  * ```
- *
- * > [!NOTE]
- * > The fragility of positional indices under schema reordering is not a problem in practice:
- * > {@link Template}s are rarely hand-written (they typically come from tooling, code generation, or
- * > schema-driven translation), so schema reordering is handled upstream along with every other schema
- * > evolution concern.
  *
  * # Expressions
  *
@@ -363,7 +358,7 @@
  * ```
  *
  * The projection drops {@link Selection} metadata, widens collection tuples into homogeneous arrays,
- * projects the *indexed* form of a {@link Union} into a union of per-branch results, recurses through
+ * projects a {@link Union} into a union of per-branch results, recurses through
  * nested templates and collection projections, and reduces each {@link Binding} key in a nested
  * {@link Projection} to its {@link Identifier} portion, mirroring how the runtime materialises a fetched resource.
  *
@@ -538,7 +533,7 @@ export type Template = {
  * single-value and a collection-valued arm:
  *
  * - {@link Model} — single-value placeholder retrieving one property value, grouping the {@link Union}
- *   (*indexed* union form), {@link Placeholder} (non-union value), and {@link Locale} (localised text) shapes
+ *   (*keyed* union form), {@link Placeholder} (non-union value), and {@link Locale} (localised text) shapes
  * - {@link Query} — collection-valued placeholder, covering nested resource collections and
  *   tabular projections, each optionally constrained through {@link Selection}
  *
@@ -579,7 +574,7 @@ export type Placeholder =
  * of the collection-valued {@link Query}, which pairs a comparable element with a {@link Selection}. The admitted
  * forms are:
  *
- * - {@link Union} — per-branch placeholder for a union-typed slot (*indexed* form)
+ * - {@link Union} — per-branch placeholder for a union-typed slot (*keyed* form)
  * - {@link Placeholder} — single non-union value placeholder: a {@link Literal} or {@link IRI} primitive, or a nested
  *   {@link Template} expanding a linked resource inline
  * - {@link Locale} — localised text placeholder, a tag-range-keyed map yielding a single structured {@link Text} value
@@ -606,7 +601,7 @@ export type Model =
  *
  * The accepted forms are:
  *
- * - `readonly [Union, Selection?]` — a union-typed element ({@link Union} *indexed* form), optionally followed by a
+ * - `readonly [Union, Selection?]` — a union-typed element ({@link Union} *keyed* form), optionally followed by a
  *   {@link Selection}
  * - `readonly [Placeholder, Selection?]` — a per-item {@link Placeholder} (a {@link Literal} or {@link IRI}
  *   primitive, or a nested {@link Template}), optionally followed by a {@link Selection}
@@ -677,40 +672,30 @@ export type Locale =
 /**
  * Union-typed property template.
  *
- * An object whose keys are non-negative integer strings, each indexing a position in the variant ordering of the
- * property's declared union type and mapping to the per-branch {@link Placeholder} to retrieve.
- * Every requested branch must be included under the index matching its position in the schema's variant ordering;
- * omitted indices are skipped during retrieval. A non-union slot, or one where branch details are immaterial, uses
- * a plain {@link Placeholder}, the sibling {@link Model} form, rather than a `Union`.
+ * An object whose keys are {@link UnionKey | opaque non-negative integer strings}, each mapping to one branch's value
+ * to retrieve. The keys only label the alternatives: the variant a branch retrieves is fixed by matching it against the
+ * property's declared variants, never by its key, and an unmatched variant is skipped. Because the keys are immaterial,
+ * reordering or renaming variants in the source declaration leaves existing templates valid, as long as each branch
+ * still singles out exactly one variant. A non-union slot uses a plain {@link Placeholder} directly, the sibling
+ * {@link Model} form, rather than a `Union`.
  *
- * Variant indices are positional references into the union type's declared variant ordering; inserting or
- * reordering variants in the source declaration is a breaking change for every template that indexes past the
- * change.
- *
- * > [!NOTE]
- * > The fragility of positional indices under schema reordering is not a problem in practice: {@link Template}s
- * > are rarely hand-written (they typically come from tooling, code generation, or schema-driven translation),
- * > so schema reordering is handled upstream along with every other schema evolution concern.
- *
- * A branch holds a {@link Placeholder}, not a nested `Union`, so a `Union` cannot be stacked directly inside another
- * `Union`; nested per-branch retrieval remains expressible through a {@link Template} whose own properties carry their
- * own `Union`s. A branch carries a single value, never a collection: cardinality stays a property-level concern,
- * expressed by wrapping the whole `Union` in a {@link Query}.
+ * A branch holds a {@link Placeholder}, never a nested `Union`: a `Union` cannot stack directly inside another, though
+ * a branch {@link Template} may carry its own `Union`s. A branch is a single value, never a collection: cardinality
+ * stays a property-level concern, expressed by wrapping the whole `Union` in a {@link Query}.
  *
  * > [!NOTE]
- * > Localised text is never a union branch. {@link resource!Text} is a single localised text map
- * > coalescing a property's tagged values; a multi-valued union merges its branches into the property's
- * > {@link resource!Value | Value} set, and a localised text map is not a `Value`, so it cannot appear as a `Value[]`
- * > element mixed with the literals, references, and resources from other branches. Localised properties are
- * > retrieved through
- * > {@link Locale}, a sibling {@link Model} form, which yields the localised text map as a single
- * > value.
+ * > A branch may also be a {@link Locale} map, but only within a {@link Projection}: when a binding's
+ * > {@link Expression} traverses a multi-step path through a union-typed step to a downstream localised property and
+ * > addresses it structurally, that branch retrieves a {@link resource!Text} map. A `Locale` branch never arises when
+ * > retrieving a resource property directly, where a localised property is retrieved through {@link Locale} as a
+ * > sibling {@link Model} form rather than as a union branch.
  *
  * > [!NOTE]
  * > The `` `${number}` `` key space is disjoint from the {@link Binding} / {@link Identifier} key spaces used by
  * > {@link Template} and {@link Projection}, so form discrimination is structural and unambiguous for fresh object
- * > literals. Runtime validators enforce numeric-key wellformedness (no decimals, negatives, or exponential forms)
- * > and index-range compliance against the property's declared variants.
+ * > literals. Runtime validators enforce numeric-key wellformedness (no decimals, negatives, or exponential forms);
+ * > resolving which variant each placeholder retrieves is a processor concern, matched against the out-of-band
+ * > declared variants.
  *
  * > [!NOTE]
  * > An empty `Union` object (`{}`), whether it appears directly as a property value or as a collection
@@ -720,13 +705,28 @@ export type Locale =
  * > whole union is elided by the same rule.
  *
  * @see {@link Model} for the single-value umbrella admitting this and the other non-collection forms
- * @see [Positional Union Indices](./index.md#54-union) for the design rationale
+ * @see [Union](./index.md#54-union) for the design rationale
  */
 export type Union = {
 
-	readonly [variant: `${number}`]: Placeholder
+	readonly [variant: UnionKey]: Placeholder | Locale
 
 }
+
+/**
+ * Union variant key.
+ *
+ * The key type of a {@link Union} map: an opaque non-negative integer string (`"0"`, `"1"`, …) labelling one variant
+ * branch. The key only names the branch; which variant that branch retrieves is fixed by matching it against the
+ * property's declared variants, never by the key value, so renaming or reordering keys leaves an existing template
+ * valid. The `` `${number}` `` key space is disjoint from the {@link Binding} / {@link Identifier} key spaces used by
+ * {@link Template} and {@link Projection}, keeping form discrimination structural and unambiguous.
+ *
+ * @see {@link Union} for the enclosing variant map
+ * @see {@link isUnionKey} for the runtime wellformedness guard
+ */
+export type UnionKey =
+	| `${number}`;
 
 
 /**
@@ -738,7 +738,7 @@ export type Union = {
  * time (for example, conditionally included aggregates). A `Model` cell takes one of the forms admitted by
  * [Projection Composition](./index.md#56-projection):
  *
- * - a {@link Union} placeholder — a per-branch *indexed* form, when the bound expression resolves to
+ * - a {@link Union} placeholder — a per-branch *keyed* form, when the bound expression resolves to
  *   a union-typed value
  * - a {@link Placeholder} — a {@link Literal}, an {@link IRI} reference to a linked resource, or a
  *   nested {@link Template} for inline resource expansion
@@ -1411,7 +1411,7 @@ export type Instance<T> =
  */
 export type Index<T> =
 	keyof T extends infer K ?                              // distribute over each key
-		K extends `${number}` ? K                          // string form (`"0"`)
+		K extends UnionKey ? K                          // string form (`"0"`)
 			: K extends number ? (number extends K ? never : K)  // numeric form (`0`), excluding wide `number`
 				: never
 		: never;

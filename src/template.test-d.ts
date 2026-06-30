@@ -292,6 +292,20 @@ describe("Instance", () => {
 				expectTypeOf<Instance<{ readonly label: Indexed }>>().toEqualTypeOf<Expected>();
 			});
 
+			test("a Locale branch widens to Text alongside the other branch types", () => {
+				type Indexed = {
+					readonly "0": Locale;
+					readonly "1": { readonly name: string };
+				};
+				type Expected = {
+					readonly creator:
+						| Text
+						| { readonly name: string };
+				};
+
+				expectTypeOf<Instance<{ readonly creator: Indexed }>>().toEqualTypeOf<Expected>();
+			});
+
 			test("intersection with Selection preserves the union and discards Selection", () => {
 				type Indexed = {
 					readonly "0": { readonly id: Reference; readonly name: string };
@@ -352,7 +366,7 @@ describe("Instance", () => {
 
 		describe("nested union through templates", () => {
 
-			test("indexed union branch contains a template with another indexed union field", () => {
+			test("keyed union branch contains a template with another keyed union field", () => {
 				type Inner = {
 					readonly "0": { readonly v: string };
 					readonly "1": { readonly v: number };
@@ -370,7 +384,7 @@ describe("Instance", () => {
 				expectTypeOf<Instance<{ readonly outer: Outer }>>().toEqualTypeOf<Expected>();
 			});
 
-			test("triple-depth indexed union through nested templates", () => {
+			test("triple-depth keyed union through nested templates", () => {
 				type L3 = {
 					readonly "0": { readonly v: string };
 					readonly "1": { readonly v: number };
@@ -392,7 +406,7 @@ describe("Instance", () => {
 
 		describe("union with singleton tuples", () => {
 
-			test("indexed union branch contains a primitive multi-valued field", () => {
+			test("keyed union branch contains a primitive multi-valued field", () => {
 				type Outer = {
 					readonly "0": { readonly tags: readonly [string] };
 					readonly "1": { readonly scores: readonly [number] };
@@ -406,7 +420,7 @@ describe("Instance", () => {
 				expectTypeOf<Instance<{ readonly source: Outer }>>().toEqualTypeOf<Expected>();
 			});
 
-			test("indexed union branch contains a template multi-valued field with Selection", () => {
+			test("keyed union branch contains a template multi-valued field with Selection", () => {
 				type Item = { readonly id: Reference; readonly name: string };
 				type Outer = {
 					readonly "0": { readonly items: readonly [Item, Selection] };
@@ -425,7 +439,7 @@ describe("Instance", () => {
 
 		describe("union with undefined", () => {
 
-			test("undefined | indexed union preserves undefined and projects the union", () => {
+			test("undefined | keyed union preserves undefined and projects the union", () => {
 				type Outer = {
 					readonly "0": { readonly name: string };
 					readonly "1": { readonly count: number };
@@ -437,7 +451,7 @@ describe("Instance", () => {
 				expectTypeOf<Instance<{ readonly creator: undefined | Outer }>>().toEqualTypeOf<Expected>();
 			});
 
-			test("indexed union branch with undefined-able field preserves undefined in the branch", () => {
+			test("keyed union branch with undefined-able field preserves undefined in the branch", () => {
 				type Outer = {
 					readonly "0": { readonly name: undefined | string };
 					readonly "1": { readonly id: Reference };
@@ -451,7 +465,7 @@ describe("Instance", () => {
 				expectTypeOf<Instance<{ readonly source: Outer }>>().toEqualTypeOf<Expected>();
 			});
 
-			test("undefined | readonly [indexed union, Selection] preserves undefined and widens", () => {
+			test("undefined | readonly [keyed union, Selection] preserves undefined and widens", () => {
 				type Outer = {
 					readonly "0": { readonly name: string };
 					readonly "1": { readonly legalName: string };
@@ -497,7 +511,7 @@ describe("Instance", () => {
 
 		describe("union branches inside tuple boundaries", () => {
 
-			test("singleton tuple of indexed union & Selection with template branches containing nested templates", () => {
+			test("singleton tuple of keyed union & Selection with template branches containing nested templates", () => {
 				type Inner = { readonly id: Reference; readonly name: string };
 				type Indexed = {
 					readonly "0": { readonly inline: Inner };
@@ -514,7 +528,7 @@ describe("Instance", () => {
 					.toEqualTypeOf<Expected>();
 			});
 
-			test("singleton tuple of indexed union & Selection with branches containing computed bindings", () => {
+			test("singleton tuple of keyed union & Selection with branches containing computed bindings", () => {
 				type Indexed = {
 					readonly "0": { readonly "vendorName=vendor.name": string };
 					readonly "1": { readonly "count=count:": number };

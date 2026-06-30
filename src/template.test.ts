@@ -34,7 +34,7 @@ import {
 	isTemplate,
 	isTransform,
 	isUnion,
-	isUnionIndex,
+	isUnionKey,
 	isVacuous
 } from "./template.core.js";
 import {
@@ -509,11 +509,13 @@ describe("guards", () => {
 			expect(isUnion({ "0": 42 })).toBe(true);
 		});
 
-		it("should reject a localised per-branch value", () => {
-			// localised text is not a union branch: a hyphenated tag is not an Identifier (so the
-			// tag map is not a Template/Placeholder), and Locale is no longer an admitted union branch
-			expect(isUnion({ "0": { "en-US": "x" } })).toBe(false);
-			expect(isUnion({ "0": { "en-US": ["x"] }, "1": { id: "" } })).toBe(false);
+		it("should accept a localised per-branch value", () => {
+			// localised text is an admitted union branch: a qualified-tag or array-form Locale that a
+			// Template/Placeholder would reject is now accepted through the Locale arm of the branch type
+			expect(isUnion({ "0": { "en-US": "x" } })).toBe(true);
+			expect(isUnion({ "0": { "en-US": ["x"] }, "1": { id: "" } })).toBe(true);
+			expect(isUnion({ "0": { en: [""] } })).toBe(true);
+			expect(isUnion({ "0": { "*": "" }, "1": "" })).toBe(true);
 		});
 
 		it("should reject indexed form with non-integer keys", () => {
@@ -539,42 +541,42 @@ describe("guards", () => {
 
 	});
 
-	describe("isUnionIndex", () => {
+	describe("isUnionKey", () => {
 
 		it("should accept canonical non-negative integer strings", () => {
-			expect(isUnionIndex("0")).toBe(true);
-			expect(isUnionIndex("10")).toBe(true);
-			expect(isUnionIndex("99")).toBe(true);
+			expect(isUnionKey("0")).toBe(true);
+			expect(isUnionKey("10")).toBe(true);
+			expect(isUnionKey("99")).toBe(true);
 		});
 
 		it("should reject leading zeros", () => {
-			expect(isUnionIndex("00")).toBe(false);
-			expect(isUnionIndex("01")).toBe(false);
+			expect(isUnionKey("00")).toBe(false);
+			expect(isUnionKey("01")).toBe(false);
 		});
 
 		it("should reject non-integer numeric forms", () => {
-			expect(isUnionIndex("3.14")).toBe(false);
-			expect(isUnionIndex("1e10")).toBe(false);
+			expect(isUnionKey("3.14")).toBe(false);
+			expect(isUnionKey("1e10")).toBe(false);
 		});
 
 		it("should reject negative and signed values", () => {
-			expect(isUnionIndex("-5")).toBe(false);
-			expect(isUnionIndex("+1")).toBe(false);
+			expect(isUnionKey("-5")).toBe(false);
+			expect(isUnionKey("+1")).toBe(false);
 		});
 
 		it("should reject surrounding whitespace", () => {
-			expect(isUnionIndex(" 0")).toBe(false);
-			expect(isUnionIndex("0 ")).toBe(false);
+			expect(isUnionKey(" 0")).toBe(false);
+			expect(isUnionKey("0 ")).toBe(false);
 		});
 
 		it("should reject the empty string", () => {
-			expect(isUnionIndex("")).toBe(false);
+			expect(isUnionKey("")).toBe(false);
 		});
 
 		it("should reject non-string values", () => {
-			expect(isUnionIndex(0)).toBe(false);
-			expect(isUnionIndex(null)).toBe(false);
-			expect(isUnionIndex(undefined)).toBe(false);
+			expect(isUnionKey(0)).toBe(false);
+			expect(isUnionKey(null)).toBe(false);
+			expect(isUnionKey(undefined)).toBe(false);
 		});
 
 	});
