@@ -245,8 +245,8 @@ The following terms are used throughout this document:
   (Section 4.2) resolves to `undefined`
 - **template**: a JSON object specifying which properties to retrieve from a resource
 - **placeholder**: a template value standing in for a property value, signalling its expected type rather than carrying
-  retrieved data; a literal placeholder is itself a legal value of that type, by which a union-typed property (Section
-  5.4) matches it to a variant
+  retrieved data. Its value is immaterial and need not be a legal value of that type; only its kind (literal, reference,
+  or template) matters, matching it to the type-compatible variants of a union-typed property (Section 5.4)
 - **selection**: a set of constraints (filtering, sorting, pagination) applied to a collection
 - **expression**: a property path, optionally piped through transforms, targeted by selection and projection keys
 - **binding**: a projection key naming a computed expression (a plain identifier, or `name=expression`)
@@ -300,15 +300,24 @@ expected type is one of:
 
 Alongside its type, each property carries an expected **cardinality**, single- or multi-valued.
 
-Because the variants are expected disjoint, any value resolved against them, whether a state value (Section 3.2), a
-template placeholder (Sections 5.2 and 5.4), or a selection bound or option (Section 5.7), matches at most one; matching
-tests value-domain membership, so variants narrowed within one processing type are told apart by value, not by type
-alone. Matching is the single classification step that drives mapping: a value matching exactly one variant is mapped to
-that variant's type (Section 3.2); a value matching no variant is **unsatisfiable**, and one matching several is
-**ambiguous**. Processors MUST reject an unsatisfiable or ambiguous match wherever this specification calls for one (
-Sections 3.2, 5.4, and 5.7). Disjointness is a property of the declared variants, supplied out of band like the variants
-themselves, and adds no conformance requirement of its own; a processor that observes a multiple match at runtime
-reports it as ambiguous.
+Two regimes resolve a value against the variants, according to whether it carries content:
+
+- a **data value**, whether a state value on ingress (Section 3.2) or a selection bound or option (Section 5.7), carries
+  actual content and, the variants being disjoint, MUST match exactly one. Matching tests value-domain membership, so
+  variants narrowed within a single processing type are told apart by value, not by type alone, and the matched variant
+  fixes the value's processing type (Section 3.2). A value matching no variant is **unsatisfiable**, one matching
+  several is **ambiguous**, and processors MUST reject either wherever this specification calls for such a match (
+  Sections 3.2 and 5.7);
+- a **template placeholder** (Sections 5.2 and 5.4) carries no content, its value immaterial. It matches a variant by
+  type compatibility alone, a literal or reference by processing kind and a nested template by structure (Section 5.4);
+  any value-domain narrowing on the variant (Section 3.1) is ignored, and the placeholder need not be a legal value. It
+  matches every type-compatible variant and MAY match more than one, retrieving each. Like a data value, it MUST match
+  at least one variant: one matching none is **unsatisfiable** and MUST be rejected, and a union placeholder (Section
+  5.4) applies this to each of its alternatives.
+
+Disjointness is a property of the declared variants, supplied out of band like the variants themselves, and adds no
+conformance requirement of its own; a processor that observes a multiple match of a data value at runtime reports it as
+ambiguous.
 
 Expected types are supplied out of band, whether declared by a static property schema or derived dynamically by the
 application; this specification constrains neither their source nor their provisioning, and they add no conformance
@@ -715,11 +724,11 @@ A **template** is a JSON object specifying which properties to retrieve from a r
 resources.
 
 Template properties use **placeholder values** (Section 5.2) that indicate the expected type. The value of a literal
-placeholder is never returned, but it MUST be a legal value of the property's type: for a single-type property any legal
-value serves, while for a union-typed property (Section 5.4) the value selects the matching variant. A nested object is
-instead a template in its own right, whose structure does matter: it selects the properties of the linked resource to
-expand, and an empty one is elided
-(Section 5).
+placeholder is never returned and is immaterial: it need not be a legal value of the property's type, only its kind
+matters, matching a single-type property of that kind and, for a union-typed property (Section 5.4), every variant of
+that kind. A nested object is instead a template in its own right, whose structure does matter: it selects the
+properties of the linked resource to expand and, over a union-typed property, matches the variants it structurally
+fits (Section 5.4); an empty one is elided (Section 5).
 
 ```text
 GET /products/42?{url-encoded-template}
@@ -763,17 +772,18 @@ A **placeholder** stands in for one property value:
 - **Reference placeholder**: a relative IRI reference [RFC3987], requesting a linked resource identifier (Section 4.2)
 - **Template placeholder**: a nested object (Section 5.1), requesting inline expansion of the linked resource
 
-Placeholder values MUST match the expected type of their property keys (Section 3.1), a literal moreover lying within
-the expected value domain. Processors MUST reject templates that provide mismatched placeholders with an error.
+A placeholder's value is immaterial and need not lie within the expected value domain (Section 3.1); only its kind
+matters. A placeholder MUST, by kind, match at least one variant of its property; one matching none can return nothing
+and is unsatisfiable, and MUST be rejected, as a data value is (Sections 3.2 and 5.7).
 
-A placeholder stands for data and never carries it back: its value is never returned. A literal placeholder MUST
-nonetheless be a legal value of its property's type, the value by which a union-typed property matches it to a variant
-(Section 5.4); for a single-type property any legal value serves. A reference or template placeholder conveys only its
-kind. A reference placeholder MUST match the `IRI-reference` production of [RFC3987], which admits the empty string
-together with the relative, root-relative, and absolute forms, excluding only a string that could not reference a
-resource; a placeholder outside the production is mismatched and is rejected as above. Reference values proper, the
-options and operands of a selection (Section 5.7), are instead resolved on decoding (Section 5) and are absolute
-thereafter.
+A placeholder stands for data and never carries it back: its value is never returned and is immaterial. A literal
+placeholder need not be a legal value of its property's type; only its kind matters, and over a union-typed property
+that kind is what matches it to a variant (Section 5.4), a single-type property admitting any value of the kind. A
+reference or template placeholder likewise conveys only its kind. A string matches a reference variant only when it
+satisfies the `IRI-reference` production of [RFC3987], which admits the empty string together with the relative,
+root-relative, and absolute forms, excluding only a string that could not reference a resource; a string outside it
+matches no reference variant. Reference values proper, the options and operands of a selection
+(Section 5.7), are instead resolved on decoding (Section 5) and are absolute thereafter.
 
 The placeholder for a multi-valued property is a tuple, whose array form signals multi-valued cardinality. The first
 element is the per-item template; an optional second element is a collection-wide selection (Section 5.7) that filters,
@@ -857,13 +867,15 @@ never wrapped in a collection.
 
 The keys are opaque: they label the alternatives but carry no positional or nominal meaning. Keys MUST be non-negative
 integer strings (no decimals, negatives, or exponential forms), a namespace disjoint from property identifiers, and a
-processor MUST NOT read positional meaning into them. Each value is an alternative placeholder, and the variant it
-retrieves is fixed by matching the placeholder against the property's variants (Section 5.2), not by the key, the
-variants being expected disjoint (Section 3.1): a processor MUST reject an alternative that matches no variant as
-unsatisfiable, and one that matches several as ambiguous, admitting it only when it singles out exactly one variant. A
-literal alternative is matched by value-domain membership (Section 3.1), so variants sharing a processing type are
-addressed by supplying a legal value of the intended branch (Section 5.2), while a reference or template alternative is
-matched by kind and shape. Variants left unmatched are skipped at retrieval, contributing no values.
+processor MUST NOT read positional meaning into them. Each value is an alternative placeholder, and the branches it
+retrieves are fixed by matching the placeholder against the property's variants (Section 5.2), not by the key. Matching
+is by kind, not by value: a literal alternative matches every variant of its processing kind, a reference alternative
+every reference variant, and a template alternative every nested-resource variant whose type its properties are valid on
+(Section 5.2). A placeholder's value is immaterial and need not be a legal value of any variant. An alternative MAY
+match more than one variant, retrieving each, but like any placeholder MUST match at least one: one matching no variant
+can return nothing and is unsatisfiable, and MUST be rejected (Sections 3.1 and 5.2). A literal or reference alternative
+does not tell same-kind variants apart, while a template's structure discriminates the resource variants it fits.
+Variants left unmatched are skipped at retrieval, contributing no values.
 
 ```json
 {
@@ -881,9 +893,10 @@ matched by kind and shape. Variants left unmatched are skipped at retrieval, con
 }
 ```
 
-Where variants share a processing type, the alternative's value singles out the branch (Section 3.1): here `region` is
-either an ISO 3166 alpha-2 country code or an internal macro-zone code, two disjoint string domains, so the legal value
-`"US"` selects the country branch and `"EMEA"` the zone branch:
+Where variants share a processing type, a placeholder matches them all by kind, its value immaterial: here `region` has
+two string branches, an ISO 3166 alpha-2 country code and an internal macro-zone code. A single string alternative
+already matches both, so retrieval returns whichever branch the stored value belongs to; the values `"US"` and `"EMEA"`
+below are inert placeholders that select nothing, the two slots being equivalent:
 
 ```json
 {
@@ -1039,13 +1052,14 @@ value is on ingress (Section 3.2): being expected disjoint (Section 3.1), the va
 and the processor maps it to that branch's type. A bound or option matching no variant is unsatisfiable and MUST be
 rejected, and one matching several is ambiguous and MUST be rejected (a `null` option is typeless and exempt, Section
 5.7.3). The matched branch fixes the regime: a value matches when it lies on that branch and the operator's regime holds
-there, per the tables below; values on other branches are out of domain (Section 5.8.2) and contribute no match. Since
-bounds are literals (Section 5), comparison and text search only ever select a literal branch; set matching and sort
-focus (Sections 5.7.3 and 5.7.4) carry options, so the option's kind selects the branch: a literal option a literal
-branch, a reference option a reference branch, and a tagged option the localised text branch, with a `null` option
-selecting none and matching absence (Section 5.7.3); sort (Section 5.7.5), which carries no bound, instead orders all
-branches within the total order's tiers, selecting none. Appendix A.4.1's type guards realise this single-branch
-selection on the target backends.
+there, per the tables below; values on other branches are out of domain (Section 5.8.2) and contribute no match. Since a
+comparison bound is a literal (Section 5), comparison (Section 5.7.1) selects the literal branch its bound maps to; text
+search (Section 5.7.2) is the exception, its operand a plain search string rather than a typed bound, so it selects no
+single branch but applies to every `xsd:string` branch at once (Section 5.7.2); set matching and sort focus (Sections
+5.7.3 and 5.7.4) carry options, so the option's kind selects the branch: a literal option a literal branch, a reference
+option a reference branch, and a tagged option the localised text branch, with a `null` option selecting none and
+matching absence (Section 5.7.3); sort (Section 5.7.5), which carries no bound, instead orders all branches within the
+total order's tiers, selecting none. Appendix A.4.1's type guards realise this branch selection on the target backends.
 
 A constraint that no resource can satisfy (for example `null` beside a present value under `!`, Section 5.7.3) MAY be
 short-circuited to an empty result set rather than evaluated.
@@ -1102,6 +1116,8 @@ defeat numeric indexes, contrary to the native-alignment principle (Appendix A.1
 
 - The search string is split into tokens on whitespace.
 - A value matches when it contains every token as a substring; token order is not significant.
+- The search string is a plain pattern, not a data value: it is not resolved against the target's variants (Section
+  3.1), so over a union-typed target it matches on every `xsd:string` branch rather than selecting one.
 - Appendix A.2.5 maps substring matching onto the target backends.
 
 ### 5.7.3. Set Matching

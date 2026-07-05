@@ -43,9 +43,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Extend `Binding` to accept a plain `Identifier` as shorthand for `{id}={id}`
 - Drop the `Indexed`/`Indexable` property wrapper from `Resource` and `Template`; property values are now optional
 	(`undefined | Values` and `undefined | Placeholders`)
-- Identify `Union` template variants by intrinsic type identity matched against the property's declared variants
-	rather than positional index, and admit a `Locale` map as a branch within a `Projection` path crossing a union step
-	to a localised property
+- Match `Union` template placeholders against the property's declared variants by type compatibility alone, their value
+	immaterial rather than positional index or value-domain membership: a branch retrieves every type-compatible variant,
+	and one matching no variant is unsatisfiable and rejected; admit a `Locale` map as a branch within a `Projection`
+	path crossing a union step to a localised property
 - Rename the focus-ordering `Operator` from `*` to `+`
 - Replace `zxx` language tag with `und` for language-neutral values
 - Restrict `Locale` map keys to RFC 4647 basic language ranges (a subtag sequence or the standalone `*`); extended

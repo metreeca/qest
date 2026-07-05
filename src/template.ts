@@ -673,11 +673,13 @@ export type Locale =
  * Union-typed property template.
  *
  * An object whose keys are {@link UnionKey | opaque non-negative integer strings}, each mapping to one branch's value
- * to retrieve. The keys only label the alternatives: the variant a branch retrieves is fixed by matching it against the
- * property's declared variants, never by its key, and an unmatched variant is skipped. Because the keys are immaterial,
- * reordering or renaming variants in the source declaration leaves existing templates valid, as long as each branch
- * still singles out exactly one variant. A non-union slot uses a plain {@link Placeholder} directly, the sibling
- * {@link Model} form, rather than a `Union`.
+ * to retrieve. The keys only label the alternatives: the variants a branch retrieves are fixed by matching it, by type
+ * compatibility, against the property's declared variants, never by its key; a variant left unmatched by any branch is
+ * skipped. Matching is type-only, so a branch may match several same-typed variants, retrieving each, and its value is
+ * immaterial; a branch matching no variant is unsatisfiable and rejected. Because the keys are immaterial, reordering
+ * or renaming variants in the source declaration leaves existing templates valid, as long as each branch still matches
+ * at least one variant. A non-union slot uses a plain {@link Placeholder} directly, the sibling {@link Model} form,
+ * rather than a `Union`.
  *
  * A branch holds a {@link Placeholder}, never a nested `Union`: a `Union` cannot stack directly inside another, though
  * a branch {@link Template} may carry its own `Union`s. A branch is a single value, never a collection: cardinality
