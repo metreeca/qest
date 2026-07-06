@@ -13,6 +13,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 	placeholders
 - Add `Projection` type and `isProjection` guard for collection property projections mapping bindings to cell models
 - Add `Selection` type and `isSelection` guard for collection filtering, sorting, and pagination constraints
+- Add `Order` type, `isOrder` guard, and `getOrderPrecedence`/`getOrderDirection` accessors for `Selection` sort order
+	direction and precedence
 - Add `encodeSelection`/`decodeSelection` codecs for `Selection` form serialization
 - Add `Placeholders`/`Placeholder` types and `isPlaceholders`/`isPlaceholder` guards for property template value forms
 - Add `TransformSignature` type and expose per-transform signatures through the `Transforms` registry

@@ -46,6 +46,7 @@
  * - {@link Option} — Constraint option
  * - {@link Probe} — Parsed {@link Selection} or {@link Projection} key
  * - {@link Operator} — Constraint operator symbols
+ * - {@link Order} — Sort order direction and precedence
  * - {@link Transform} — Value transforms for computed {@link Expression | expressions}
  * - {@link TransformSignature} — Static typing profile of a {@link Transform}
  *
@@ -71,12 +72,18 @@
  * - {@link isExpression} — checks if a value is an {@link Expression}
  * - {@link isOptions} — checks if a value is an {@link Options} set
  * - {@link isOption} — checks if a value is an {@link Option}
+ * - {@link isOrder} — checks if a value is an {@link Order}
  * - {@link isProbe} — checks if a value is a {@link Probe}
  * - {@link isSelector} — checks if a value is a valid {@link Selection} entry key
  * - {@link isOperator} — checks if a value is an {@link Operator}
  * - {@link isTransform} — checks if a value is a {@link Transform}
  * - {@link isAggregate} — checks whether a value is an aggregate {@link Transform}
  * - {@link isVacuous} — checks if a value is vacuous per the template elision rule
+ *
+ * **Accessors**
+ *
+ * - {@link getOrderPrecedence} — resolves an {@link Order} to its sort precedence
+ * - {@link getOrderDirection} — resolves an {@link Order} to its sort direction
  *
  * **Codecs**
  *
@@ -935,16 +942,15 @@ export type Selection = {
 	/**
 	 * Sort order.
 	 *
-	 * Orders results by expression value according to the value-ordering rules; the sign gives direction (positive for
-	 * ascending, negative for descending); the absolute value gives 1-based precedence (1 is highest priority); zero
-	 * is ignored; `"asc"` and `"desc"` are shorthands for `±1`.
+	 * Orders results by expression value according to the value-ordering rules. The {@link Order} value gives the sort
+	 * direction and its precedence among multiple sort keys.
 	 *
 	 * > [!WARNING]
 	 * > `^` requires a single-valued {@link Literal} sort key (`boolean`, `number`, `string`). A {@link Reference} or
 	 * > nested-resource target is not sortable. A multi-valued literal property is likewise invalid directly: reduce
 	 * > it explicitly with a `min`/`max` aggregate, evaluated under grouped semantics.
 	 */
-	readonly [order: `^${Expression}`]: "asc" | "desc" | number
+	readonly [order: `^${Expression}`]: Order
 
 
 	/**
@@ -1115,6 +1121,24 @@ export type Option =
 	| null
 	| Literal
 	| Reference
+
+
+/**
+ * Sort order.
+ *
+ * Direction and precedence of a {@link Selection} sort order (`^`) criterion:
+ *
+ * - `"asc"` — ascending, shorthand for `+1`
+ * - `"desc"` — descending, shorthand for `-1`
+ * - `number` — the sign gives direction (positive ascending, negative descending) and the absolute value gives
+ *   1-based precedence among multiple sort keys (`1` is highest priority); zero is ignored
+ *
+ * Ordering follows the total value-ordering rules defined in [Sort Order](./index.md#575-sort-order).
+ */
+export type Order =
+	| "asc"
+	| "desc"
+	| number;
 
 
 /**

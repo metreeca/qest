@@ -24,6 +24,7 @@ import {
 	isOperator,
 	isOption,
 	isOptions,
+	isOrder,
 	isPlaceholder,
 	isPlaceholders,
 	isProbe,
@@ -993,6 +994,64 @@ describe("guards", () => {
 			it("should reject arrays", () => {
 				expect(isOption([])).toBe(false);
 				expect(isOption(["a", "b"])).toBe(false);
+			});
+
+		});
+
+	});
+
+	describe("isOrder", () => {
+
+		describe("valid orders", () => {
+
+			it("should accept direction shorthands", () => {
+				expect(isOrder("asc")).toBe(true);
+				expect(isOrder("desc")).toBe(true);
+			});
+
+			it("should accept signed integer precedences", () => {
+				expect(isOrder(1)).toBe(true);
+				expect(isOrder(2)).toBe(true);
+				expect(isOrder(-1)).toBe(true);
+				expect(isOrder(-3)).toBe(true);
+			});
+
+			it("should accept zero", () => {
+				expect(isOrder(0)).toBe(true);
+			});
+
+		});
+
+		describe("invalid orders", () => {
+
+			it("should reject non-integer numbers", () => {
+				expect(isOrder(1.5)).toBe(false);
+				expect(isOrder(-0.1)).toBe(false);
+				expect(isOrder(Number.NaN)).toBe(false);
+				expect(isOrder(Number.POSITIVE_INFINITY)).toBe(false);
+				expect(isOrder(Number.NEGATIVE_INFINITY)).toBe(false);
+			});
+
+			it("should reject other strings", () => {
+				expect(isOrder("")).toBe(false);
+				expect(isOrder("ascending")).toBe(false);
+				expect(isOrder("ASC")).toBe(false);
+				expect(isOrder("1")).toBe(false);
+			});
+
+			it("should reject null and undefined", () => {
+				expect(isOrder(null)).toBe(false);
+				expect(isOrder(undefined)).toBe(false);
+			});
+
+			it("should reject booleans", () => {
+				expect(isOrder(true)).toBe(false);
+				expect(isOrder(false)).toBe(false);
+			});
+
+			it("should reject objects and arrays", () => {
+				expect(isOrder({})).toBe(false);
+				expect(isOrder([1])).toBe(false);
 			});
 
 		});

@@ -47,6 +47,7 @@ import type {
 	Operator,
 	Option,
 	Options,
+	Order,
 	Placeholder,
 	Placeholders,
 	Probe,
@@ -55,7 +56,8 @@ import type {
 	Selection,
 	Template,
 	Transform,
-	Union, UnionKey
+	Union,
+	UnionKey
 } from "./template.js";
 
 
@@ -230,8 +232,6 @@ export function isProjection(value: unknown): value is Projection {
 export function isSelection(value: unknown): value is Selection {
 	return isObject(value, (v, k) => {
 
-		// filtering
-
 		if ( k.startsWith("<=") || k.startsWith(">=") ) {
 
 			return isExpression(k.slice(2)) && isLiteral(v);
@@ -248,23 +248,15 @@ export function isSelection(value: unknown): value is Selection {
 
 			return isExpression(k.slice(1)) && isOptions(v);
 
-		}
-
-		// ordering
-
-		else if ( k.startsWith("+") ) {
+		} else if ( k.startsWith("+") ) {
 
 			return isExpression(k.slice(1)) && isOptions(v);
 
 		} else if ( k.startsWith("^") ) {
 
-			return isExpression(k.slice(1)) && (isLiteralValue(v, ["asc", "desc"]) || Number.isInteger(v));
+			return isExpression(k.slice(1)) && isOrder(v);
 
-		}
-
-		// paging
-
-		else if ( k === "@" || k === "#" ) {
+		} else if ( k === "@" || k === "#" ) {
 
 			return isNumber(v) && Number.isInteger(v) && v >= 0;
 
@@ -346,6 +338,18 @@ export function isOption(value: unknown): value is Option {
 		isLiteral,
 		isReference
 	]);
+}
+
+
+/**
+ * Checks if a value is an {@link Order}.
+ *
+ * @param value The value to check
+ *
+ * @returns True if `value` is `"asc"`, `"desc"`, or an integer; false otherwise
+ */
+export function isOrder(value: unknown): value is Order {
+	return isLiteralValue(value, ["asc", "desc"]) || Number.isInteger(value);
 }
 
 
@@ -475,4 +479,39 @@ export function isVacuous(value: unknown): value is undefined | object {
 	return value === undefined
 		|| isArray(value, isVacuous)
 		|| isObject(value, (v, k) => isSelector(k) || isVacuous(v));
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * Resolves an {@link Order} to its sort precedence.
+ *
+ * The 1-based magnitude ranking a sort key against other criteria: the `"asc"` and `"desc"` shorthands map to `1`, and
+ * a numeric order to the absolute value of its precedence (`0` when the order is zero and thus ignored).
+ *
+ * @param order The sort order to resolve
+ *
+ * @returns The non-negative precedence of `order`, or `0` when it is zero and ignored
+ *
+ * @see {@link getOrderDirection} for the signed direction
+ */
+export function getOrderPrecedence(order: Order): number {
+	return order === "asc" || order === "desc" ? 1 : Math.abs(order);
+}
+
+/**
+ * Resolves an {@link Order} to its sort direction.
+ *
+ * Maps the `"asc"` and `"desc"` shorthands to `+1` and `-1`, and reduces a numeric order to the sign of its
+ * precedence: `+1` ascending, `-1` descending, `0` when the order is zero (ignored).
+ *
+ * @param order The sort order to resolve
+ *
+ * @returns `+1` for an ascending order, `-1` for a descending order, or `0` when `order` is zero
+ *
+ * @see {@link getOrderPrecedence} for the precedence magnitude
+ */
+export function getOrderDirection(order: Order): number {
+	return order === "asc" ? 1 : order === "desc" ? -1 : Math.sign(order);
 }
