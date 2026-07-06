@@ -4,9 +4,11 @@ description: Development guidelines and conventions for the @metreeca/qest packa
 ---
 
 > [!CAUTION]
-> The `.claude/skills/rfc-editor.md` skill is **REQUIRED** for any work on the specs [`src/index.md`](../src/index.md).
-> Activate and apply it before editing: it enforces IETF editorial conventions (RFC 7322 structure, RFC 2119 / RFC 8174
-> requirement keywords, reference and citation style).
+> [`.claude/skills/rfc-editor.md`](skills/rfc-editor.md) is a **LOCAL guidelines file**, not a registered Claude Code
+> skill: **Read** it with the Read tool, do **not** invoke it via the Skill tool (`Skill(rfc-editor)` fails with
+> "Unknown skill", since registered skills must live at `.claude/skills/<name>/SKILL.md`). Reading and applying it is
+> **REQUIRED** before any work on the specs [`src/index.md`](../src/index.md): it enforces IETF editorial conventions
+> (RFC 7322 structure, RFC 2119 / RFC 8174 requirement keywords, reference and citation style).
 
 # References
 
