@@ -52,6 +52,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Restrict `Locale` map keys to RFC 4647 basic language ranges (a subtag sequence or the standalone `*`); extended
 	ranges (for example `de-*` or `*-CH`) are no longer accepted
 - Require `@metreeca/core` `^0.9.19` for RFC 4647 basic-filtering language ranges
+- Reorder the total-ordering type tiers to `xsd:boolean` < `numeric` < `temporal` < `xsd:string`, ranking comparable
+	temporal values ahead of plain strings (Sections 5.7.5, A.2.3); exclude XSD 1.1 temporal additions such as
+	`xsd:dateTimeStamp` from the `temporal` type as non-portable opaque `xsd:string`
 
 ### Removed
 

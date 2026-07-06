@@ -281,10 +281,10 @@ before any operation applies.
 
 The `temporal` type comprises the point-in-time datatypes that are component-extractable and totally ordered (the latter
 under XPath 2.0's implicit-timezone comparison) over the shared XSD 1.0 / XPath 2.0 basis of the target backends
-(Appendix A.1.1). The other XSD temporal datatypes,
-`xsd:duration` and the Gregorian partials (`xsd:gYearMonth`, `xsd:gYear`, `xsd:gMonthDay`, `xsd:gMonth`, `xsd:gDay`),
-are not processing types; such a value, if carried, is treated as an opaque `xsd:string` (equality and set matching
-only).
+(Appendix A.1.1). The other XSD 1.0 temporal datatypes, `xsd:duration` and the Gregorian partials (`xsd:gYearMonth`,
+`xsd:gYear`, `xsd:gMonthDay`, `xsd:gMonth`, `xsd:gDay`), are not processing types, and neither are the temporal
+datatypes added by XSD 1.1, such as `xsd:dateTimeStamp`, which lie outside this XSD 1.0 basis entirely; such a value, if
+carried, is treated as an opaque `xsd:string` (equality and set matching only).
 
 ## 3.1. Expected Types
 
@@ -1175,15 +1175,16 @@ first while the rest of the listing keeps its order, keeping selected items visi
 |---------------|---------------|-------------------------------------|
 | `xsd:boolean` | single-valued | ordered by the value-ordering rules |
 | `numeric`     | single-valued | ordered by the value-ordering rules |
-| `xsd:string`  | single-valued | ordered by the value-ordering rules |
 | `temporal`    | single-valued | ordered by the value-ordering rules |
+| `xsd:string`  | single-valued | ordered by the value-ordering rules |
 
 - A positive `order` sorts ascending, a negative one descending; its absolute value gives 1-based precedence (1 is
   highest) among multiple sort keys; `"asc"` and `"desc"` abbreviate `+1` and `-1`; zero is ignored.
-- The sort order is total: `undefined` first, then by processing type (`xsd:boolean` < `numeric` < `xsd:string` <
-  `temporal`), then within each type by the comparison rules (Section 5.7.1). Ranking by processing type keeps
-  `temporal` a tier distinct from `xsd:string`, though egress surfaces both as JSON strings (Section 3), so a
-  union-typed key sorts deterministically across mixed-type values.
+- The sort order is total: `undefined` first, then by processing type (`xsd:boolean` < `numeric` < `temporal` <
+  `xsd:string`), then within each type by the comparison rules (Section 5.7.1). Ranking by processing type keeps
+  `temporal` a tier distinct from `xsd:string`, ordering comparable temporal values ahead of plain strings, though
+  egress surfaces both as JSON strings (Section 3), so a union-typed key sorts deterministically across mixed-type
+  values.
 - Appendix A.2.3 maps total ordering onto the target backends.
 
 ### 5.7.6. Pagination
@@ -1616,7 +1617,11 @@ Component extraction is uniform across the target backends, with two specifics:
 The other XSD 1.0 temporal datatypes are excluded from the `temporal` type: `xsd:duration` is only partially ordered
 (XPath defines equality only), and the Gregorian partials (`xsd:gYearMonth`, `xsd:gYear`, `xsd:gMonthDay`, `xsd:gMonth`,
 `xsd:gDay`) are equality-only with no accessors. Neither lies in the portable ordered-and-extractable intersection, so
-such values, if carried, are opaque `xsd:string` (Section 3).
+such values, if carried, are opaque `xsd:string` (Section 3). Temporal datatypes added by XSD 1.1 are excluded as well:
+`xsd:dateTimeStamp`, though a totally ordered subtype of `xsd:dateTime`, is not portable across the target backends, as
+SPARQL 1.1's operator mapping is defined over `xsd:dateTime` without subtype substitution, so the literal is an
+unrecognised datatype on some engines: its comparison a type error, its ordering implementation-defined, and
+`datatype()` yields the subtype IRI rather than `xsd:dateTime`. Such values are likewise opaque `xsd:string`.
 
 ### A.1.2. Type Promotion
 
@@ -1671,9 +1676,13 @@ reaches it with an explicit clause:
 | GQL:2024   | none: `null` sorts lowest natively                    |
 | SPARQL 1.1 | none: an unbound value sorts lowest natively          |
 
-A union-typed sort key may resolve to values of different types across resources. No backend orders mixed value types
-the same way, so the query builder emits a synthetic discriminator, `ORDER BY <undefined-flag>, <type-rank>, <value>`,
-with the type rank `xsd:boolean` < `numeric` < `xsd:string` < `temporal` (Section 5.7.5).
+A union-typed sort key may resolve to values of different types across resources. No backend mandates any order between
+value types: SPARQL 1.1 leaves cross-type comparison a type error and its `ORDER BY` placement implementation-defined,
+and SQL:2011 and GQL:2024 fix no portable cross-type order either. The query builder therefore imposes one, emitting a
+synthetic discriminator, `ORDER BY <undefined-flag>, <type-rank>, <value>`, with the type rank `xsd:boolean` <
+`numeric` < `temporal` < `xsd:string` (Section 5.7.5). This ranking is a deliberate qest convention, not a backend
+requirement: it places comparable temporal values (Appendix A.1.1) ahead of plain strings, including the opaque
+temporals (`xsd:duration`, the Gregorian partials) that fall in the string tier.
 
 The query builder assigns `<type-rank>` from each value's native type, which separates `temporal` from `xsd:string`
 before egress collapses both to a JSON string (Appendix A.1.1). Each backend exposes the native type:
