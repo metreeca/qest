@@ -1052,7 +1052,7 @@ value is on ingress (Section 3.2): being expected disjoint (Section 3.1), the va
 and the processor maps it to that branch's type. A bound or option matching no variant is unsatisfiable and MUST be
 rejected, and one matching several is ambiguous and MUST be rejected (a `null` option is typeless and exempt, Section
 5.7.3). The matched branch fixes the regime: a value matches when it lies on that branch and the operator's regime holds
-there, per the tables below; values on other branches are out of domain (Section 5.8.2) and contribute no match. Since a
+there, per the tables below; values on other branches are ignored (Section 5.8.2) and contribute no match. Since a
 comparison bound is a literal (Section 5), comparison (Section 5.7.1) selects the literal branch its bound maps to; text
 search (Section 5.7.2) is the exception, its operand a plain search string rather than a typed bound, so it selects no
 single branch but applies to every `xsd:string` branch at once (Section 5.7.2); set matching and sort focus (Sections
@@ -1266,11 +1266,11 @@ transform consumes the previous output and produces the next. An empty pipe leav
 
 Each transform contributes to the result according to its kind:
 
-- **Aggregate transform**: reduces the set to a single value, excluding `undefined` and out-of-domain values before
-  computing (see Appendix A.4.2 for filtering on target backends); if none remain, the empty-set rules of Section
-  5.8.2.1 apply
-- **Scalar transform**: maps each in-domain value to a single value, element-wise; a value outside its domain, or an
-  `undefined` input, MUST yield `undefined`, which propagates through the rest of the pipe (see Appendix A.4.1 for type
+- **Aggregate transform**: reduces the set to a single value, excluding `undefined` and the values of any incompatible
+  branch (well-typedness, below) before computing (see Appendix A.4.2 for filtering on target backends); if none remain,
+  the empty-set rules of Section 5.8.2.1 apply
+- **Scalar transform**: maps each in-domain value to a single value, element-wise; the value of an incompatible branch,
+  or an `undefined` input, yields `undefined`, which propagates through the rest of the pipe (see Appendix A.4.1 for type
   guards on target backends).
 
 The set left after the last transform is the pipe's result, mapped to `undefined`, a value, or an array as for a path
@@ -1280,13 +1280,18 @@ The supported transform set is defined so that each transform has a well-defined
 (Appendix A), keeping it portable. Type semantics follow the processing type system (Section 3).
 
 A pipe is **well-formed** only if it applies at most one aggregate transform; processors MUST reject ill-formed pipes
-(see Appendix A.4.4 for build-time rejection on target backends). Type compatibility is not a well-formedness condition:
-applying a transform outside its declared domain is never an error, it merely yields `undefined` (scalar) or drops the
-value (aggregate), so a pipe MAY be written without regard to the path's type (Appendix A.4.5 maps out-of-domain
-guarding onto the target backends).
+(see Appendix A.4.4 for build-time rejection on target backends).
+
+Transforms MUST be **well-typed**: a transform MAY be applied only to a value compatible with its declared domain, the
+compatibility being resolved against the type its input step produces (Section 5.8.1). A transform whose domain admits
+no value of that type is incompatible, and processors MUST report the incompatibility and reject the pipe (see Appendix
+A.4.4 for build-time rejection on target backends). Where the input type is a union (Section 5.4), at least one branch
+MUST be compatible with the domain for the transform to be well-typed; the transform then applies to the values of the
+compatible branches and ignores those of the incompatible ones, which contribute no value (scalar) or drop from the
+reduction (aggregate). Appendix A.4.5 maps this branch selection onto the target backends.
 
 A pipe's **effective type** is the range of its outermost transform. Each transform maps an in-domain value to the range
-declared in the following sections; any other input, whether out-of-domain or already `undefined`, maps to `undefined`.
+declared in the following sections; an incompatible-branch value, or an already `undefined` input, maps to `undefined`.
 
 A pipe's **effective cardinality** follows statically from its transforms:
 
@@ -1514,8 +1519,9 @@ client's permissions, whether a value is returned directly, expanded from a refe
 aggregate (Section 5.8.2.1), which MUST therefore be computed solely over values the client may read.
 
 Rejection responses can themselves disclose structure. The validation rules of this document reject unknown properties
-(Section 5.8.1), type mismatches (Section 3.2), and malformed templates (Section 5.2); verbose errors confirm the
-existence and types of properties a client is not authorised to know. Servers SHOULD limit the detail of a rejection to
+(Section 5.8.1), type mismatches (Section 3.2), type-incompatible transform pipes (Section 5.8.2), and malformed
+templates (Section 5.2); verbose errors confirm the existence and types of properties a client is not authorised to
+know. Servers SHOULD limit the detail of a rejection to
 what the client is authorised to learn.
 
 ## 8.3. IRI Injection
@@ -1791,9 +1797,10 @@ emitted for them and the native behaviours each backend would otherwise apply do
 | Wrong type | error (not NULL)   | type error (→ null) | type error (→ unbound) |
 | Null input | `NULL` propagated  | `null` propagated   | error (→ unbound)      |
 
-A scalar transform applied to a value outside its domain yields `undefined`, not an error (Section 5.8.2). The query
-builder secures this rather than relying on native behaviour, since most backends would otherwise raise the type errors
-tabulated below:
+A scalar transform is applied only to compatible values (Section 5.8.2): a wholly incompatible pipe is reported and
+rejected at query-building time (Appendix A.4.4), while over a union-typed path the query builder admits the compatible
+branches and resolves the incompatible-branch values to `undefined`. The builder secures this rather than relying on
+native behaviour, since most backends would otherwise raise the type errors tabulated below:
 
 | Scenario           | SQL:2011            | GQL:2024            | SPARQL 1.1             |
 |--------------------|---------------------|---------------------|------------------------|
@@ -1805,12 +1812,13 @@ tabulated below:
 | `hours` from date  | error               | type error          | type error (→ unbound) |
 | any scalar on null | `NULL` (propagated) | `null` (propagated) | error (→ unbound)      |
 
-The query builder admits only in-domain values to the transform, by one of two means:
+The query builder admits only compatible values to the transform, by one of two means:
 
-- a **static short-circuit** when the path's type cannot meet the domain: the query builder emits a constant
-  `undefined` (for example SQL `NULL`) at query-building time instead of the offending call;
-- a **per-value type guard** when the path is union-typed or otherwise mixed, admitting matching values and resolving
-  the rest to `undefined`:
+- a **static short-circuit** when the path's type bears no instance of the extracted component (a temporal subtype
+  lacking it, below): the query builder emits a constant `undefined` (for example SQL `NULL`) at query-building time
+  instead of the offending call;
+- a **per-value type guard** when the path is union-typed or otherwise mixed, admitting the compatible branches and
+  resolving the incompatible-branch values to `undefined`:
 
 | Backend    | Domain guard                                            |
 |------------|---------------------------------------------------------|
@@ -1823,16 +1831,17 @@ error; SPARQL 1.1, by contrast, resolves a scalar mismatch to unbound natively, 
 aggregates. The same per-value guards realise constraint matching over union-typed targets (Section 5.7), admitting the
 values of the single branch the bound or option is mapped to and excluding the rest.
 
-The `year` from time and `hours` from date rows above are this same case at subtype granularity: a temporal transform's
-domain is the subtypes that bear the component it extracts, so `hours` over a `date` is out-of-domain (Section 5.8.2.4).
-The query builder short-circuits such a pipe to `undefined` rather than emitting the component call, which also
-sidesteps engines that coerce instead of erroring (for example, SQL `EXTRACT(HOUR FROM <date>)` returning `0`).
+The `year` from time and `hours` from date rows above are a finer, subtype-level case: the value is temporal and so
+compatible with the transform's domain, but lacks the component extracted (Section 5.8.2.4). The query builder
+short-circuits such a pipe to `undefined` rather than emitting the component call, which also sidesteps engines that
+coerce instead of erroring (for example, SQL `EXTRACT(HOUR FROM <date>)` returning `0`).
 
 ### A.4.2. Aggregate Transforms
 
-Before computing, the query builder restricts each aggregate's input to its in-domain values: `undefined` and nulls drop
-natively, while out-of-domain entries are removed by the same domain guard as for scalar transforms (Appendix A.4.1),
-since `SUM` over a typed column (SQL:2011) and SPARQL `SUM` would otherwise raise a type error rather than skip.
+Before computing, the query builder restricts each aggregate's input to its compatible values: `undefined` and nulls
+drop natively, while incompatible-branch entries (Section 5.8.2) are removed by the same branch guard as for scalar
+transforms (Appendix A.4.1), since `SUM` over a typed column (SQL:2011) and SPARQL `SUM` would otherwise raise a type
+error rather than skip.
 Aggregation uses bag semantics (Section 5.8.2.1): `DISTINCT` (SQL:2011, GQL:2024, SPARQL 1.1) is never applied
 implicitly. The target backends match the protocol's bag semantics natively through `COUNT` / `SUM` without `DISTINCT`;
 clients needing distinct-value aggregates obtain them through grouping (Section 5.8.2.1).
@@ -1884,15 +1893,25 @@ scalar after scalar, aggregate after scalar, scalar after aggregate) and rejects
 after aggregate) outright, before emitting any backend-specific code. No backend-level normalisation is required for
 structural composition.
 
-Type compatibility is not a structural rule: an out-of-domain transform is not rejected but filtered to `undefined`
-(scalar, Appendix A.4.1) or excluded (aggregate, Appendix A.4.2). The query builder needs shape information only to
-place those guards, not to accept or reject the pipe.
+Type compatibility is a separate well-typedness rule (Section 5.8.2), checked in the same query-building pass. The query
+builder walks the pipe from its innermost transform outward, and for each transform intersects its declared domain with
+the effective type of its input step (the path's type for the innermost transform, the preceding transform's range
+otherwise). It rejects the pipe when an intersection is empty, reporting the incompatibility before emitting any
+backend-specific code. A non-empty intersection admits the transform: covering the whole input type needs no guard,
+while covering only some branches of a union-typed input (Section 5.4) admits the transform on those branches and marks
+the rest for guarding.
 
-### A.4.5. Out-of-Domain Guards
+The builder then uses that shape information to place the branch guards (scalar, Appendix A.4.1; aggregate, Appendix
+A.4.2) that filter the incompatible-branch values to `undefined` or exclude them from the reduction. No backend-level
+normalisation is required for type compatibility itself: the rejection is emitted by the builder, and the guards are the
+only backend-specific code the check produces.
 
-A transform applied outside its domain is not a violation: a scalar yields `undefined` and an aggregate drops the value
-(Section 5.8.2). The query builder secures this from its shape information, never emitting a call a backend would
-reject:
+### A.4.5. Branch Guards
+
+A wholly incompatible transform is reported and rejected before query building (Appendix A.4.4). A transform compatible
+on at least one branch of a union-typed input is admitted, and the query builder secures the incompatible branches from
+its shape information, never emitting a call a backend would reject: a scalar yields `undefined` for their values and an
+aggregate drops them (Section 5.8.2).
 
 | Backend    | Handling                                                    |
 |------------|-------------------------------------------------------------|

@@ -463,8 +463,10 @@ export * from "./template.core.js";
  * Transform signature table.
  *
  * Maps each {@link Transform} to its {@link TransformSignature}, the single source of truth for how a transform
- * validates its input and shapes its output. Processors consult this table to reject out-of-domain inputs and to
- * derive the aggregation kind, cardinality, and processing type of the resulting pipe.
+ * validates its input and shapes its output. Processors consult this table to check type compatibility, rejecting a
+ * transform whose declared domain is met by no branch of its input type and guarding the incompatible branches of a
+ * union-typed input otherwise, and to derive the aggregation kind, cardinality, and processing type of the resulting
+ * pipe.
  *
  * @see {@link TransformSignature} for the meaning of each signature field
  */
@@ -1228,8 +1230,10 @@ export type Operator =
  * > The set of supported transforms is closed: only the names listed below are valid. Expressions and criteria
  * > referencing unknown transforms are rejected outright by `isExpression` and `isProbe`. Pipes that violate the
  * > structural composition rules (for example, aggregate after aggregate) are likewise rejected outright.
- * > Applying a transform outside its declared domain (for example, `abs` on a string) is never an error: it
- * > resolves to `undefined` for a scalar transform and is dropped from the input set for an aggregate.
+ * > Transforms must also be well-typed: a transform whose declared domain is met by no branch of its input type (for
+ * > example, `abs` on a string) is rejected, while over a union-typed input the transform applies to its compatible
+ * > branches and ignores the incompatible ones, whose values resolve to `undefined` for a scalar transform and drop
+ * > from the input set for an aggregate.
  *
  * ## Type Mapping
  *
@@ -1288,9 +1292,10 @@ export type Operator =
  *
  * ## Error Handling
  *
- * Scalar transforms map both an `undefined` input and an out-of-domain value (for example, `abs` on a string)
- * to `undefined`; an out-of-domain value is never an error. Aggregate transforms silently skip `undefined` and
- * out-of-domain values before computing the result. See [Transform Pipes](./index.md#582-transform-pipes) and
+ * A transform must be well-typed: a transform whose declared domain is met by no branch of its input type is
+ * rejected. Over a union-typed input, the transform applies to its compatible branches and treats each
+ * incompatible-branch value like `undefined`: a scalar transform maps it to `undefined`, and an aggregate skips it
+ * before computing the result. See [Transform Pipes](./index.md#582-transform-pipes) and
  * [Aggregate Transforms](./index.md#5821-aggregate-transforms) for the full adopted semantics, including empty set
  * behaviour, multi-valued properties, and type promotion rules.
  *
@@ -1348,7 +1353,8 @@ export type TransformSignature = {
 	/**
 	 * The transform's input domain.
 	 *
-	 * A shape outside the domain (references and resources included) drops to `undefined` rather than erroring.
+	 * A pipe whose input type is wholly outside the domain (references and resources included) is rejected; over a
+	 * union-typed input, values on the branches outside the domain drop to `undefined` rather than erroring.
 	 *
 	 * - `"any"` — every shape, references and resources included (`count`)
 	 * - `"literal"` — the boolean, numeric, string, and temporal processing types (`min`, `max`)
