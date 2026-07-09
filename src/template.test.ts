@@ -590,8 +590,14 @@ describe("guards", () => {
 		});
 
 		it("should accept scalar placeholders", () => {
-			expect(isProjection({ id: "", name: "" })).toBe(true);
-			expect(isProjection({ price: 0, available: true })).toBe(true);
+			expect(isProjection({ "id=id": "", "name=name": "" })).toBe(true);
+			expect(isProjection({ "price=price": 0, "available=available": true })).toBe(true);
+		});
+
+		it("should reject bare identifier keys", () => {
+			// bare keys form a Template, not a Projection (no binding shorthand)
+			expect(isProjection({ id: "", name: "" })).toBe(false);
+			expect(isProjection({ vendor: { id: "", name: "" } })).toBe(false);
 		});
 
 		it("should accept binding keys", () => {
@@ -600,7 +606,6 @@ describe("guards", () => {
 		});
 
 		it("should accept nested template values", () => {
-			expect(isProjection({ vendor: { id: "", name: "" } })).toBe(true);
 			expect(isProjection({ "vendorRow=vendor": { id: "", name: "" } })).toBe(true);
 		});
 
@@ -614,8 +619,8 @@ describe("guards", () => {
 		});
 
 		it("should accept undefined property values", () => {
-			expect(isProjection({ name: undefined })).toBe(true);
-			expect(isProjection({ id: "", "total=count:": undefined })).toBe(true);
+			expect(isProjection({ "name=name": undefined })).toBe(true);
+			expect(isProjection({ "id=id": "", "total=count:": undefined })).toBe(true);
 		});
 
 		it("should accept localised tag-range placeholders", () => {
@@ -626,7 +631,7 @@ describe("guards", () => {
 
 		it("should accept localised bindings alongside scalar bindings", () => {
 			expect(isProjection({
-				"id": "",
+				"id=id": "",
 				"label=title": { "*": "" },
 				"total=count:": 0
 			})).toBe(true);
@@ -645,7 +650,7 @@ describe("guards", () => {
 		});
 
 		it("should reject collection tuples", () => {
-			expect(isProjection({ items: [{ id: "" }] })).toBe(false);
+			expect(isProjection({ "items=items": [{ id: "" }] })).toBe(false);
 		});
 
 		it("should reject null and undefined", () => {
@@ -764,13 +769,13 @@ describe("guards", () => {
 				expect(isBinding("$result=_internal")).toBe(true);
 			});
 
-			it("should accept plain identifier as shorthand", () => {
-				expect(isBinding("name")).toBe(true);
-			});
-
 		});
 
 		describe("invalid bindings", () => {
+
+			it("should reject a bare identifier without an expression", () => {
+				expect(isBinding("name")).toBe(false);
+			});
 
 			it("should reject non-string values", () => {
 				expect(isBinding(null)).toBe(false);
@@ -1607,19 +1612,19 @@ describe("guards", () => {
 			});
 
 			it("should reject multi-element array values", () => {
-				expect(isProjection({ items: ["a", "b"] })).toBe(false);
-				expect(isProjection({ items: [1, 2, 3] })).toBe(false);
+				expect(isProjection({ "items=items": ["a", "b"] })).toBe(false);
+				expect(isProjection({ "items=items": [1, 2, 3] })).toBe(false);
 			});
 
 			it("should reject non-finite number values", () => {
-				expect(isProjection({ x: Number.NaN })).toBe(false);
-				expect(isProjection({ x: Number.POSITIVE_INFINITY })).toBe(false);
+				expect(isProjection({ "x=x": Number.NaN })).toBe(false);
+				expect(isProjection({ "x=x": Number.POSITIVE_INFINITY })).toBe(false);
 			});
 
 			it("should reject invalid nested values", () => {
-				expect(isProjection({ item: new Date() })).toBe(false);
-				expect(isProjection({ item: [] })).toBe(false);
-				expect(isProjection({ item: [{ id: "" }] })).toBe(false);
+				expect(isProjection({ "item=item": new Date() })).toBe(false);
+				expect(isProjection({ "item=item": [] })).toBe(false);
+				expect(isProjection({ "item=item": [{ id: "" }] })).toBe(false);
 			});
 
 		});
@@ -3404,7 +3409,7 @@ describe("codecs", () => {
 	// shared [probe, encoded-key] fixtures driving encodeProbe/decodeProbe in both directions
 
 	const projectionProbes: readonly [Probe, string][] = [
-		[{ target: "name", pipe: [], path: ["name"] }, "name"],
+		[{ target: "name", pipe: [], path: ["name"] }, "name=name"],
 		[{ target: "city", pipe: [], path: ["address"] }, "city=address"],
 		[{ target: "city", pipe: [], path: ["customer", "address"] }, "city=customer.address"],
 		[{ target: "releaseYear", pipe: ["year"], path: ["releaseDate"] }, "releaseYear=year:releaseDate"],
@@ -3475,14 +3480,13 @@ describe("codecs", () => {
 				}
 			);
 
-			it("should decode the explicit shorthand-equivalent form", () => {
-				// "name=name" is the explicit form of the "name" shorthand and decodes to the same probe
-				expect(decodeProbe("name=name")).toEqual({ target: "name", pipe: [], path: ["name"] });
-			});
-
 		});
 
 		describe("error handling", () => {
+
+			it("should reject a bare identifier without an expression", () => {
+				expect(() => decodeProbe("name")).toThrow(Error);
+			});
 
 			it("should reject path without target", () => {
 				expect(() => decodeProbe("address.city")).toThrow(Error);

@@ -208,7 +208,7 @@ export function isProjection(value: unknown): value is Projection {
 	return isObject(value, (v, k) =>
 		isBinding(k) && (v === undefined || isModel(v))
 	) && unique(Object.keys(value).map(k =>
-		k.includes("=") ? k.slice(0, k.indexOf("=")) : k
+		k.slice(0, k.indexOf("="))
 	));
 
 
@@ -275,11 +275,10 @@ export function isSelection(value: unknown): value is Selection {
  *
  * @param value The value to check
  *
- * @returns True if `value` is a plain {@link Identifier} or a string matching the `identifier=expression`
- * syntax; false otherwise
+ * @returns True if `value` is a string matching the `identifier=expression` syntax; false otherwise
  */
 export function isBinding(value: unknown): value is Binding {
-	return isIdentifier(value) || isString(value) && value.includes("=")
+	return isString(value) && value.includes("=")
 		&& isIdentifier(value.slice(0, value.indexOf("=")))
 		&& isExpression(value.slice(value.indexOf("=")+1));
 }

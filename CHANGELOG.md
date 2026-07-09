@@ -42,7 +42,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Redefine `Query` as an `[element, Selection?]` tuple (`[Union | Placeholder | Projection, Selection?]`); filtering,
 	sorting, and pagination move to `Selection`
 - Replace the `Transform` registry-entry object type with a closed string union validated by `isTransform`
-- Extend `Binding` to accept a plain `Identifier` as shorthand for `{id}={id}`
+- Require `Projection` `Binding` keys in the explicit `name=expression` form, dropping the bare-`Identifier`
+	shorthand so the projection key space stays disjoint from `Template` identifier keys; reshape `Expression` to
+	`{Pipe}{Path}` with a possibly empty pipe and path
 - Drop the `Indexed`/`Indexable` property wrapper from `Resource` and `Template`; property values are now optional
 	(`undefined | Values` and `undefined | Placeholders`)
 - Match `Union` template placeholders against the property's declared variants by type compatibility alone, their value

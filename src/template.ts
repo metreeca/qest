@@ -186,9 +186,9 @@
  *
  * ```typescript
  * const projection: Projection = {
- *   id: "",
- *   name: "",
- *   price: 0,
+ *   "id=id": "",
+ *   "name=name": "",
+ *   "price=price": 0,
  *   "vendorName=vendor.name": "",            // property path
  *   "releaseYear=year:releaseDate": 0,       // transform
  *   "vendorRow=vendor": { id: "", name: "" }, // nested template
@@ -230,9 +230,9 @@
  * ```typescript
  * const template: Template = {
  *   items: [{
- *     vendor: { id: "", name: "" },    // group by vendor
- *     "items=count:": 0,               // count of items per vendor
- *     "avgPrice=avg:price": 0          // average price per vendor
+ *     "vendor=vendor": { id: "", name: "" },  // group by vendor
+ *     "items=count:": 0,                      // count of items per vendor
+ *     "avgPrice=avg:price": 0                 // average price per vendor
  *   }]
  * };
  * ```
@@ -249,7 +249,7 @@
  *
  * const categoryFacet: Template = {
  *   items: [{
- *     "category": "",
+ *     "category=category": "",
  *     "count=count:": 0,
  *     "^count": "desc"
  *   }]
@@ -301,12 +301,14 @@
  *
  * # Expressions
  *
- * {@link Probe} keys identify properties or computed values combining an optional result name (forming a
- * {@link Binding}), a pipeline of {@link Transform}, and a property path ({@link Expression}):
+ * A {@link Projection} {@link Binding} key pairs a result name with a computed value: a pipeline of
+ * {@link Transform} and a property path (together an {@link Expression}). The result name and its `=` are
+ * mandatory; a bare identifier is not a binding:
  *
  * ```text
- * expression  = ( name '=' )? transform* path?
+ * binding     = name '=' expression
  * name        = identifier
+ * expression  = transform* path?
  * transform   = identifier ':'
  * path        = identifier ( '.' identifier )*
  * ```
@@ -316,11 +318,10 @@
  * - An empty path computes aggregates over the input collection
  *
  * ```text
- * name                         // simple property
- * user.profile.email           // nested property path
- * total=sum:items.price        // named computed sum
- * round:avg:scores             // pipeline: inner transform applied first
- * count:                       // empty path (aggregate over collection)
+ * vendorName=vendor.name       // named nested property path
+ * total=sum:items.price        // named computed aggregate
+ * result=round:avg:scores      // pipeline: inner transform applied first
+ * count=count:                 // empty path (aggregate over the collection)
  * ```
  *
  * # Value Ordering
@@ -777,9 +778,8 @@ export type UnionKey =
  * > is applied.
  *
  * > [!IMPORTANT]
- * > {@link Binding} identifiers (the {@link Identifier} portion before `=` for computed bindings, or the binding
- * > itself for plain identifiers) must be unique within a `Projection`. Duplicates collide on the same projected
- * > property in the resulting row and are rejected by template processors.
+ * > {@link Binding} identifiers (the {@link Identifier} portion before `=`) must be unique within a `Projection`.
+ * > Duplicates collide on the same projected property in the resulting row and are rejected by template processors.
  *
  * > [!NOTE]
  * > An empty `Projection` (`{}`), which may only appear as a collection tuple's element, carries
@@ -982,14 +982,15 @@ export type Selection = {
 /**
  * Named computed expression.
  *
- * Property key for {@link Projection} entries that assigns a name to a computed {@link Expression}, either as a
- * plain {@link Identifier} (shorthand for `{name}={name}`) or using the explicit `{name}={expression}` syntax.
+ * Property key for {@link Projection} entries that assigns a result name to a computed {@link Expression}, in the
+ * `{name}={expression}` form. A `Projection` key always carries the `=`, keeping the binding key space disjoint from
+ * the plain {@link Identifier} keys of a {@link Template} (see [Projection](./index.md#56-projection)).
  *
  * @example
  *
  * ```typescript
  * const projection: Projection = {
- *   "name": "",						// property binding (shorthand for "name=name")
+ *   "name=name": "",                   // property binding
  *   "vendorName=vendor.name": "",      // path binding
  *   "releaseYear=year:releaseDate": 0  // transform binding
  * };
@@ -999,21 +1000,20 @@ export type Selection = {
  * @see {@link Expression} for the computed-field syntax bindings can carry
  */
 export type Binding =
-	| Identifier
 	| `${Identifier}=${Expression}`;
 
 /**
  * Computed expression.
  *
- * Compact string syntax `[pipe:]path` combining a property access path with a chain of value transformations,
- * used in {@link Projection} bindings and {@link Selection} constraint keys to identify the target property or
- * computed value:
+ * String syntax pairing a transform pipe with a property path, used in {@link Projection} bindings and
+ * {@link Selection} constraint keys to identify the target property or computed value:
  *
- * - **pipe** — optional {@link Pipe} naming the right-to-left transform chain to apply
- * - **path** — {@link Path} navigating to a nested value within the resource
+ * - **pipe** — a possibly empty {@link Pipe} naming the right-to-left transform chain to apply; each transform
+ *   name carries a trailing colon, so no extra separator sits between the pipe and the path
+ * - **path** — a possibly empty {@link Path} navigating to a nested value within the resource
  *
- * When the pipe is omitted, the expression resolves to the path's raw value; when the path is omitted, the
- * expression denotes an aggregate over the root collection.
+ * With an empty pipe the expression resolves to the path's raw value; with an empty path it denotes an aggregate
+ * over the root collection.
  *
  * > [!WARNING]
  * > This is a type alias for documentation purposes only; expression syntax is validated at runtime by query
@@ -1035,19 +1035,18 @@ export type Binding =
  * @see {@link Path} for the property navigation syntax
  */
 export type Expression =
-	| Path
-	| `${Pipe}:${Path}`;
+	| `${Pipe}${Path}`;
 
 
 /**
  * Transform pipe.
  *
- * Colon-separated sequence of {@link Transform} names identifying a chain of value transformations within an
- * {@link Expression} (for example, `round:avg:`). Transforms are applied right-to-left in functional composition
- * order; the empty pipe denotes the identity transformation and passes the value through unchanged.
+ * Possibly empty sequence of colon-terminated {@link Transform} names identifying a chain of value transformations
+ * within an {@link Expression} (for example, `round:avg:`). Transforms are applied right-to-left in functional
+ * composition order; the empty pipe denotes the identity transformation and passes the value through unchanged.
  *
- * Composition rules and valid/invalid combinations are defined in
- * [Transform Pipe Composition](./index.md#582-transform-pipes).
+ * Composition rules and valid/invalid combinations are defined in [Transform Pipe
+ * Composition](./index.md#582-transform-pipes).
  *
  * > [!WARNING]
  * > This is a type alias for documentation purposes only; pipe syntax is validated at runtime by query processors.
@@ -1058,10 +1057,11 @@ export type Pipe =
 /**
  * Property path.
  *
- * Dot-separated list of property names navigating to a value within a resource (for example, `order.items.price`).
- * Path steps follow {@link Identifier} rules (ECMAScript names) and always refer to actual resource property names,
- * never to projected computed properties defined by {@link Binding | bindings}. The empty string refers to the
- * root value and, in {@link Expression | expressions}, denotes an aggregate over the input collection.
+ * Possibly empty dot-separated sequence of property names navigating to a value within a resource (for example,
+ * `order.items.price`). Path steps follow {@link Identifier} rules (ECMAScript names) and always refer to actual
+ * resource property names, never to projected computed properties defined by {@link Binding | bindings}. The empty
+ * string refers to the root value and, in {@link Expression | expressions}, denotes an aggregate over the input
+ * collection.
  *
  * Resolution semantics, including multi-valued and union properties, are defined in
  * [Property Paths](./index.md#581-property-paths).
@@ -1169,8 +1169,8 @@ export type Probe = {
 	/**
 	 * Projection binding identifier or constraint operator symbol.
 	 *
-	 * For projections, the {@link Identifier} portion of a {@link Binding} — the name before `=`, or the
-	 * whole binding for plain identifiers. For constraints, the constraint {@link Operator} prefix.
+	 * For projections, the {@link Identifier} portion of a {@link Binding}: the name before `=`. For
+	 * constraints, the constraint {@link Operator} prefix.
 	 */
 	readonly target: Identifier | Operator;
 
@@ -1867,7 +1867,7 @@ export function encodeProbe(probe: Probe): string {
 	const expression = pipeString+pathString;
 
 	return isIdentifier(target)
-		? expression === target ? target : `${target}=${expression}`
+		? `${target}=${expression}`
 		: `${target}${expression}`;
 
 }

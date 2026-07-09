@@ -214,7 +214,7 @@ describe("Instance", () => {
 		});
 
 		test("readonly [Projection, Selection] widens the Projection slot and discards Selection", () => {
-			type Row = { readonly name: string; readonly count: number };
+			type Row = { readonly "name=name": string; readonly "count=count:": number };
 			type Outer = { readonly rows: readonly [Row, Selection] };
 			type Expected = { readonly rows: readonly { readonly name: string; readonly count: number }[] };
 
@@ -566,9 +566,9 @@ describe("Instance", () => {
 			expectTypeOf<Instance<Outer>>().toEqualTypeOf<Expected>();
 		});
 
-		test("plain and computed bindings coexist", () => {
+		test("self-path and computed bindings compose", () => {
 			type Row = {
-				readonly id: Reference;
+				readonly "id=id": Reference;
 				readonly "vendorName=vendor.name": string;
 				readonly "count=count:": number;
 			};
@@ -628,10 +628,10 @@ describe("Instance", () => {
 
 	});
 
-	describe("flat object projection", () => {
+	describe("flat object shapes", () => {
 
-		// Flat (non-singleton-tuple-wrapped) object shapes — the case previously handled by
-		// the standalone `Computed<P>` type, now subsumed by `Instance<T>`'s object branch.
+		// Flat (non-singleton-tuple-wrapped) template- or projection-shaped objects — the case previously
+		// handled by the standalone `Computed<P>` type, now subsumed by `Instance<T>`'s object branch.
 
 		test("plain identifier keys are preserved", () => {
 			type Row = { readonly name: string; readonly count: number };
@@ -704,7 +704,7 @@ describe("Instance", () => {
 			});
 
 			test("Projection & Selection alias intersection erases Selection", () => {
-				type Row = { readonly name: string; readonly count: number };
+				type Row = { readonly "name=name": string; readonly "count=count:": number };
 
 				expectTypeOf<Instance<Row & Selection>>()
 					.toEqualTypeOf<{ readonly name: string; readonly count: number }>();
@@ -712,7 +712,7 @@ describe("Instance", () => {
 
 			test("Selection-operator keys are filtered while computed bindings are extracted", () => {
 				type Row = {
-					readonly id: Reference;
+					readonly "id=id": Reference;
 					readonly "vendorName=vendor.name": string;
 					readonly "<price": number;
 					readonly "^price": "asc" | "desc";

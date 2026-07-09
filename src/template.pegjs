@@ -311,9 +311,6 @@ ProjectionProbe
   / target:ProbeId "=" pipe:ProbeTransform* path:ProbePath {
       return { target, pipe, path };
     }
-  / target:ProbeId {
-      return { target, pipe: [], path: [target] };
-    }
 
 ConstraintProbe
   = op:ProbeOp pipe:ProbeTransform* path:ProbePath? {

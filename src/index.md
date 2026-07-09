@@ -249,7 +249,7 @@ The following terms are used throughout this document:
   or template) matters, matching it to the type-compatible variants of a union-typed property (Section 5.4)
 - **selection**: a set of constraints (filtering, sorting, pagination) applied to a collection
 - **expression**: a property path, optionally piped through transforms, targeted by selection and projection keys
-- **binding**: a projection key naming a computed expression (a plain identifier, or `name=expression`)
+- **binding**: a projection key naming a computed expression as `name=expression`
 - **projection**: a template whose keys are computed bindings
 
 # 3. Type System
@@ -675,7 +675,7 @@ order-key      = "^" expression
 
 ; bindings and expressions (projection keys; Section 5.6, Section 5.8)
 
-binding        = name [ "=" expression ]
+binding        = name "=" expression
 name           = identifier
 
 expression     = pipe path
@@ -937,7 +937,7 @@ rather than naming an individual property, evaluated per item or, when an aggreg
 {
   "items": [
     {
-      "vendor": {
+      "vendor=vendor": {
         "id": "",
         "name": ""
       },
@@ -974,7 +974,7 @@ binding below yields the full `{ <tag>: <value>, … }` map for the matching tag
 {
   "items": [
     {
-      "id": "",
+      "id=id": "",
       "label=title": {
         "*": ""
       }
@@ -987,7 +987,7 @@ Faceted search is one of the major use cases supported by aggregate projections:
 common facet patterns.
 
 A **category breakdown** groups items by a property and counts each group. The projection pairs a non-aggregate binding,
-`category`, which becomes the grouping key (Section 5.8.2.1), with the aggregate `count=count:`, which counts the items
+`category=category`, which becomes the grouping key (Section 5.8.2.1), with the aggregate `count=count:`, which counts the items
 in each group; the sibling selection's `^count:` then orders the groups by descending count (Section 5.7.5). The query
 returns one row per distinct `category` value, each carrying its item count:
 
@@ -995,7 +995,7 @@ returns one row per distinct `category` value, each carrying its item count:
 {
   "items": [
     {
-      "category": "",
+      "category=category": "",
       "count=count:": 0
     },
     {
