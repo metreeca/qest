@@ -967,6 +967,14 @@ single value; a coalesced multi-valued binding fans out per value, like any mult
 resolves to no value preserves the row rather than collapsing the cross-product to zero; its label MUST be omitted from
 that row.
 
+The rows of a projection are **distinct**: rows sharing the same combination of cell values MUST collapse into one, so a
+projection yields the set of distinct binding tuples, not a multiset. Two cells are equal when they hold equal literals,
+references to the same resource (whether or not expanded), or equal localised text maps; a pair of omitted labels (an
+absent binding on both rows) counts as equal, matching the `undefined`-key rule of grouping (Section 5.8.2.1).
+Distinctness spans the whole collection, collapsing both cross-product fan-out duplicates and equal tuples contributed by
+different items; a projection that must keep otherwise-equal items apart includes an identifying binding such as `id`,
+which makes each item's row unique.
+
 A structural locale binding counts as a single value and does not fan out rows, however many tags it holds. The `label`
 binding below yields the full `{ <tag>: <value>, … }` map for the matching tags as one cell:
 
@@ -1842,9 +1850,11 @@ Before computing, the query builder restricts each aggregate's input to its comp
 drop natively, while incompatible-branch entries (Section 5.8.2) are removed by the same branch guard as for scalar
 transforms (Appendix A.4.1), since `SUM` over a typed column (SQL:2011) and SPARQL `SUM` would otherwise raise a type
 error rather than skip.
-Aggregation uses bag semantics (Section 5.8.2.1): `DISTINCT` (SQL:2011, GQL:2024, SPARQL 1.1) is never applied
-implicitly. The target backends match the protocol's bag semantics natively through `COUNT` / `SUM` without `DISTINCT`;
-clients needing distinct-value aggregates obtain them through grouping (Section 5.8.2.1).
+Aggregation uses bag semantics (Section 5.8.2.1): no aggregate applies a `DISTINCT` quantifier to its own input
+implicitly (`COUNT(DISTINCT)` and `SUM(DISTINCT)` are never emitted), unlike the row-level `SELECT DISTINCT` that
+realises the distinct-row rule for ungrouped projections (Appendix A.4.6). The target backends match the protocol's bag
+semantics natively through `COUNT` / `SUM` without `DISTINCT`; clients needing distinct-value aggregates obtain them
+through grouping (Section 5.8.2.1).
 
 After invalid values are excluded (Section 5.8.2), aggregates over an empty input set produce:
 
@@ -1937,6 +1947,11 @@ When the projection includes an aggregate binding, the non-aggregate bindings al
 (Section 5.8.2.1); ordering operators may only sort by an existing grouping key and never extend it. Each backend
 enforces this through an explicit `GROUP BY` clause, which folds a null or unbound grouping key into a single group on
 every backend, realising the `undefined`-key rule (Section 5.8.2.1) natively.
+
+An ungrouped projection (no aggregate binding, Section 5.8.2.1) carries no `GROUP BY`; each backend realises the
+distinct-row rule (Section 5.6) with a set quantifier on the projected tuple: `SELECT DISTINCT` (SQL:2011),
+`RETURN DISTINCT` (GQL:2024), and `SELECT DISTINCT` (SPARQL 1.1). A grouped projection needs no such quantifier: its
+`GROUP BY` already emits one row per distinct grouping-key tuple, so the quantifier is redundant and is omitted.
 
 ## A.5. Localised Coalescing
 

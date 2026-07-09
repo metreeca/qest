@@ -196,6 +196,11 @@
  * };
  * ```
  *
+ * A projection emits **distinct** rows: rows with the same combination of cell values collapse into one, so the
+ * result is the set of distinct binding tuples rather than a multiset. Distinctness spans the whole collection,
+ * folding both multi-valued fan-out duplicates and equal tuples from different items; include an identifying
+ * binding such as `id` (as above) to keep otherwise-equal items on separate rows.
+ *
  * ## Aggregate Grouping
  *
  * Aggregate {@link Transform | transforms} operate on sets of values. When at least one aggregate
@@ -776,6 +781,13 @@ export type UnionKey =
  * > see {@link Selection} for the full grouping and filter-partition rules. With no aggregate in either
  * > the `Projection` or the sibling `Selection`, every row is projected independently and no grouping
  * > is applied.
+ *
+ * > [!IMPORTANT]
+ * > Projection rows are **distinct**: rows with the same combination of cell values collapse into one, so a
+ * > `Projection` yields the set of distinct binding tuples rather than a multiset; distinctness spans the whole
+ * > collection, folding both fan-out duplicates and equal tuples from different items. Include an identifying
+ * > binding such as `id` to keep otherwise-equal items on separate rows (see
+ * > [Projection](./index.md#56-projection)).
  *
  * > [!IMPORTANT]
  * > {@link Binding} identifiers (the {@link Identifier} portion before `=`) must be unique within a `Projection`.
