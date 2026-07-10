@@ -59,6 +59,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Reorder the total-ordering type tiers to `xsd:boolean` < `numeric` < `temporal` < `xsd:string`, ranking comparable
 	temporal values ahead of plain strings (Sections 5.7.5, A.2.3); exclude XSD 1.1 temporal additions such as
 	`xsd:dateTimeStamp` from the `temporal` type as non-portable opaque `xsd:string`
+- Specify that a descending sort key reverses the entire total order, placing `undefined` last, and align the backend
+	mapping to direction-dependent null placement (`NULLS FIRST`/`NULLS LAST`) (Sections 5.7.5, A.2.3)
 
 ### Removed
 

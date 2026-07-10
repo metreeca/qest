@@ -1188,8 +1188,10 @@ first while the rest of the listing keeps its order, keeping selected items visi
 
 - A positive `order` sorts ascending, a negative one descending; its absolute value gives 1-based precedence (1 is
   highest) among multiple sort keys; `"asc"` and `"desc"` abbreviate `+1` and `-1`; zero is ignored.
-- The sort order is total: `undefined` first, then by processing type (`xsd:boolean` < `numeric` < `temporal` <
-  `xsd:string`), then within each type by the comparison rules (Section 5.7.1). Ranking by processing type keeps
+- The sort order is total: in ascending direction `undefined` first, then by processing type (`xsd:boolean` <
+  `numeric` < `temporal` < `xsd:string`), then within each type by the comparison rules (Section 5.7.1). The `order`
+  sign reverses this entire order, the `undefined` tier and the processing-type ranking included, so a descending key
+  places `undefined` last. Ranking by processing type keeps
   `temporal` a tier distinct from `xsd:string`, ordering comparable temporal values ahead of plain strings, though
   egress surfaces both as JSON strings (Section 3), so a union-typed key sorts deterministically across mixed-type
   values.
@@ -1681,14 +1683,14 @@ with no normalisation.
 
 ### A.2.3. Total Ordering
 
-The total ordering's **`undefined`-first** placement (Section 5.7.5) is the only sort divergence among backends; each
-reaches it with an explicit clause:
+The total ordering places `undefined` in the lowest tier (Section 5.7.5): it sorts first under an ascending key and
+last under a descending one. This direction-sensitive placement is the only sort divergence among backends:
 
-| Backend    | `undefined` (null / empty) placement                  |
-|------------|-------------------------------------------------------|
-| SQL:2011   | `NULLS FIRST` (the default is implementation-defined) |
-| GQL:2024   | none: `null` sorts lowest natively                    |
-| SPARQL 1.1 | none: an unbound value sorts lowest natively          |
+| Backend    | `undefined` (null / empty) placement                                                  |
+|------------|---------------------------------------------------------------------------------------|
+| SQL:2011   | `NULLS FIRST` ascending, `NULLS LAST` descending (default is implementation-defined)   |
+| GQL:2024   | none: `null` sorts lowest natively, tracking direction                                 |
+| SPARQL 1.1 | none: an unbound value sorts lowest natively, tracking direction                       |
 
 A union-typed sort key may resolve to values of different types across resources. No backend mandates any order between
 value types: SPARQL 1.1 leaves cross-type comparison a type error and its `ORDER BY` placement implementation-defined,
