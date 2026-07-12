@@ -231,7 +231,8 @@ The following terms are used throughout this document:
 - **IRI**: Internationalized Resource Identifier as defined in [RFC3987]
 - **identifier**: a property name conforming to ECMAScript identifier rules [ECMA-262], Section 12.7
 - **literal**: a JSON primitive value (`boolean`, `number`, `string`)
-- **reference**: an absolute IRI string identifying a linked resource without nesting its state
+- **reference**: an IRI reference [RFC3987] identifying a linked resource without nesting its state; a reference value
+  is resolved to an absolute IRI on decoding (Section 4.2)
 - **resource**: a JSON object describing the state of an identifiable or nested entity
 - **value**: a single value held by a property: a literal, a reference, or a nested resource
 - **value set**: a property's content: a single value, a localised text map, or an array of values (set semantics)
@@ -377,7 +378,7 @@ values     = value / text / [* value]
 value      = literal / reference / resource
 
 literal    = bool / number / tstr
-reference  = tstr   ; absolute IRI [RFC3987]
+reference  = tstr   ; IRI reference [RFC3987] (Section 4.2)
 
 text       = { * tag => tstr } / { * tag => [* tstr] }
 
@@ -608,7 +609,7 @@ Both variants decode into the **template structures**, defined in CDDL [RFC8610]
 template     = { * identifier => placeholders }
 
 placeholders = model / query
-placeholder  = literal / iri / template
+placeholder  = literal / reference / template
 
 model        = union / placeholder / locale
 query        = [ union, ? selection ] / [ placeholder, ? selection ] / [ projection, ? selection ]
@@ -650,7 +651,6 @@ limit      = "#"    ; literal
 options    = option / text / [* option]
 option     = null / literal / reference
 
-iri        = tstr   ; IRI reference [RFC3987], relative or absolute (Section 5.2)
 tag-range  = tstr   ; RFC 4647 basic language range [RFC4647] (Section 5.3)
 slot       = tstr   ; opaque Union key: a non-negative integer string (Section 5.4)
 binding    = tstr   ; see ABNF below
@@ -769,7 +769,7 @@ The response includes only the requested properties, with the linked `vendor` ex
 A **placeholder** stands in for one property value:
 
 - **Literal placeholder**: `boolean`, `number`, or `string`, requesting a primitive value
-- **Reference placeholder**: a relative IRI reference [RFC3987], requesting a linked resource identifier (Section 4.2)
+- **Reference placeholder**: an IRI reference [RFC3987], requesting a linked resource identifier (Section 4.2)
 - **Template placeholder**: a nested object (Section 5.1), requesting inline expansion of the linked resource
 
 A placeholder's value is immaterial and need not lie within the expected value domain (Section 3.1); only its kind

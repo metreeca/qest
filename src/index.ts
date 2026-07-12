@@ -78,6 +78,12 @@ export type Literal =
  * > This is a type alias for documentation purposes only. Branding was considered but not adopted due to
  * > interoperability issues with tools relying on static code analysis.
  *
+ * @remarks
+ *
+ * A decoded reference is always absolute. In the JSON wire format a reference MAY instead appear in relative form:
+ * decoders resolve it against a known base IRI (defaulting to `app:/`), and encoders MAY conversely relativise absolute
+ * references against the same base, preferring the root-relative form.
+ *
  * @see {@link https://www.w3.org/TR/json-ld11/#node-identifiers JSON-LD 1.1 - Node Identifiers}
  */
 export type Reference =

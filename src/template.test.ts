@@ -228,6 +228,7 @@ describe("guards", () => {
 
 		it("should accept reference", () => {
 			expect(isPlaceholder("/products/42")).toBe(true);
+			expect(isPlaceholder("https://example.com/products/42")).toBe(true);
 		});
 
 		it("should accept nested template", () => {

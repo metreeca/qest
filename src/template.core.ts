@@ -34,7 +34,6 @@ import {
 	isUnion as isVariants
 } from "@metreeca/core";
 import { isTagRange, type TagRange } from "@metreeca/core/language";
-import { isIRI } from "@metreeca/core/resource";
 import { isLiteral, isReference } from "./index.core.js";
 import type { Literal, Reference } from "./index.js";
 import { isText } from "./resource.core.js";
@@ -103,13 +102,12 @@ export function isPlaceholders(value: unknown): value is Placeholders {
  *
  * @param value The value to check
  *
- * @returns True if `value` is a {@link Literal}, an IRI reference (relative or absolute), or a nested
- * {@link Template}; false otherwise
+ * @returns True if `value` is a {@link Literal}, a {@link Reference}, or a nested {@link Template}; false otherwise
  */
 export function isPlaceholder(value: unknown): value is Placeholder {
 	return isVariants(value, [
 		isLiteral,
-		isIRI,
+		isReference,
 		isTemplate
 	]);
 }

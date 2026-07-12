@@ -335,8 +335,8 @@
  * {@link https://www.w3.org/TR/xpath-functions-20/#comparison-operators XPath 2.0 comparison operators}, which are in
  * turn based on {@link https://www.w3.org/TR/xmlschema11-2/#rf-order XSD ordered value spaces}. These operators, along
  * with sort focus (`+`), target {@link Literal} values only;
- * {@link https://metreeca.github.io/core/types/resource.IRI.html IRI} references, nested {@link Template} resources,
- * and {@link Text} values are neither comparable nor sortable:
+ * {@link Reference} values, nested {@link Template} resources, and {@link Text} values are neither comparable nor
+ * sortable:
  *
  * - `null` — undefined values sort before all defined values
  * - `boolean` — `false` < `true`
@@ -413,7 +413,7 @@
  * tag         = BCP 47 language tag
  * ```
  *
- * - {@link IRI}s are serialised as strings
+ * - {@link Reference}s are serialised as strings
  * - A string may carry a single `@tag` suffix, lifting it into a one-entry {@link Text} map
  *   (for example, `"text"@en` decodes to `{ en: "text" }`)
  * - The encoder always produces double-quoted strings; the decoder accepts unquoted strings as a shorthand
@@ -455,7 +455,6 @@ import { decodeBase64, encodeBase64 } from "@metreeca/core/base64";
 import { immutable } from "@metreeca/core/deep";
 import { TagRange } from "@metreeca/core/language";
 import { error } from "@metreeca/core/report";
-import type { IRI } from "@metreeca/core/resource";
 import { internalize, isIRI, resolve } from "@metreeca/core/resource";
 import { type DecoderOpts, defaultBase, type EncoderOpts, type Literal, type Reference } from "./index.js";
 import { Resource, Text } from "./resource.js";
@@ -566,19 +565,20 @@ export type Placeholders =
  * Individual placeholder standing in for one property value within a resource retrieval description:
  *
  * - {@link Literal} — primitive data (`boolean`, `number`, `string`)
- * - {@link IRI} — IRI reference identifying a linked resource, relative or absolute
+ * - {@link Reference} — reference to a linked resource, identified by its IRI
  * - {@link Template} — linked resource expanded as a nested retrieval template
  *
- * A reference placeholder carries no data, so any well-formed {@link IRI} reference is accepted regardless of form;
- * the inert `""` is the canonical slot. Reference values proper, resolved to an absolute {@link Reference} on
- * decoding, appear instead as {@link Option} operands of a {@link Selection}.
+ * A reference placeholder carries no data: validation checks only its reference kind (any well-formed IRI reference,
+ * relative forms and the inert `""` canonical slot included), not the value-domain constraints a {@link Reference}
+ * value satisfies. Codecs resolve reference values proper to an absolute {@link Reference} on decoding; those appear
+ * as {@link Option} operands of a {@link Selection}.
  *
  * @see {@link Model} for the single-value umbrella admitting this and the other non-collection forms
  * @see {@link resource!Value} for the corresponding state type
  */
 export type Placeholder =
 	| Literal
-	| IRI
+	| Reference
 	| Template
 
 
@@ -590,7 +590,7 @@ export type Placeholder =
  * forms are:
  *
  * - {@link Union} — per-branch placeholder for a union-typed slot (*keyed* form)
- * - {@link Placeholder} — single non-union value placeholder: a {@link Literal} or {@link IRI} primitive, or a nested
+ * - {@link Placeholder} — single non-union value placeholder: a {@link Literal} or {@link Reference}, or a nested
  *   {@link Template} expanding a linked resource inline
  * - {@link Locale} — localised text placeholder, a tag-range-keyed map yielding a single structured {@link Text} value
  *
@@ -618,8 +618,8 @@ export type Model =
  *
  * - `readonly [Union, Selection?]` — a union-typed element ({@link Union} *keyed* form), optionally followed by a
  *   {@link Selection}
- * - `readonly [Placeholder, Selection?]` — a per-item {@link Placeholder} (a {@link Literal} or {@link IRI}
- *   primitive, or a nested {@link Template}), optionally followed by a {@link Selection}
+ * - `readonly [Placeholder, Selection?]` — a per-item {@link Placeholder} (a {@link Literal} or {@link Reference},
+ *   or a nested {@link Template}), optionally followed by a {@link Selection}
  * - `readonly [Projection, Selection?]` — a tabular projection ({@link Projection}), optionally followed by a
  *   {@link Selection}
  *
@@ -757,7 +757,7 @@ export type UnionKey =
  *
  * - a {@link Union} placeholder — a per-branch *keyed* form, when the bound expression resolves to
  *   a union-typed value
- * - a {@link Placeholder} — a {@link Literal}, an {@link IRI} reference to a linked resource, or a
+ * - a {@link Placeholder} — a {@link Literal}, a {@link Reference} to a linked resource, or a
  *   nested {@link Template} for inline resource expansion
  * - a {@link Locale} placeholder — a tag-range-keyed map declaring a localised cell that yields a complete
  *   {@link Text} value for the row's owning resource. The map is materialised by deferred expansion: pass 1
