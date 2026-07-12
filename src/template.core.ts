@@ -452,7 +452,7 @@ export function isAggregate(value: unknown): value is "count" | "min" | "max" | 
  * Checks if a value is vacuous per the template elision rule.
  *
  * A placeholder is vacuous when, after recursive elision, it carries no retrieval instructions and must be ignored
- * as if the owning property were omitted from the enclosing template:
+ * as if the owning entry were omitted from the enclosing template:
  *
  * - the absent marker `undefined`
  * - an empty {@link Template}, {@link Union}, {@link Locale}, or {@link Projection} (`{}`)

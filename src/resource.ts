@@ -45,7 +45,7 @@
  *
  * ## Retrieving
  *
- * A {@link Resource} is a property map describing the state of a resource:
+ * A {@link Resource} is an entry map describing the state of a resource:
  *
  * ```http request
  * GET https://example.com/products/42
@@ -60,9 +60,9 @@
  * }
  * ```
  *
- * Resources may include an IRI property mapped to `@id` in the application-defined JSON-LD `@context`, identifying the
- * resource globally. This property is usually named `id`, but the mapping is arbitrary. A state without such a
- * property represents an anonymous (blank) node, useful for nested structures that don't need their own identity:
+ * Resources may include an IRI entry mapped to `@id` in the application-defined JSON-LD `@context`, identifying the
+ * resource globally. This entry is usually named `id`, but the mapping is arbitrary. A state without such an
+ * entry represents an anonymous (blank) node, useful for nested structures that don't need their own identity:
  *
  * ```json
  * {
@@ -192,7 +192,7 @@
  *
  * # Value Types
  *
- * Each property in a resource state holds a {@link Values | value set}: a single scalar, a {@link Text} language
+ * Each entry in a resource state holds a {@link Values | value set}: a single scalar, a {@link Text} language
  * map, or an array of scalars.
  *
  * A {@link Value} is a single scalar:
@@ -278,14 +278,14 @@ export * from "./resource.core.js";
 /**
  * Linked data resource state.
  *
- * A property map describing the state of a resource. Each property holds a {@link Values | value set} (a single
+ * An entry map describing the state of a resource. Each entry holds a {@link Values | value set} (a single
  * {@link Value | scalar value}, a {@link Text} map, or an array of scalars) or `undefined`, marking
  * an optional slot that exists in the schema but may be absent at runtime.
  *
  * > [!NOTE]
  * > An empty nested `Resource` (`{}`) carries no state and must be ignored by processors:
  * > dropped when it appears as an element of a {@link Values} array, or treated as if the
- * > owning property were omitted from the enclosing resource otherwise.
+ * > owning entry were omitted from the enclosing resource otherwise.
  *
  * @see {@link template!Template} for the corresponding retrieval template
  * @see {@link https://datatracker.ietf.org/doc/html/rfc9110#section-9.3.1 RFC 9110 - HTTP GET Method}
@@ -293,7 +293,7 @@ export * from "./resource.core.js";
  */
 export type Resource = {
 
-	readonly [property: Identifier]: undefined | Values
+	readonly [entry: Identifier]: undefined | Values
 
 }
 
@@ -345,7 +345,7 @@ export type Value =
  *
  * > [!NOTE]
  * > An empty language map (`{}`) carries no localised values and must be ignored by processors as if the
- * > owning property were omitted from the enclosing resource.
+ * > owning entry were omitted from the enclosing resource.
  *
  * @see {@link template!Locale} for the corresponding retrieval template
  * @see {@link https://www.rfc-editor.org/rfc/rfc5646.html RFC 5646 - Tags for Identifying Languages}

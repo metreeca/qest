@@ -13,7 +13,7 @@
       </g>
     </marker>
   </defs>
-  <g id="resource" stroke-dasharray="none" stroke-opacity="1" fill-opacity="1" fill="none" stroke="none">
+  <g id="resource" stroke-opacity="1" stroke-dasharray="none" fill="none" stroke="none" fill-opacity="1">
     <title>resource</title>
     <g id="resource_Layer_1">
       <title>Layer 1</title>
@@ -48,9 +48,9 @@
           </g>
         </g>
         <g id="Graphic_750">
-          <rect x="-28.597327" y="328.36293" width="69.248" height="12.195999" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
-          <text transform="translate(-23.597326 330.36293)" fill="black">
-            <tspan font-family="Helvetica Neue" font-size="7" fill="black" x=".973" y="7" xml:space="preserve">property: Identifier </tspan>
+          <rect x="-23.280827" y="328.36293" width="58.615" height="12.195999" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+          <text transform="translate(-18.280826 330.36293)" fill="black">
+            <tspan font-family="Helvetica Neue" font-size="7" fill="black" x=".973" y="7" xml:space="preserve">entry: Identifier </tspan>
           </text>
         </g>
       </g>

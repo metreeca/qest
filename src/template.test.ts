@@ -55,16 +55,16 @@ describe("guards", () => {
 
 	describe("isTemplate", () => {
 
-		it("should accept property maps with identifier keys", () => {
+		it("should accept entry maps with identifier keys", () => {
 			expect(isTemplate({ id: "", name: "" })).toBe(true);
 			expect(isTemplate({ vendor: { id: "" } })).toBe(true);
 		});
 
-		it("should accept empty property maps", () => {
+		it("should accept empty entry maps", () => {
 			expect(isTemplate({})).toBe(true);
 		});
 
-		it("should accept undefined property values", () => {
+		it("should accept undefined entry values", () => {
 			expect(isTemplate({ name: undefined })).toBe(true);
 			expect(isTemplate({ id: "", child: undefined })).toBe(true);
 		});
@@ -74,7 +74,7 @@ describe("guards", () => {
 			expect(isTemplate({ items: [{ id: "" }, { "^id": "asc", "@": 0, "#": 10 }] })).toBe(true);
 		});
 
-		it("should reject bare selection-only property values", () => {
+		it("should reject bare selection-only entry values", () => {
 			// with Locale & Selection gone, a bare operator-keyed object is not a Placeholders value
 			expect(isTemplate({ vendor: { "^id": "asc" } })).toBe(false);
 		});
@@ -164,7 +164,7 @@ describe("guards", () => {
 
 		it("should reject plain selection-only objects", () => {
 			// selection-only objects are no longer placeholders (Locale & Selection removed);
-			// Selection attaches inside collection tuples, not as a bare property value
+			// Selection attaches inside collection tuples, not as a bare entry value
 			expect(isPlaceholders({ "^id": "asc" })).toBe(false);
 			expect(isPlaceholders({ "~name": "widget", "^name": "asc" })).toBe(false);
 		});
@@ -332,7 +332,7 @@ describe("guards", () => {
 			expect(isQuery("/products/42")).toBe(false);
 		});
 
-		it("should reject bare object property values", () => {
+		it("should reject bare object entry values", () => {
 			// bare objects are single-valued Placeholders, not collections
 			expect(isQuery({ vendor: { id: "" } })).toBe(false);
 			expect(isQuery({ user_name: "" })).toBe(false);
@@ -618,7 +618,7 @@ describe("guards", () => {
 			expect(isProjection({ "creator=creator": { "": "" } })).toBe(false);
 		});
 
-		it("should accept undefined property values", () => {
+		it("should accept undefined entry values", () => {
 			expect(isProjection({ "name=name": undefined })).toBe(true);
 			expect(isProjection({ "id=id": "", "total=count:": undefined })).toBe(true);
 		});

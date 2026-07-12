@@ -508,9 +508,9 @@ export const Transforms: Record<Transform, TransformSignature> = immutable({
 /**
  * Resource retrieval template.
  *
- * Recursively nested property map describing which {@link Resource} property values to retrieve
- * and how deeply to expand linked resources. Property keys are arbitrary {@link Identifier} names;
- * each property maps to a {@link Placeholders} value, or `undefined`, marking an optional slot that
+ * Recursively nested entry map describing which {@link Resource} values to retrieve
+ * and how deeply to expand linked resources. Entry keys are arbitrary {@link Identifier} names;
+ * each entry maps to a {@link Placeholders} value, or `undefined`, marking an optional slot that
  * exists in the schema but may be absent at runtime.
  *
  * > [!IMPORTANT]
@@ -522,8 +522,8 @@ export const Transforms: Record<Transform, TransformSignature> = immutable({
  *
  * > [!NOTE]
  * > Primitive template values serve as type placeholders; their actual value is immaterial. An empty
- * > `Template` (`{}`), whether it appears directly as a property value or as a collection tuple's element,
- * > carries no retrieval instructions and must be ignored by processors as if the owning property were omitted
+ * > `Template` (`{}`), whether it appears directly as an entry value or as a collection tuple's element,
+ * > carries no retrieval instructions and must be ignored by processors as if the owning entry were omitted
  * > from the enclosing template. A collection tuple whose element is an empty `Template`, carrying only a
  * > {@link Selection} and no per-item retrieval, is vacuous for the same reason and must be ignored likewise,
  * > discarding any attached {@link Selection} constraints. Top-level form-serialised selection-only queries are
@@ -536,7 +536,7 @@ export const Transforms: Record<Transform, TransformSignature> = immutable({
  */
 export type Template = {
 
-	readonly [property: Identifier]: undefined | Placeholders
+	readonly [entry: Identifier]: undefined | Placeholders
 
 }
 
@@ -671,9 +671,9 @@ export type Query =
  * >   language-neutral values
  *
  * > [!NOTE]
- * > An empty tag-range map (`{}`), whether it appears directly as a property value or as a
+ * > An empty tag-range map (`{}`), whether it appears directly as an entry value or as a
  * > collection tuple's element, carries no locale constraints and must be
- * > ignored by processors as if the owning property were omitted from the enclosing template.
+ * > ignored by processors as if the owning entry were omitted from the enclosing template.
  *
  * @see {@link Model} for the single-value umbrella admitting this and the other non-collection forms
  * @see {@link resource!Text} for the corresponding state type
@@ -715,9 +715,9 @@ export type Locale =
  * > declared variants.
  *
  * > [!NOTE]
- * > An empty `Union` object (`{}`), whether it appears directly as a property value or as a collection
+ * > An empty `Union` object (`{}`), whether it appears directly as an entry value or as a collection
  * > tuple's element, carries no retrieval instructions and must be ignored by processors
- * > as if the owning property were omitted from the enclosing template. Variants are evaluated independently: a
+ * > as if the owning entry were omitted from the enclosing template. Variants are evaluated independently: a
  * > variant whose body is an empty `Template` (`{}`) is dropped from the union; when every variant is dropped, the
  * > whole union is elided by the same rule.
  *
@@ -749,7 +749,7 @@ export type UnionKey =
 /**
  * Collection property projection.
  *
- * A property map for projected collection retrieval. Each property is keyed by a {@link Binding} naming an
+ * An entry map for projected collection retrieval. Each entry is keyed by a {@link Binding} naming an
  * {@link Expression} (a property path, optionally piped through a computed or aggregate transform) and maps to a
  * {@link Model} single-value cell, or to `undefined` marking an optional binding that may be elided at construction
  * time (for example, conditionally included aggregates). A `Model` cell takes one of the forms admitted by
@@ -795,7 +795,7 @@ export type UnionKey =
  *
  * > [!NOTE]
  * > An empty `Projection` (`{}`), which may only appear as a collection tuple's element, carries
- * > no column bindings and must be ignored by processors as if the owning property were omitted from the enclosing
+ * > no column bindings and must be ignored by processors as if the owning entry were omitted from the enclosing
  * > template.
  *
  * @see {@link Model} for the single-value cell forms admitted per binding
@@ -1008,7 +1008,7 @@ export type Selection = {
  * };
  * ```
  *
- * @see {@link Projection} for the property map that uses bindings as keys
+ * @see {@link Projection} for the entry map that uses bindings as keys
  * @see {@link Expression} for the computed-field syntax bindings can carry
  */
 export type Binding =

@@ -131,7 +131,7 @@ describe("guards", () => {
 			expect(isResource({ "": "x" })).toBe(false);
 		});
 
-		it("should accept undefined property values", () => {
+		it("should accept undefined entry values", () => {
 			expect(isResource({ x: undefined })).toBe(true);
 			expect(isResource({ id: "/test", name: undefined })).toBe(true);
 		});
