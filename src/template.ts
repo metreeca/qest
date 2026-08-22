@@ -450,12 +450,11 @@
  * @module
  */
 
-import { Identifier, isArray, isIdentifier, isObject, isString } from "@metreeca/core";
+import { error, Identifier, isArray, isIdentifier, isObject, isString } from "@metreeca/core";
 import { decodeBase64, encodeBase64 } from "@metreeca/core/base64";
-import { immutable } from "@metreeca/core/deep";
 import { TagRange } from "@metreeca/core/language";
-import { error } from "@metreeca/core/report";
 import { internalize, isIRI, resolve } from "@metreeca/core/resource";
+import { immutable } from "@metreeca/core/structures";
 import { type DecoderOpts, defaultBase, type EncoderOpts, type Literal, type Reference } from "./index.js";
 import { Resource, Text } from "./resource.js";
 import { isProbe, isSelection, isTemplate } from "./template.core.js";
@@ -1561,7 +1560,7 @@ export function encodeTemplate(template: Template, {
 	const json = JSON.stringify(template, internalizer, indent === true ? 2 : indent || undefined);
 
 	return format === "url" ? encodeURIComponent(json)
-		: format === "base64" ? encodeBase64(json)
+		: format === "base64" ? encodeBase64(json, true)
 			: json;
 
 

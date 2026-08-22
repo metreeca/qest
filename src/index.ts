@@ -39,7 +39,7 @@
  * @module index
  */
 
-import { asIRI, type IRI } from "@metreeca/core/resource";
+import { type IRI } from "@metreeca/core/resource";
 
 export * from "./index.core.js";
 
@@ -52,7 +52,7 @@ export * from "./index.core.js";
  * @see {@link https://www.w3.org/TR/2013/WD-app-uri-20130516/ W3C app: URI Scheme}
  * @see {@link https://datatracker.ietf.org/doc/html/rfc3986 RFC 3986 - URI Generic Syntax}
  */
-export const defaultBase: IRI = asIRI("app:/");
+export const defaultBase: IRI = "app:/";
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

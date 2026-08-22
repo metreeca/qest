@@ -266,9 +266,9 @@
  */
 
 import { Identifier } from "@metreeca/core";
-import { immutable } from "@metreeca/core/deep";
 import { Tag } from "@metreeca/core/language";
 import { internalize, IRI, isIRI, resolve } from "@metreeca/core/resource";
+import { immutable } from "@metreeca/core/structures";
 import { type DecoderOpts, defaultBase, type EncoderOpts, type Literal, type Reference } from "./index.js";
 import { isResource } from "./resource.core.js";
 

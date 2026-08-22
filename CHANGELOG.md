@@ -61,6 +61,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 	`xsd:dateTimeStamp` from the `temporal` type as non-portable opaque `xsd:string`
 - Specify that a descending sort key reverses the entire total order, placing `undefined` last, and align the backend
 	mapping to direction-dependent null placement (`NULLS FIRST`/`NULLS LAST`) (Sections 5.7.5, A.2.3)
+- Migrate to the reorganised `@metreeca/core` API: `immutable` is imported from `@metreeca/core/structures`, `error`
+	from `@metreeca/core`, and `encodeTemplate` requests the URL-safe base64 alphabet explicitly, keeping the
+	`format: "base64"` output unchanged as unpadded base64url
 
 ### Removed
 
