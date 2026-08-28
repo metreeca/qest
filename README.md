@@ -2,7 +2,7 @@
 
 [![npm](https://img.shields.io/npm/v/@metreeca/qest)](https://www.npmjs.com/package/@metreeca/qest)
 
-Minimalist foundations for client-driven, queryable REST/JSON APIs
+Foundations for client-driven, queryable REST/JSON APIs.
 
 **@metreeca/qest** standardises critical capabilities that vanilla REST/JSON APIs typically lack or implement in ad-hoc,
 non-portable ways:
