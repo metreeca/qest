@@ -30,6 +30,7 @@
   ],
   "groupOrder": [
     "Variables",
+    "Interfaces",
     "Type Aliases",
     "*"
   ],
