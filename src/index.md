@@ -290,25 +290,29 @@ carried, is treated as an opaque `xsd:string` (equality and set matching only).
 ## 3.1. Expected Types
 
 Processors resolve payloads and templates against the **expected type** of each property they process. A property's
-expected type is one of:
+expected type is one or more **variants**, each:
 
-- one or more **variants**, each a processing type, optionally narrowed to a sub-domain of its values, a reference, or a
-  nested resource; a property with several variants is **union-typed**, its variants expected to be disjoint and
-  resolved per branch by matching, not by position (Section 5.4);
-- **localised text** (Section 4.3), together with its per-tag shape, a single string or an array per tag; localised text
-  is a whole-property type, not one of a property's declared variants, though a path may resolve to it per branch
-  downstream of a union-typed step (Section 5.8.1).
+- a processing type, optionally narrowed to a sub-domain of its values, a reference, or a nested resource;
+- **localised text** (Section 4.3), together with its per-tag shape, a single string or an array per tag; a property
+  declares at most one such **text variant**.
+
+A property with several variants is **union-typed**, its variants expected to be disjoint and resolved per branch by
+matching, not by position (Section 5.4), and further constrained by Section 3.2. A property whose only variant is
+localised text is a **localised property** (Section 4.3); a path may also resolve to localised text per branch
+downstream of a union-typed step (Section 5.8.1).
 
 Alongside its type, each property carries an expected **cardinality**, single- or multi-valued.
 
 Two regimes resolve a value against the variants, according to whether it carries content:
 
-- a **data value**, whether a state value on ingress (Section 3.2) or a selection bound or option (Section 5.7), carries
+- a **data value**, whether a state value on ingress (Section 3.3) or a selection bound or option (Section 5.7), carries
   actual content and, the variants being disjoint, MUST match exactly one. Matching tests value-domain membership, so
   variants narrowed within a single processing type are told apart by value, not by type alone, and the matched variant
-  fixes the value's processing type (Section 3.2). A value matching no variant is **unsatisfiable**, one matching
-  several is **ambiguous**, and processors MUST reject either wherever this specification calls for such a match (
-  Sections 3.2 and 5.7);
+  fixes the value's processing type (Section 3.3). A text variant is told apart by wire form rather than by value
+  domain: a localised text map (Section 4.3) matches it and no other variant, and a plain string matches a string
+  variant and never the text variant, so the two are disjoint whatever their value domains. A value matching no variant
+  is **unsatisfiable**, one matching several is **ambiguous**, and processors MUST reject either wherever this
+  specification calls for such a match (Sections 3.3 and 5.7);
 - a **template placeholder** (Sections 5.2 and 5.4) carries no content, its value immaterial. It matches a variant by
   type compatibility alone, a literal or reference by processing kind and a nested template by structure (Section 5.4);
   any value-domain narrowing on the variant (Section 3.1) is ignored, and the placeholder need not be a legal value. It
@@ -316,18 +320,64 @@ Two regimes resolve a value against the variants, according to whether it carrie
   at least one variant: one matching none is **unsatisfiable** and MUST be rejected, and a union placeholder (Section
   5.4) applies this to each of its alternatives.
 
-Disjointness is a property of the declared variants, supplied out of band like the variants themselves, and adds no
-conformance requirement of its own; a processor that observes a multiple match of a data value at runtime reports it as
-ambiguous.
-
 Expected types are supplied out of band, whether declared by a static property schema or derived dynamically by the
 application; this specification constrains neither their source nor their provisioning, and they add no conformance
 requirement of their own. They are definitional: the rules that reference an expected or declared characteristic, among
-them ingress mapping (Section 3.2), placeholder matching (Section 5.2), locale classification (Section 5.3), union
+them ingress mapping (Section 3.3), placeholder matching (Section 5.2), locale classification (Section 5.3), union
 retrieval (Section 5.4), collection queries (Section 5.5), selection (Section 5.7), and path resolution (Section 5.8.1),
 are evaluated against them, and a property without an expected type is unknown (Section 5.8.1).
 
-## 3.2. Ingress Mapping
+## 3.2. Union Constraints
+
+A union is the one construct in this specification whose cost multiplies rather than adds. A processor compiling a
+template or an expression carries a candidate set per union, and every construct reached through the union is evaluated
+against each candidate, so a path of two union-typed steps over three branches apiece already carries nine candidates
+and each emitted query grows to match. Where a text variant is among the branches, an unconstrained union also breaks
+serialisation, since a value set has no form holding localised text alongside values of other kinds (Section 4.2).
+
+Three rules bound these two costs, beyond the disjointness the variants are expected to satisfy: coherence bounds the
+first at declaration; exclusivity and folding bound the second, on ingress and before any construct reads the property.
+Each settles once what would otherwise be settled per branch at every construct downstream, so that a union costs a
+processor one resolution rather than one per variant. Of the four constraints, only exclusivity and folding bear
+conformance requirements: disjointness and coherence are properties of the declared variants, supplied out of band like
+the variants themselves (Section 3.1), and add none of their own; a processor that observes a multiple match of a data
+value at runtime rejects it as ambiguous (Section 3.3).
+
+**Coherence.** A property identifier declared by more than one nested-resource variant of the same union-typed property
+is expected to denote the same property throughout that union, so that a step naming it downstream of the union yields
+one answer rather than one per variant, and processors MAY resolve it once instead of per branch (Section 5.8.1). The
+variants MAY declare it with differing expected types, cardinalities, or value domains; those declarations merge into
+the effective type and cardinality of a path crossing the union (Section 5.8.1).
+
+Without coherence, `creator.email` over a union of `Person` and `Organisation` compiles to one predicate per branch, and
+one per pair of branches across a second union-typed step; with it, `email` is one predicate and the branches differ
+only in what it is declared to hold. The rule is local to a single union: it constrains neither identifiers declared by
+variants of different unions nor identifiers declared by resource types that never meet in one.
+
+**Exclusivity.** Where a property declares a text variant alongside other variants, its value set on any one resource
+(Section 4.2) MUST hold either localised text or values of the other variants, never both, and processors MUST reject on
+ingress (Section 3.3) a payload mixing them.
+
+Exclusivity is per resource, not per property, and that is what lets a two-natured property be represented at all: an
+abstract type whose instances split between a translatable name and an untranslatable proper name declares both arms,
+and each resource carries whichever suits it, the proper name travelling as a plain string and the translatable name as
+a text map, each a value set form of Section 4.2. Section 4.3 sets out when to split arms in this way and when a
+language map carrying `und` entries models the absence of a localised form instead.
+
+**Folding.** Except where the text variant is addressed structurally (Section 6, through the constructs of Sections 5.3
+and 5.4), processors MUST fold it into the property's other variants, yielding a single value set, before any construct
+reads them. The text variant contributes its coalesced value (Section 6.2), an ordinary `xsd:string` of the variant's
+per-tag cardinality holding the strings the map coalesces to as if the property stored them, and contributes nothing
+where coalescing yields `undefined`. The folded set carries no localised text, and every construct that reads the
+property, among them placeholder matching (Section 5.2), selection (Section 5.7), and path resolution (Section 5.8.1),
+reads the folded set.
+
+Folding keeps the text variant out of the union a processor compiles against, so localised content that is never
+addressed structurally adds neither a branch to a union nor a mixed type to a value set: a property declaring a text
+variant and a string variant folds to a uniform `xsd:string` set, its two variants indistinguishable to any construct
+reading it. Appendix A.5 shows the coalescing compiling to a single expression on each target backend.
+
+## 3.3. Ingress Mapping
 
 A `boolean` maps to `xsd:boolean`. A `number` maps to `xsd:double` and a `string` to `xsd:string`, unless a more
 specific processing type is expected for the value (Section 3.1).
@@ -347,16 +397,16 @@ interoperable value. This mapping is defined by this specification and is indepe
 assigns `xsd:integer` to integer-valued numbers; the two agree on ordering over that range, because such an integer and
 its double promotion compare equal.
 
-## 3.3. Egress Mapping
+## 3.4. Egress Mapping
 
 Every processing type maps to the transport type heading its group (`xsd:boolean`, `xsd:double`, or `xsd:string`). The
 mapping is many-to-one; the processing-space distinctions are not preserved on the wire.
 
-## 3.4. Extended Mappings
+## 3.5. Extended Mappings
 
 Processors MAY recognise processing types beyond the defaults of this section. Both mappings account for such an
-extension: ingress (Section 3.2) selects the extended type for an incoming value when one is expected (Section 3.1), and
-egress (Section 3.3) returns it to the transport type heading its group. The same mechanism MAY serve beyond the
+extension: ingress (Section 3.3) selects the extended type for an incoming value when one is expected (Section 3.1), and
+egress (Section 3.4) returns it to the transport type heading its group. The same mechanism MAY serve beyond the
 retrieval operations defined here, for example, to validate a request payload against the expected type of each
 property, or to persist values in a natively typed store. These are implementation capabilities; they impose no
 additional conformance requirement and do not change the surfaced transport type set.
@@ -480,8 +530,16 @@ values. Within a single map, all values MUST be uniformly scalar or uniformly ar
 content.
 
 The `@none` key for non-localised values MUST NOT be used. Use the `und` (Undetermined) tag [ISO639-3.und] when the
-language is unspecified, for example a proper name; use the `zxx` (No linguistic content) tag [ISO639-3.zxx] for values
-that carry no language at all, such as identifiers, codes, or formulae.
+language is unspecified; use the `zxx` (No linguistic content) tag [ISO639-3.zxx] for values that carry no language at
+all, such as identifiers, codes, or formulae.
+
+Content that has no localised form, a proper name among it, is modelled either way, and the choice turns on whether the
+absence is a property of the value or of the resource. A value sitting among translations, as in a taxonomy whose
+entries are localised on the interface and one of which happens to have no determinate language, stays in the map under
+`und`: the property remains localised text throughout, and structural access still yields a map. A resource whose name
+is a proper name in its own right, carrying no translations to sit among, is better served by a text variant alongside a
+string variant (Section 3.1): the property is then two-natured, each resource carries whichever arm suits it, and the
+two fold into one `xsd:string` set on retrieval. The two compose, a text arm still admitting `und` entries of its own.
 
 A localised property can be addressed in two ways: **structurally**, preserving its language tags, or **coalesced** to a
 plain string, or array of plain strings of corresponding cardinality, under language negotiation (Section 6).
@@ -774,7 +832,7 @@ A **placeholder** stands in for one property value:
 
 A placeholder's value is immaterial and need not lie within the expected value domain (Section 3.1); only its kind
 matters. A placeholder MUST, by kind, match at least one variant of its property; one matching none can return nothing
-and is unsatisfiable, and MUST be rejected, as a data value is (Sections 3.2 and 5.7).
+and is unsatisfiable, and MUST be rejected, as a data value is (Sections 3.3 and 5.7).
 
 A placeholder stands for data and never carries it back: its value is never returned and is immaterial. A literal
 placeholder need not be a legal value of its property's type; only its kind matters, and over a union-typed property
@@ -825,7 +883,9 @@ mismatch in either direction (Section 5.2). The tag-range map yields the full st
 
 A locale is not syntactically disjoint from a nested template, since a tag-range such as `en` is also a valid property
 identifier; processors classify the object by the targeted property's expected type (Section 3.1): a locale over a
-localised property (Section 4.3) and a template (Section 5.1) otherwise.
+property declaring a text variant (Section 4.3) and a template (Section 5.1) otherwise. A property declaring both a text
+variant and a nested-resource variant leaves the object form genuinely ambiguous and MUST be addressed through the keyed
+union form (Section 5.4), which tells the alternatives apart by key.
 
 ```json
 {
@@ -851,8 +911,16 @@ localised property (Section 4.3) and a template (Section 5.1) otherwise.
 
 For union-typed properties (Section 3.1), per-branch retrieval is expressed through a keyed object form whose values are
 the per-branch placeholders, each a plain placeholder or, only within a projection binding (Section 5.6), a locale
-placeholder (Section 5.3). This keyed form is the only way to address such a property: a plain placeholder over one is
-mismatched and MUST be rejected (Section 5.2), whichever single branch it may resemble.
+placeholder (Section 5.3). Save for the folded text variant below, this keyed form is the only way to address such a
+property: a plain placeholder over one is mismatched and MUST be rejected (Section 5.2), whichever single branch it may
+resemble.
+
+Folding (Section 3.2) recasts a text variant before retrieval reaches it: its coalesced value (Section 6.2) stands in as
+an ordinary `xsd:string` branch. A text variant paired with a string variant folds into that one branch, so the property
+is not union-typed for retrieval and is addressed by a plain placeholder like any string-valued property, yielding the
+coalesced label (Section 5.3) for the values the text variant carries. Where folding leaves two or more branches, a text
+variant paired with a reference or a nested resource among them, the keyed form applies as usual and a plain string
+alternative addresses the folded branch.
 
 A variant carries a single value, never a collection: cardinality is defined for the property as a whole and applies to
 the union slot, not independently per branch.
@@ -1056,7 +1124,7 @@ constraint whose target type or cardinality is not listed for its operator, or w
 the target's resolved type, is unsupported and processors MUST reject it.
 
 Over a union-typed target (Section 3.1), a bound or option is resolved against the declared variants exactly as a state
-value is on ingress (Section 3.2): being expected disjoint (Section 3.1), the variants admit it on at most one branch,
+value is on ingress (Section 3.3): being expected disjoint (Section 3.1), the variants admit it on at most one branch,
 and the processor maps it to that branch's type. A bound or option matching no variant is unsatisfiable and MUST be
 rejected, and one matching several is ambiguous and MUST be rejected (a `null` option is typeless and exempt, Section
 5.7.3). The matched branch fixes the regime: a value matches when it lies on that branch and the operator's regime holds
@@ -1248,8 +1316,9 @@ The set remaining after the last step is the path's result: an empty set resolve
 value, and several to an array. Appendix A.3 maps path resolution onto the target backends.
 
 A path's **effective type** is that of its final step's property, or, for an empty path, the item type of the collection
-it ranges over; a union-typed step yields a mixed-type set. Where a step downstream of a union-typed step resolves a
-distinct property per branch, the effective type is the disjunction of those per-branch types. That disjunction can
+it ranges over; a union-typed step yields a mixed-type set. Where a step downstream of a union-typed step resolves one
+property under a distinct declaration per branch, union coherence keeping it a single property (Section 3.2), the
+effective type is the disjunction of those per-branch types. That disjunction can
 include localised text, where a branch's resolved property is localised (Section 4.3) and addressed structurally
 (Section 6); such a branch is expressed by a locale variant (Section 5.4). A localised step yields `xsd:string` instead
 under coalesced access (Section 6.2), at the property's per-tag cardinality.
@@ -1419,9 +1488,9 @@ A temporal transform yields `undefined` when the input value lacks the component
 A localised property (Section 4.3) is retrieved or constrained according to the form of the value used to address it:
 
 - **structural** access preserves the language tags: a locale placeholder (Section 5.3) retrieves a tag-range subset of
-  the text map, and a language-tagged option (Section 5.7.3) matches exactly the stored tagged values; - **coalesced**
-  access reduces the property to a plain string, or array of plain strings of corresponding cardinality, under language
-  negotiation: a placeholder (Section 5.3) retrieves the coalesced value or values, a plain-string operand
+  the text map, and a language-tagged option (Section 5.7.3) matches exactly the stored tagged values;
+- **coalesced** access reduces the property to a plain string, or array of plain strings of corresponding cardinality,
+  under language negotiation: a placeholder (Section 5.3) retrieves the coalesced value or values, a plain-string operand
   (Section 5.7) constrains them, a sort key (Section 5.7.5) orders by the single-valued form, and an expression step
   (Section 5.8.1) resolves to them, so transforms and aggregates (Section 5.8.2) range over the coalesced values.
 
@@ -1529,7 +1598,7 @@ client's permissions, whether a value is returned directly, expanded from a refe
 aggregate (Section 5.8.2.1), which MUST therefore be computed solely over values the client may read.
 
 Rejection responses can themselves disclose structure. The validation rules of this document reject unknown properties
-(Section 5.8.1), type mismatches (Section 3.2), type-incompatible transform pipes (Section 5.8.2), and malformed
+(Section 5.8.1), type mismatches (Section 3.3), type-incompatible transform pipes (Section 5.8.2), and malformed
 templates (Section 5.2); verbose errors confirm the existence and types of properties a client is not authorised to
 know. Servers SHOULD limit the detail of a rejection to
 what the client is authorised to learn.
