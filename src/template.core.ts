@@ -26,7 +26,6 @@ import {
 	type Identifier,
 	isArray,
 	isIdentifier,
-	isLiteral as isLiteralValue,
 	isNull,
 	isNumber,
 	isObject,
@@ -64,6 +63,38 @@ import type {
  * Matches a {@link Union} key: a canonical non-negative integer string with no leading zeros.
  */
 const UnionKeyPattern = /^(0|[1-9]\d*)$/;
+
+
+/**
+ * Recognised {@link Order} sort directions.
+ */
+const Orders: ReadonlySet<string> = new Set([
+	"asc", "desc"
+]);
+
+/**
+ * Recognised {@link Operator} constraint symbols.
+ */
+const Operators: ReadonlySet<string> = new Set([
+	"<", ">", "<=", ">=", "~", "?", "!", "+", "^", "@", "#"
+]);
+
+/**
+ * Recognised aggregate {@link Transform} names.
+ */
+const Aggregates: ReadonlySet<string> = new Set([
+	"count", "min", "max", "sum", "avg"
+]);
+
+/**
+ * Recognised {@link Transform} names.
+ */
+const Transforms: ReadonlySet<string> = new Set([
+	...Aggregates,
+	"abs", "floor", "ceil", "round",
+	"lower", "upper", "length",
+	"year", "month", "day", "hours", "minutes", "seconds"
+]);
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -346,7 +377,7 @@ export function isOption(value: unknown): value is Option {
  * @returns True if `value` is `"asc"`, `"desc"`, or an integer; false otherwise
  */
 export function isOrder(value: unknown): value is Order {
-	return isLiteralValue(value, ["asc", "desc"]) || Number.isInteger(value);
+	return isString(value) && Orders.has(value) || Number.isInteger(value);
 }
 
 
@@ -409,7 +440,7 @@ export function isSelector(value: unknown): value is keyof Selection {
  * `+`, `^`, `@`, `#`); false otherwise
  */
 export function isOperator(value: unknown): value is Operator {
-	return isLiteralValue(value, ["<", ">", "<=", ">=", "~", "?", "!", "+", "^", "@", "#"]);
+	return isString(value) && Operators.has(value);
 }
 
 /**
@@ -421,12 +452,7 @@ export function isOperator(value: unknown): value is Operator {
  * false otherwise
  */
 export function isTransform(value: unknown): value is Transform {
-	return isLiteralValue(value, [
-		"count", "min", "max", "sum", "avg",
-		"abs", "floor", "ceil", "round",
-		"lower", "upper", "length",
-		"year", "month", "day", "hours", "minutes", "seconds"
-	]);
+	return isString(value) && Transforms.has(value);
 }
 
 /**
@@ -440,9 +466,7 @@ export function isTransform(value: unknown): value is Transform {
  * @returns True if `value` is an aggregate transform name (`count`, `min`, `max`, `sum`, `avg`); false otherwise
  */
 export function isAggregate(value: unknown): value is "count" | "min" | "max" | "sum" | "avg" {
-	return isLiteralValue(value, [
-		"count", "min", "max", "sum", "avg"
-	]);
+	return isString(value) && Aggregates.has(value);
 }
 
 
