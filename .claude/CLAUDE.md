@@ -10,6 +10,13 @@ description: Development guidelines and conventions for the @metreeca/qest packa
 > **REQUIRED** before any work on the specs [`src/index.md`](../src/index.md): it enforces IETF editorial conventions
 > (RFC 7322 structure, RFC 2119 / RFC 8174 requirement keywords, reference and citation style).
 
+> [!CAUTION]
+> **The template and resource types document the model; they are not expected to typecheck it.** Key types such as
+> `Identifier` alias plain `string`, so index signatures admit binding keys, variant keys, tag ranges and constraint
+> operators alike, and the forms are told apart at runtime by the validators, never by the compiler. Templates are
+> normally produced by tooling rather than written by hand. **NEVER** raise weak structural discrimination, alias
+> erosion, or missing compile-time checks as a finding: it is a known and accepted property of the design.
+
 # References
 
 - JSON-LD 1.1 W3C Recommendations:
