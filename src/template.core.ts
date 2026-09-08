@@ -53,14 +53,14 @@ import type {
 	Template,
 	Transform,
 	Union,
-	UnionKey
+	Branch
 } from "./template.js";
 
 
 /**
- * Matches a {@link Union} key: a canonical non-negative integer string with no leading zeros.
+ * Matches a {@link Branch | Union branch key}: a canonical non-negative integer string with no leading zeros.
  */
-const UnionKeyPattern = /^(0|[1-9]\d*)$/;
+const BranchPattern = /^(0|[1-9]\d*)$/;
 
 
 /**
@@ -207,18 +207,18 @@ export function isLocale(value: unknown): value is Locale {
  * @returns True if `value` is a valid Union; false otherwise
  */
 export function isUnion(value: unknown): value is Union {
-	return isObject(value, (v, k) => isUnionKey(k) && (isPlaceholder(v) || isLocale(v)));
+	return isObject(value, (v, k) => isBranch(k) && (isPlaceholder(v) || isLocale(v)));
 }
 
 /**
- * Checks if a value is a {@link UnionKey | Union variant key}.
+ * Checks if a value is a {@link Branch | Union branch key}.
  *
  * @param value The value to check
  *
  * @returns True if `value` is a canonical non-negative integer string with no leading zeros; false otherwise
  */
-export function isUnionKey(value: unknown): value is UnionKey {
-	return isString(value) && UnionKeyPattern.test(value);
+export function isBranch(value: unknown): value is Branch {
+	return isString(value) && BranchPattern.test(value);
 }
 
 
@@ -472,7 +472,7 @@ export function isAggregate(value: unknown): value is "count" | "min" | "max" | 
  * Checks if a value is vacuous per the template elision rule.
  *
  * A placeholder is vacuous when, after recursive elision, it carries no retrieval instructions and must be ignored
- * as if the owning entry were omitted from the enclosing template:
+ * as if the owning field were omitted from the enclosing template:
  *
  * - the absent marker `undefined`
  * - an empty {@link Template}, {@link Union}, {@link Locale}, or {@link Projection} (`{}`)

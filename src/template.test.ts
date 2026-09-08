@@ -35,7 +35,7 @@ import {
 	isTemplate,
 	isTransform,
 	isUnion,
-	isUnionKey,
+	isBranch,
 	isVacuous
 } from "./template.core.js";
 import {
@@ -543,42 +543,42 @@ describe("guards", () => {
 
 	});
 
-	describe("isUnionKey", () => {
+	describe("isBranch", () => {
 
 		it("should accept canonical non-negative integer strings", () => {
-			expect(isUnionKey("0")).toBe(true);
-			expect(isUnionKey("10")).toBe(true);
-			expect(isUnionKey("99")).toBe(true);
+			expect(isBranch("0")).toBe(true);
+			expect(isBranch("10")).toBe(true);
+			expect(isBranch("99")).toBe(true);
 		});
 
 		it("should reject leading zeros", () => {
-			expect(isUnionKey("00")).toBe(false);
-			expect(isUnionKey("01")).toBe(false);
+			expect(isBranch("00")).toBe(false);
+			expect(isBranch("01")).toBe(false);
 		});
 
 		it("should reject non-integer numeric forms", () => {
-			expect(isUnionKey("3.14")).toBe(false);
-			expect(isUnionKey("1e10")).toBe(false);
+			expect(isBranch("3.14")).toBe(false);
+			expect(isBranch("1e10")).toBe(false);
 		});
 
 		it("should reject negative and signed values", () => {
-			expect(isUnionKey("-5")).toBe(false);
-			expect(isUnionKey("+1")).toBe(false);
+			expect(isBranch("-5")).toBe(false);
+			expect(isBranch("+1")).toBe(false);
 		});
 
 		it("should reject surrounding whitespace", () => {
-			expect(isUnionKey(" 0")).toBe(false);
-			expect(isUnionKey("0 ")).toBe(false);
+			expect(isBranch(" 0")).toBe(false);
+			expect(isBranch("0 ")).toBe(false);
 		});
 
 		it("should reject the empty string", () => {
-			expect(isUnionKey("")).toBe(false);
+			expect(isBranch("")).toBe(false);
 		});
 
 		it("should reject non-string values", () => {
-			expect(isUnionKey(0)).toBe(false);
-			expect(isUnionKey(null)).toBe(false);
-			expect(isUnionKey(undefined)).toBe(false);
+			expect(isBranch(0)).toBe(false);
+			expect(isBranch(null)).toBe(false);
+			expect(isBranch(undefined)).toBe(false);
 		});
 
 	});

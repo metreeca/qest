@@ -9,8 +9,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- Add `Union` type and `isUnion`/`isUnionKey` guards for keyed union-typed property templates with per-branch
-	placeholders
+- Add `Union` and `Branch` types and `isUnion`/`isBranch` guards for keyed union-typed property templates with
+	per-branch placeholders
 - Add `Projection` type and `isProjection` guard for collection property projections mapping bindings to cell models
 - Add `Selection` type and `isSelection` guard for collection filtering, sorting, and pagination constraints
 - Add `Order` type, `isOrder` guard, and `getOrderPrecedence`/`getOrderDirection` accessors for `Selection` sort order
@@ -45,8 +45,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Require `Projection` `Binding` keys in the explicit `name=expression` form, dropping the bare-`Identifier`
 	shorthand so the projection key space stays disjoint from `Template` identifier keys; reshape `Expression` to
 	`{Pipe}{Path}` with a possibly empty pipe and path
-- Drop the `Indexed`/`Indexable` property wrapper from `Resource` and `Template`; property values are now optional
-	(`undefined | Values` and `undefined | Placeholders`)
+- Drop the `Indexed`/`Indexable` property wrapper from `Resource` and `Template`; fields map directly to `Values` and
+	`Placeholders`
 - Match `Union` template placeholders against the property's declared variants by type compatibility alone, their value
 	immaterial rather than positional index or value-domain membership: a branch retrieves every type-compatible variant,
 	and one matching no variant is unsatisfiable and rejected; admit a `Locale` map as a branch within a `Projection`

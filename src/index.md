@@ -415,7 +415,7 @@ additional conformance requirement and do not change the surfaced transport type
 
 The data model defines the JSON representation of a resource: its property structure, value types, and linking, together
 with the JSON-LD subset and IRI conventions that constrain it. The same JSON surface syntax underlies both the resource
-payloads of the REST operations (Section 1.3) and the retrieval templates of the query layer (Section 5): entry keys
+payloads of the REST operations (Section 1.3) and the retrieval templates of the query layer (Section 5): field keys
 are ECMAScript identifiers; values are JSON primitives, nested objects, or arrays thereof.
 
 The following CDDL [RFC8610] grammar is the data model's normative definition; the subsections below elaborate it in
@@ -440,9 +440,9 @@ Within a single `text` map the values are uniformly `tstr` or uniformly `[* tstr
 
 An empty object (`{}`) carries no content, whether an empty nested resource or an empty `text` map; likewise an empty
 array. Processors MUST ignore such a value: drop it where it appears as an array element or as a tag's value in a
-`text` map, and otherwise treat the owning entry as omitted (set semantics). Encoders MUST NOT emit one: a value set
+`text` map, and otherwise treat the owning field as omitted (set semantics). Encoders MUST NOT emit one: a value set
 resolving to no content, whatever its form, is never surfaced as an empty array, `text` map, or object; the owning
-entry is omitted from the document instead.
+field is omitted from the document instead.
 
 This data model is a controlled subset of JSON-LD 1.1 [W3C.REC-json-ld11], constraining JSON-LD to patterns that read as
 plain idiomatic JSON, so no JSON-LD processor, preprocessor, or code generator is required. Conforming documents MUST
@@ -457,16 +457,16 @@ satisfy the following constraints:
 5. Localised text is represented as JSON-LD language maps, declared with `"@container": "@language"` in `@context`; the
    `@none` language MUST NOT be used; `und` or `zxx` is used instead (Section 4.3)
 
-An entry mapped to `@type` carries class references, so its expected type (Section 3.1) is `reference`. Such an
-entry is commonly system-managed, derived from the expected model rather than supplied by clients; this provenance
-does not alter its retrieval semantics. It is an ordinary reference-typed entry and MAY be targeted by the
+A field mapped to `@type` carries class references, so its expected type (Section 3.1) is `reference`. Such a
+field is commonly system-managed, derived from the expected model rather than supplied by clients; this provenance
+does not alter its retrieval semantics. It is an ordinary reference-typed field and MAY be targeted by the
 equality-based selection constraints, set matching (Section 5.7.3) and sort focus (Section 5.7.4), like any other
 reference.
 
 ## 4.1. Resource
 
-A resource is an entry map where each entry holds a **value set**. Resources MAY include an entry mapped to `@id`
-in the application-defined JSON-LD `@context`, identifying the resource globally; a resource without such an entry is
+A resource is a field map where each field holds a **value set**. Resources MAY include a field mapped to `@id`
+in the application-defined JSON-LD `@context`, identifying the resource globally; a resource without such a field is
 anonymous.
 
 ```json
@@ -486,7 +486,7 @@ anonymous.
 
 ## 4.2. Values
 
-Each entry holds a **value set**: a single value, a localised text map (Section 4.3), or an array of values. Arrays
+Each field holds a **value set**: a single value, a localised text map (Section 4.3), or an array of values. Arrays
 follow set semantics: duplicate values are ignored, ordering is immaterial, and empty arrays are treated as absent
 values. Element types within an array MAY be mixed.
 

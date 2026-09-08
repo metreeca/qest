@@ -49,7 +49,7 @@
  *
  * ## Retrieving
  *
- * A {@link Resource} is an entry map describing the state of a resource:
+ * A {@link Resource} is a field map describing the state of a resource:
  *
  * ```http request
  * GET https://example.com/products/42
@@ -64,9 +64,9 @@
  * }
  * ```
  *
- * Resources may include an IRI entry mapped to `@id` in the application-defined JSON-LD `@context`, identifying the
- * resource globally. This entry is usually named `id`, but the mapping is arbitrary. A state without such an
- * entry represents an anonymous (blank) node, useful for nested structures that don't need their own identity:
+ * Resources may include an IRI field mapped to `@id` in the application-defined JSON-LD `@context`, identifying the
+ * resource globally. This field is usually named `id`, but the mapping is arbitrary. A state without such a
+ * field represents an anonymous (blank) node, useful for nested structures that don't need their own identity:
  *
  * ```json
  * {
@@ -196,7 +196,7 @@
  *
  * # Value Types
  *
- * Each entry in a resource state holds a {@link Values | value set}: a single scalar, a {@link Text} language
+ * Each field in a resource state holds a {@link Values | value set}: a single scalar, a {@link Text} language
  * map, or an array of scalars.
  *
  * A {@link Value} is a single scalar:
@@ -282,14 +282,15 @@ export * from "./resource.core.js";
 /**
  * Linked data resource state.
  *
- * An entry map describing the state of a resource. Each entry holds a {@link Values | value set} (a single
- * {@link Value | scalar value}, a {@link Text} map, or an array of scalars) or `undefined`, marking
- * an optional slot that exists in the schema but may be absent at runtime.
+ * A field map describing the state of a resource. Each field holds a {@link Values | value set}: a single
+ * {@link Value | scalar value}, a {@link Text} map, or an array of scalars. A property carrying no value is
+ * absent from the map rather than present with an empty marker; `undefined` is admitted as the absent marker for a
+ * field elided at construction time (for example, a conditionally included property) and is equivalent to omission.
  *
  * > [!NOTE]
  * > An empty nested `Resource` (`{}`) carries no state and must be ignored by processors:
  * > dropped when it appears as an element of a {@link Values} array, or treated as if the
- * > owning entry were omitted from the enclosing resource otherwise.
+ * > owning field were omitted from the enclosing resource otherwise.
  *
  * @see {@link template!Template} for the corresponding retrieval template
  * @see {@link https://datatracker.ietf.org/doc/html/rfc9110#section-9.3.1 RFC 9110 - HTTP GET Method}
@@ -297,7 +298,7 @@ export * from "./resource.core.js";
  */
 export type Resource = {
 
-	readonly [entry: Identifier]: undefined | Values
+	readonly [field: Identifier]: undefined | Values
 
 }
 
@@ -349,7 +350,7 @@ export type Value =
  *
  * > [!NOTE]
  * > An empty language map (`{}`) carries no localised values and must be ignored by processors as if the
- * > owning entry were omitted from the enclosing resource.
+ * > owning field were omitted from the enclosing resource.
  *
  * @see {@link template!Locale} for the corresponding retrieval template
  * @see {@link https://www.rfc-editor.org/rfc/rfc5646.html RFC 5646 - Tags for Identifying Languages}

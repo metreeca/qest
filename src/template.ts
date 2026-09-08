@@ -35,7 +35,7 @@
  * - {@link Query} — Collection retrieval template
  * - {@link Locale} — Localised text template (structured language-tagged value)
  * - {@link Union} — Union-typed property template
- * - {@link UnionKey} — Union variant key
+ * - {@link Branch} — Union branch key
  * - {@link Projection} — Collection property projection
  * - {@link Selection} — Collection retrieval constraints
  * - {@link Binding} — Named computed expression
@@ -65,7 +65,7 @@
  * - {@link isQuery} — checks if a value is a {@link Query}
  * - {@link isLocale} — checks if a value is a {@link Locale}
  * - {@link isUnion} — checks if a value is a {@link Union}
- * - {@link isUnionKey} — checks if a value is a {@link UnionKey | Union variant key}
+ * - {@link isBranch} — checks if a value is a {@link Branch | Union branch key}
  * - {@link isProjection} — checks if a value is a {@link Projection}
  * - {@link isSelection} — checks if a value is a {@link Selection}
  * - {@link isBinding} — checks if a value is a {@link Binding}
@@ -506,10 +506,11 @@ export const Transforms: Record<Transform, TransformSignature> = immutable({
 /**
  * Resource retrieval template.
  *
- * Recursively nested entry map describing which {@link Resource} values to retrieve
- * and how deeply to expand linked resources. Entry keys are arbitrary {@link Identifier} names;
- * each entry maps to a {@link Placeholders} value, or `undefined`, marking an optional slot that
- * exists in the schema but may be absent at runtime.
+ * Recursively nested field map describing which {@link Resource} values to retrieve
+ * and how deeply to expand linked resources. Field keys are arbitrary {@link Identifier} names;
+ * each field maps to a {@link Placeholders} value. A property left unrequested is absent from the
+ * map rather than present with an empty marker; `undefined` is admitted as the absent marker for a field elided at
+ * construction time (for example, a conditionally included placeholder) and is equivalent to omission.
  *
  * > [!IMPORTANT]
  * > Placeholder values must match the type possibly declared by schemas for their {@link Identifier} keys;
@@ -520,8 +521,8 @@ export const Transforms: Record<Transform, TransformSignature> = immutable({
  *
  * > [!NOTE]
  * > Primitive template values serve as type placeholders; their actual value is immaterial. An empty
- * > `Template` (`{}`), whether it appears directly as an entry value or as a collection tuple's element,
- * > carries no retrieval instructions and must be ignored by processors as if the owning entry were omitted
+ * > `Template` (`{}`), whether it appears directly as a field value or as a collection tuple's element,
+ * > carries no retrieval instructions and must be ignored by processors as if the owning field were omitted
  * > from the enclosing template. A collection tuple whose element is an empty `Template`, carrying only a
  * > {@link Selection} and no per-item retrieval, is vacuous for the same reason and must be ignored likewise,
  * > discarding any attached {@link Selection} constraints. Top-level form-serialised selection-only queries are
@@ -534,7 +535,7 @@ export const Transforms: Record<Transform, TransformSignature> = immutable({
  */
 export type Template = {
 
-	readonly [entry: Identifier]: undefined | Placeholders
+	readonly [field: Identifier]: undefined | Placeholders
 
 }
 
@@ -670,9 +671,9 @@ export type Query =
  * >   language-neutral values
  *
  * > [!NOTE]
- * > An empty tag-range map (`{}`), whether it appears directly as an entry value or as a
+ * > An empty tag-range map (`{}`), whether it appears directly as a field value or as a
  * > collection tuple's element, carries no locale constraints and must be
- * > ignored by processors as if the owning entry were omitted from the enclosing template.
+ * > ignored by processors as if the owning field were omitted from the enclosing template.
  *
  * @see {@link Model} for the single-value umbrella admitting this and the other non-collection forms
  * @see {@link resource!Text} for the corresponding state type
@@ -686,7 +687,7 @@ export type Locale =
 /**
  * Union-typed property template.
  *
- * An object whose keys are {@link UnionKey | opaque non-negative integer strings}, each mapping to one branch's value
+ * An object whose keys are {@link Branch | opaque non-negative integer strings}, each mapping to one branch's value
  * to retrieve. The keys only label the alternatives: the variants a branch retrieves are fixed by matching it, by type
  * compatibility, against the property's declared variants, never by its key; a variant left unmatched by any branch is
  * skipped. Matching is type-only, so a branch may match several same-typed variants, retrieving each, and its value is
@@ -714,9 +715,9 @@ export type Locale =
  * > declared variants.
  *
  * > [!NOTE]
- * > An empty `Union` object (`{}`), whether it appears directly as an entry value or as a collection
+ * > An empty `Union` object (`{}`), whether it appears directly as a field value or as a collection
  * > tuple's element, carries no retrieval instructions and must be ignored by processors
- * > as if the owning entry were omitted from the enclosing template. Variants are evaluated independently: a
+ * > as if the owning field were omitted from the enclosing template. Variants are evaluated independently: a
  * > variant whose body is an empty `Template` (`{}`) is dropped from the union; when every variant is dropped, the
  * > whole union is elided by the same rule.
  *
@@ -725,30 +726,30 @@ export type Locale =
  */
 export type Union = {
 
-	readonly [variant: UnionKey]: Placeholder | Locale
+	readonly [branch: Branch]: Placeholder | Locale
 
 }
 
 /**
- * Union variant key.
+ * Union branch key.
  *
- * The key type of a {@link Union} map: an opaque non-negative integer string (`"0"`, `"1"`, …) labelling one variant
+ * The key type of a {@link Union} map: an opaque non-negative integer string (`"0"`, `"1"`, …) labelling one
  * branch. The key only names the branch; which variant that branch retrieves is fixed by matching it against the
  * property's declared variants, never by the key value, so renaming or reordering keys leaves an existing template
  * valid. The `` `${number}` `` key space is disjoint from the {@link Binding} / {@link Identifier} key spaces used by
  * {@link Template} and {@link Projection}, keeping form discrimination structural and unambiguous.
  *
- * @see {@link Union} for the enclosing variant map
- * @see {@link isUnionKey} for the runtime wellformedness guard
+ * @see {@link Union} for the enclosing branch map
+ * @see {@link isBranch} for the runtime wellformedness guard
  */
-export type UnionKey =
+export type Branch =
 	| `${number}`;
 
 
 /**
  * Collection property projection.
  *
- * An entry map for projected collection retrieval. Each entry is keyed by a {@link Binding} naming an
+ * A field map for projected collection retrieval. Each field is keyed by a {@link Binding} naming an
  * {@link Expression} (a property path, optionally piped through a computed or aggregate transform) and maps to a
  * {@link Model} single-value cell, or to `undefined` marking an optional binding that may be elided at construction
  * time (for example, conditionally included aggregates). A `Model` cell takes one of the forms admitted by
@@ -794,7 +795,7 @@ export type UnionKey =
  *
  * > [!NOTE]
  * > An empty `Projection` (`{}`), which may only appear as a collection tuple's element, carries
- * > no column bindings and must be ignored by processors as if the owning entry were omitted from the enclosing
+ * > no column bindings and must be ignored by processors as if the owning field were omitted from the enclosing
  * > template.
  *
  * @see {@link Model} for the single-value cell forms admitted per binding
@@ -802,7 +803,7 @@ export type UnionKey =
  */
 export type Projection = {
 
-	readonly [property: Binding]: undefined | Model
+	readonly [field: Binding]: undefined | Model
 
 }
 
@@ -993,7 +994,7 @@ export type Selection = {
 /**
  * Named computed expression.
  *
- * Property key for {@link Projection} entries that assigns a result name to a computed {@link Expression}, in the
+ * Property key for {@link Projection} fields that assigns a result name to a computed {@link Expression}, in the
  * `{name}={expression}` form. A `Projection` key always carries the `=`, keeping the binding key space disjoint from
  * the plain {@link Identifier} keys of a {@link Template} (see [Projection](./index.md#56-projection)).
  *
@@ -1007,7 +1008,7 @@ export type Selection = {
  * };
  * ```
  *
- * @see {@link Projection} for the entry map that uses bindings as keys
+ * @see {@link Projection} for the field map that uses bindings as keys
  * @see {@link Expression} for the computed-field syntax bindings can carry
  */
 export type Binding =
@@ -1454,7 +1455,7 @@ export type Instance<T> =
  */
 export type Index<T> =
 	keyof T extends infer K ?                              // distribute over each key
-		K extends UnionKey ? K                          // string form (`"0"`)
+		K extends Branch ? K                          // string form (`"0"`)
 			: K extends number ? (number extends K ? never : K)  // numeric form (`0`), excluding wide `number`
 				: never
 		: never;
