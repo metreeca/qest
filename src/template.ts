@@ -455,8 +455,8 @@ import { decodeBase64, encodeBase64 } from "@metreeca/core/base64";
 import { TagRange } from "@metreeca/core/language";
 import { internalize, isIRI, resolve } from "@metreeca/core/resource";
 import { immutable } from "@metreeca/core/structures";
-import { type DecoderOpts, defaultBase, type EncoderOpts, type Literal, type Reference } from "./index.js";
-import { Resource, Text } from "./resource.js";
+import { type DecoderOpts, app, type EncoderOpts } from "./index.js";
+import { type Literal, type Reference, Resource, Text } from "./resource.js";
 import { isProbe, isSelection, isTemplate } from "./template.core.js";
 import * as QueryParser from "./template.pegjs.js";
 
@@ -1527,7 +1527,7 @@ export type Name<K> =
  *
  * @returns The serialised template with internalised IRIs, encoded according to `format`
  *
- * @throws {TypeError} If `base` is not a hierarchical IRI
+ * @throws {@link !TypeError TypeError} If `base` is not a hierarchical IRI
  *
  * @example
  *
@@ -1543,7 +1543,7 @@ export type Name<K> =
  */
 export function encodeTemplate(template: Template, {
 
-	base = defaultBase,
+	base = app,
 	indent,
 	format = "json"
 
@@ -1553,7 +1553,7 @@ export function encodeTemplate(template: Template, {
 
 } = {}): string {
 
-	if ( base !== defaultBase && !isIRI(base, "hierarchical") ) {
+	if ( base !== app && !isIRI(base, "hierarchical") ) {
 		throw new TypeError(`expected hierarchical base IRI <${base}>`);
 	}
 
@@ -1586,9 +1586,10 @@ export function encodeTemplate(template: Template, {
  *
  * @returns The decoded deeply {@link immutable} template with resolved IRIs
  *
- * @throws {TypeError} If `base` is not a hierarchical IRI
- * @throws {TypeError} If the decoded value fails structural validation (unless `lenient` is `true`)
- * @throws {SyntaxError} If `encoded` cannot be parsed as JSON, URL-encoded JSON, or base64url-encoded JSON
+ * @throws {@link !TypeError TypeError} If `base` is not a hierarchical IRI
+ * @throws {@link !TypeError TypeError} If the decoded value fails structural validation (unless `lenient` is `true`)
+ * @throws {@link !SyntaxError SyntaxError} If `encoded` cannot be parsed as JSON, URL-encoded JSON, or
+ * base64url-encoded JSON
  *
  * @example
  *
@@ -1604,12 +1605,12 @@ export function encodeTemplate(template: Template, {
  */
 export function decodeTemplate(encoded: string, {
 
-	base = defaultBase,
+	base = app,
 	lenient
 
 }: DecoderOpts = {}): Template {
 
-	if ( base !== defaultBase && !isIRI(base, "hierarchical") ) {
+	if ( base !== app && !isIRI(base, "hierarchical") ) {
 		throw new TypeError(`expected hierarchical base IRI <${base}>`);
 	}
 
@@ -1664,7 +1665,7 @@ export function decodeTemplate(encoded: string, {
  *
  * @returns The encoded selection string with internalised IRIs
  *
- * @throws {TypeError} If `base` is not a hierarchical IRI
+ * @throws {@link !TypeError TypeError} If `base` is not a hierarchical IRI
  *
  * @example
  *
@@ -1677,11 +1678,11 @@ export function decodeTemplate(encoded: string, {
  */
 export function encodeSelection(selection: Selection, {
 
-	base = defaultBase
+	base = app
 
 }: EncoderOpts = {}): string {
 
-	if ( base !== defaultBase && !isIRI(base, "hierarchical") ) {
+	if ( base !== app && !isIRI(base, "hierarchical") ) {
 		throw new TypeError(`expected hierarchical base IRI <${base}>`);
 	}
 
@@ -1771,8 +1772,8 @@ export function encodeSelection(selection: Selection, {
  *
  * @returns The decoded deeply {@link immutable} selection with resolved IRIs
  *
- * @throws {TypeError} If `base` is not a hierarchical IRI
- * @throws {Error} If `encoded` is malformed or unparseable
+ * @throws {@link !TypeError TypeError} If `base` is not a hierarchical IRI
+ * @throws {@link !Error Error} If `encoded` is malformed or unparseable
  *
  * @example
  *
@@ -1785,12 +1786,12 @@ export function encodeSelection(selection: Selection, {
  */
 export function decodeSelection(encoded: string, {
 
-	base = defaultBase,
+	base = app,
 	lenient
 
 }: DecoderOpts = {}): Selection {
 
-	if ( base !== defaultBase && !isIRI(base, "hierarchical") ) {
+	if ( base !== app && !isIRI(base, "hierarchical") ) {
 		throw new TypeError(`expected hierarchical base IRI <${base}>`);
 	}
 
@@ -1893,7 +1894,7 @@ export function encodeProbe(probe: Probe): string {
  *
  * @returns The parsed deeply {@link immutable} probe
  *
- * @throws {Error} If `key` is malformed or unparseable
+ * @throws {@link !Error Error} If `key` is malformed or unparseable
  *
  * @example
  *

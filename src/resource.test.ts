@@ -15,7 +15,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { defaultBase } from "./index.js";
+import { app } from "./index.js";
 import { isText, isResource, isValue, isValues } from "./resource.core.js";
 import { decodeResource, encodeResource, type Resource } from "./resource.js";
 
@@ -408,7 +408,7 @@ describe("codecs", () => {
 			it("should accept path-absolute IRI base", () => {
 				const resource: Resource = { id: "app:/products/42" };
 
-				expect(encodeResource(resource, { base: defaultBase }))
+				expect(encodeResource(resource, { base: app }))
 					.toBe(JSON.stringify({ id: "/products/42" }));
 			});
 
@@ -482,7 +482,7 @@ describe("codecs", () => {
 
 		});
 
-		it("should use defaultBase when base option is omitted", () => {
+		it("should use app base when base option is omitted", () => {
 			const resource: Resource = { id: "app:/products/42" };
 
 			expect(encodeResource(resource))
@@ -559,7 +559,7 @@ describe("codecs", () => {
 			it("should accept path-absolute IRI base", () => {
 				const json = JSON.stringify({ id: "/products/42" });
 
-				expect(decodeResource(json, { base: defaultBase }))
+				expect(decodeResource(json, { base: app }))
 					.toEqual({ id: "app:/products/42" });
 			});
 
@@ -608,7 +608,7 @@ describe("codecs", () => {
 
 		});
 
-		it("should use defaultBase when base option is omitted", () => {
+		it("should use app base when base option is omitted", () => {
 			const json = JSON.stringify({ id: "/products/42" });
 
 			expect(decodeResource(json))

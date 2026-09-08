@@ -28,6 +28,8 @@
  * - {@link Values} — Property value sets
  * - {@link Value} — Individual property values
  * - {@link Text} — Localised text value set (single- or multi-valued per tag)
+ * - {@link Literal} — Primitive scalar value (`boolean`, `number`, `string`)
+ * - {@link Reference} — Absolute IRI identifying a linked resource
  *
  * **Type guards**
  *
@@ -35,6 +37,8 @@
  * - {@link isValues} — checks if a value is a {@link Values} set
  * - {@link isValue} — checks if a value is a {@link Value}
  * - {@link isText} — checks if a value is a {@link Text} value set
+ * - {@link isLiteral} — checks if a value is a {@link Literal}
+ * - {@link isReference} — checks if a value is a {@link Reference}
  *
  * **Codecs**
  *
@@ -269,7 +273,7 @@ import { Identifier } from "@metreeca/core";
 import { Tag } from "@metreeca/core/language";
 import { internalize, IRI, isIRI, resolve } from "@metreeca/core/resource";
 import { immutable } from "@metreeca/core/structures";
-import { type DecoderOpts, defaultBase, type EncoderOpts, type Literal, type Reference } from "./index.js";
+import { app, type DecoderOpts, type EncoderOpts } from "./index.js";
 import { isResource } from "./resource.core.js";
 
 export * from "./resource.core.js";
@@ -355,6 +359,37 @@ export type Text =
 	| { readonly [tag: Tag]: string }
 	| { readonly [tag: Tag]: readonly string[] }
 
+/**
+ * Literal value.
+ *
+ * Convenience alias grouping `boolean`, `number`, and `string` JSON primitives used as property values in
+ * resources. Corresponds to JSON-LD's primitive value types.
+ */
+export type Literal =
+	| boolean
+	| number
+	| string
+
+/**
+ * Resource reference.
+ *
+ * An absolute {@link IRI} identifying a linked resource without embedding its state. Contrast with
+ * {@link Resource}, which includes the linked resource's properties inline.
+ *
+ * > [!WARNING]
+ * > This is a type alias for documentation purposes only. Branding was considered but not adopted due to
+ * > interoperability issues with tools relying on static code analysis.
+ *
+ * > [!NOTE]
+ * > A decoded reference is always absolute. In the JSON wire format a reference MAY instead appear in relative form:
+ * > decoders resolve it against a known base IRI (defaulting to {@link app}), and encoders MAY conversely relativise
+ * > absolute references against the same base, preferring the root-relative form.
+ *
+ * @see {@link https://www.w3.org/TR/json-ld11/#node-identifiers JSON-LD 1.1 - Node Identifiers}
+ */
+export type Reference =
+	| IRI
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -371,7 +406,7 @@ export type Text =
  *
  * @returns The JSON string with internalised IRIs
  *
- * @throws {TypeError} If `base` is not a hierarchical IRI
+ * @throws {@link !TypeError TypeError} If `base` is not a hierarchical IRI
  *
  * @example
  *
@@ -387,12 +422,12 @@ export type Text =
  */
 export function encodeResource(resource: Resource, {
 
-	base = defaultBase,
+	base = app,
 	indent
 
 }: EncoderOpts = {}): string {
 
-	if ( base !== defaultBase && !isIRI(base, "hierarchical") ) {
+	if ( base !== app && !isIRI(base, "hierarchical") ) {
 		throw new TypeError(`expected hierarchical base IRI <${base}>`);
 	}
 
@@ -420,9 +455,9 @@ export function encodeResource(resource: Resource, {
  *
  * @returns The decoded deeply {@link immutable} resource with resolved IRIs
  *
- * @throws {TypeError} If `base` is not a hierarchical IRI
- * @throws {TypeError} If the decoded value fails structural validation (unless `lenient` is `true`)
- * @throws {SyntaxError} If `json` is not valid JSON
+ * @throws {@link !TypeError TypeError} If `base` is not a hierarchical IRI
+ * @throws {@link !TypeError TypeError} If the decoded value fails structural validation (unless `lenient` is `true`)
+ * @throws {@link !SyntaxError SyntaxError} If `json` is not valid JSON
  *
  * @example
  *
@@ -438,12 +473,12 @@ export function encodeResource(resource: Resource, {
  */
 export function decodeResource(json: string, {
 
-	base = defaultBase,
+	base = app,
 	lenient
 
 }: DecoderOpts = {}): Resource {
 
-	if ( base !== defaultBase && !isIRI(base, "hierarchical") ) {
+	if ( base !== app && !isIRI(base, "hierarchical") ) {
 		throw new TypeError(`expected hierarchical base IRI <${base}>`);
 	}
 

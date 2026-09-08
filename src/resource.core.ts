@@ -22,11 +22,19 @@
  * @module
  */
 
-import { type Identifier, isArray, isIdentifier, isObject, isString, isUnion } from "@metreeca/core";
+import {
+	type Identifier,
+	isArray,
+	isBoolean,
+	isIdentifier,
+	isNumber,
+	isObject,
+	isString,
+	isUnion
+} from "@metreeca/core";
 import { isTag } from "@metreeca/core/language";
-import { isLiteral, isReference } from "./index.core.js";
-import type { Literal, Reference } from "./index.js";
-import type { Text, Resource, Value, Values } from "./resource.js";
+import { isIRI } from "@metreeca/core/resource";
+import type { Literal, Reference, Resource, Text, Value, Values } from "./resource.js";
 
 
 /**
@@ -87,4 +95,29 @@ export function isValue(value: unknown): value is Value {
 export function isText(value: unknown): value is Text {
 	return isObject(value, (v, k) => isTag(k) && isString(v))
 		|| isObject(value, (v, k) => isTag(k) && isArray(v, isString));
+}
+
+
+/**
+ * Checks if a value is a {@link Literal}.
+ *
+ * @param value The value to check
+ *
+ * @returns True if `value` is a `boolean`, a `number`, or a `string`; false otherwise
+ */
+export function isLiteral(value: unknown): value is Literal {
+	return isBoolean(value)
+		|| isNumber(value)
+		|| isString(value);
+}
+
+/**
+ * Checks if a value is a {@link Reference}.
+ *
+ * @param value The value to check
+ *
+ * @returns True if `value` is an absolute IRI; false otherwise
+ */
+export function isReference(value: unknown): value is Reference {
+	return isIRI(value, "absolute");
 }

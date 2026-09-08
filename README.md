@@ -55,7 +55,7 @@ npm install @metreeca/qest
 >
 > | Module                      | Description                      |
 > |-----------------------------|----------------------------------|
-> | [@metreeca/qest][]          | Shared values, types, and guards |
+> | [@metreeca/qest][]          | Shared options and defaults      |
 > | [@metreeca/qest/resource][] | Resource state representation    |
 > | [@metreeca/qest/template][] | Client-driven resource retrieval |
 

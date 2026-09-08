@@ -30,7 +30,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Rename `./index` package export to `.` (root entry point)
 - Rename `./state` module to `./resource`; rename `./model` module to `./template`
-- Move `Literal` and `Reference` types from the state module to the index module
+- Rename the `defaultBase` codec base IRI constant to `app`
 - Split `CodecOpts` into separate `EncoderOpts` and `DecoderOpts` types
 - Merge `Local`/`Locals` types into a unified `Text` type; merge `isLocal`/`isLocals` into `isText`
 - Merge `LocalModel`/`LocalsModel` into a unified `Locale` template; merge their guards into `isLocale`

@@ -2166,7 +2166,7 @@ describe("codecs", () => {
 
 		});
 
-		it("should use defaultBase when base option is omitted", () => {
+		it("should use app base when base option is omitted", () => {
 			const template: Template = { id: "app:/products/42" };
 
 			expect(encodeTemplate(template))
@@ -2290,7 +2290,7 @@ describe("codecs", () => {
 
 		});
 
-		it("should use defaultBase when base option is omitted", () => {
+		it("should use app base when base option is omitted", () => {
 			const json = JSON.stringify({ id: "/products/42" });
 
 			expect(decodeTemplate(json))
@@ -2399,7 +2399,7 @@ describe("codecs", () => {
 
 		});
 
-		it("should use defaultBase when base option is omitted", () => {
+		it("should use app base when base option is omitted", () => {
 			const selection = { "?vendor": "app:/vendors/acme" } as Selection;
 			const encoded = encodeSelection(selection);
 
@@ -2808,7 +2808,7 @@ describe("codecs", () => {
 
 		});
 
-		it("should use defaultBase when base option is omitted", () => {
+		it("should use app base when base option is omitted", () => {
 			const encoded = "%3Fvendor=%22%2Fvendors%2Facme%22";
 
 			expect(decodeSelection(encoded))

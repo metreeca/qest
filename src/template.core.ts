@@ -33,10 +33,8 @@ import {
 	isUnion as isVariants
 } from "@metreeca/core";
 import { isTagRange, type TagRange } from "@metreeca/core/language";
-import { isLiteral, isReference } from "./index.core.js";
-import type { Literal, Reference } from "./index.js";
-import { isText } from "./resource.core.js";
-import type { Text } from "./resource.js";
+import { isLiteral, isReference, isText } from "./resource.core.js";
+import type { Literal, Reference, Text } from "./resource.js";
 import type {
 	Binding,
 	Expression,

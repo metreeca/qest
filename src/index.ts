@@ -15,79 +15,32 @@
  */
 
 /**
- * Shared primitive types and codec options.
+ * Shared options and defaults.
  *
- * Defines the primitive building blocks used throughout the resource and template modules, along with the
- * encoder / decoder option bags that configure IRI rewriting and output formatting for the codec functions.
- *
- * **Primitive types**
- *
- * - {@link Reference} — absolute IRI identifying a linked resource
- * - {@link Literal} — JSON scalar primitives (`boolean`, `number`, `string`)
+ * Governs how the resource and template codecs rewrite identifiers and format their output, keeping payload
+ * identifiers portable across the hosts an API is served from.
  *
  * **Codec configuration**
  *
- * - {@link defaultBase} — default base IRI (`app:/`) used by encode / decode operations
  * - {@link EncoderOpts} — options for encoding operations (base IRI, indentation)
  * - {@link DecoderOpts} — options for decoding operations (base IRI, lenient mode)
- *
- * **Type guards**
- *
- * - {@link isLiteral} — checks if a value is a {@link Literal}
- * - {@link isReference} — checks if a value is a {@link Reference}
  *
  * @module index
  */
 
 import { type IRI } from "@metreeca/core/resource";
 
-export * from "./index.core.js";
-
 
 /**
- * Default base IRI (`app:/`) for codec operations.
+ * Default base IRI (`app:/`).
  *
- * The `app:` URI scheme is hierarchical and supports relative IRI resolution.
+ * Applied by codec operations when {@link EncoderOpts} or {@link DecoderOpts} omits an explicit `base`, keeping
+ * identifiers independent of the host a payload is served from. The `app:` scheme is hierarchical, as codecs
+ * require of any base they resolve against.
  *
  * @see {@link https://www.w3.org/TR/2013/WD-app-uri-20130516/ W3C app: URI Scheme}
- * @see {@link https://datatracker.ietf.org/doc/html/rfc3986 RFC 3986 - URI Generic Syntax}
  */
-export const defaultBase: IRI = "app:/";
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-/**
- * Literal value.
- *
- * Convenience alias grouping `boolean`, `number`, and `string` JSON primitives used as property values in
- * resources. Corresponds to JSON-LD's primitive value types.
- */
-export type Literal =
-	| boolean
-	| number
-	| string
-
-/**
- * Resource reference.
- *
- * An absolute {@link IRI} identifying a linked resource without embedding its state. Contrast with
- * {@link resource!Resource}, which includes the linked resource's properties inline.
- *
- * > [!WARNING]
- * > This is a type alias for documentation purposes only. Branding was considered but not adopted due to
- * > interoperability issues with tools relying on static code analysis.
- *
- * @remarks
- *
- * A decoded reference is always absolute. In the JSON wire format a reference MAY instead appear in relative form:
- * decoders resolve it against a known base IRI (defaulting to `app:/`), and encoders MAY conversely relativise absolute
- * references against the same base, preferring the root-relative form.
- *
- * @see {@link https://www.w3.org/TR/json-ld11/#node-identifiers JSON-LD 1.1 - Node Identifiers}
- */
-export type Reference =
-	| IRI
+export const app: IRI = "app:/";
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -102,7 +55,7 @@ export type EncoderOpts = {
 	 *
 	 * Converts absolute IRIs to internal (root-relative) form.
 	 *
-	 * If omitted, no IRI rewriting is performed.
+	 * If omitted, IRIs are internalised against {@link app}.
 	 */
 	readonly base?: IRI
 
@@ -129,7 +82,7 @@ export type DecoderOpts = {
 	 *
 	 * Resolves internal IRIs to absolute form.
 	 *
-	 * If omitted, no IRI rewriting is performed.
+	 * If omitted, IRIs are resolved against {@link app}.
 	 */
 	readonly base?: IRI
 

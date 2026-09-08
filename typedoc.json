@@ -19,8 +19,16 @@
       "TagRange": "https://metreeca.github.io/core/types/language.TagRange.html",
       "immutable": "https://metreeca.github.io/core/functions/nested.immutable.html"
     },
+    "global": {
+      "Error": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error",
+      "TypeError": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypeError",
+      "SyntaxError": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SyntaxError"
+    },
     "typescript": {
-      "encodeURIComponent": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/encodeURIComponent"
+      "encodeURIComponent": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/encodeURIComponent",
+      "Error": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error",
+      "TypeError": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypeError",
+      "SyntaxError": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SyntaxError"
     }
   },
   "includeVersion": true,

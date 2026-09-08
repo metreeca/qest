@@ -17,8 +17,7 @@
 import type { Identifier } from "@metreeca/core";
 import type { Tag, TagRange } from "@metreeca/core/language";
 import { describe, expectTypeOf, test } from "vitest";
-import type { Reference } from "./index.js";
-import type { Text } from "./resource.js";
+import type { Reference, Text } from "./resource.js";
 import type {
 	Instance,
 	Locale,
