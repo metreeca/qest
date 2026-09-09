@@ -27,7 +27,7 @@
  * - {@link Resource} — Complete resource state (HTTP GET/PUT)
  * - {@link Values} — Property value sets
  * - {@link Value} — Individual property values
- * - {@link Text} — Localised text value set (single- or multi-valued per tag)
+ * - {@link Dictionary} — Localised text map (single- or multi-valued per tag)
  * - {@link Literal} — Primitive scalar value (`boolean`, `number`, `string`)
  * - {@link Reference} — Absolute IRI identifying a linked resource
  *
@@ -36,7 +36,7 @@
  * - {@link isResource} — checks if a value is a {@link Resource}
  * - {@link isValues} — checks if a value is a {@link Values} set
  * - {@link isValue} — checks if a value is a {@link Value}
- * - {@link isText} — checks if a value is a {@link Text} value set
+ * - {@link isDictionary} — checks if a value is a {@link Dictionary}
  * - {@link isLiteral} — checks if a value is a {@link Literal}
  * - {@link isReference} — checks if a value is a {@link Reference}
  *
@@ -196,8 +196,8 @@
  *
  * # Value Types
  *
- * Each field in a resource state holds a {@link Values | value set}: a single scalar, a {@link Text} language
- * map, or an array of scalars.
+ * Each field in a resource state holds a {@link Values | value set}: a single scalar, a {@link Dictionary} of
+ * localised text, or an array of scalars.
  *
  * A {@link Value} is a single scalar:
  *
@@ -207,7 +207,7 @@
  *
  * A {@link Values} set extends {@link Value} with collection forms:
  *
- * - a {@link Text} localised text value set
+ * - a {@link Dictionary} of localised text
  * - an array of {@link Value} elements, with mixed element types permitted
  *
  * > [!IMPORTANT]
@@ -231,11 +231,10 @@
  * structured values are represented as strings in standard formats (for example, ISO 8601). Application-level
  * `@context` objects can declare datatype coercion rules for JSON-LD processing.
  *
- * ## Localised Text
+ * ## Dictionaries
  *
- * For multilingual content, use {@link Text} value sets. Language
- * {@link Tag | tags} follow [RFC 5646](https://www.rfc-editor.org/rfc/rfc5646.html)
- * (for example, `en`, `de-CH`, `zh-Hans`):
+ * For multilingual content, use a {@link Dictionary}. Language {@link Tag | tags} follow
+ * [RFC 5646](https://www.rfc-editor.org/rfc/rfc5646.html) (for example, `en`, `de-CH`, `zh-Hans`):
  *
  * ```js
  * // single value per language
@@ -254,7 +253,7 @@
  * })
  * ```
  *
- * Within a single map, all values must be uniformly scalar or uniformly array.
+ * Within a single dictionary, all values must be uniformly scalar or uniformly array.
  *
  * > [!IMPORTANT]
  * > The `@none` key for non-localised values is not supported; use the `und` tag for language-neutral
@@ -283,7 +282,7 @@ export * from "./resource.core.js";
  * Linked data resource state.
  *
  * A field map describing the state of a resource. Each field holds a {@link Values | value set}: a single
- * {@link Value | scalar value}, a {@link Text} map, or an array of scalars. A property carrying no value is
+ * {@link Value | scalar value}, a {@link Dictionary}, or an array of scalars. A property carrying no value is
  * absent from the map rather than present with an empty marker; `undefined` is admitted as the absent marker for a
  * field elided at construction time (for example, a conditionally included property) and is equivalent to omission.
  *
@@ -306,7 +305,7 @@ export type Resource = {
 /**
  * Linked data value set.
  *
- * A single {@link Value} scalar, a {@link Text} map, or an array of {@link Value} elements.
+ * A single {@link Value} scalar, a {@link Dictionary}, or an array of {@link Value} elements.
  * Arrays follow set semantics: duplicate values are ignored, ordering is immaterial, and empty arrays are
  * treated as absent values. Element types may be mixed.
  *
@@ -314,7 +313,7 @@ export type Resource = {
  */
 export type Values =
 	| Value
-	| Text
+	| Dictionary
 	| readonly Value[]
 
 /**
@@ -335,28 +334,28 @@ export type Value =
 
 
 /**
- * Localised text value set.
+ * Localised text map.
  *
- * Language-tagged text mapping {@link Tag | tags} to localised values. The umbrella union admits
- * two forms with disjoint value shapes:
+ * Holds the localised forms of a property value under the language {@link Tag | tags} they are written in.
+ * The umbrella union admits two forms with disjoint value shapes:
  *
  * - a single string value per tag, or
  * - an array of string values per tag
  *
  * > [!NOTE]
- * > - Language maps are conceptually equivalent to an array of language-tagged strings, which idiomatic JSON
+ * > - A dictionary is conceptually equivalent to an array of language-tagged strings, which idiomatic JSON
  * >   doesn't directly support
  * > - The `@none` key for non-localised values is not supported; use the `und` tag for language-neutral values
  *
  * > [!NOTE]
- * > An empty language map (`{}`) carries no localised values and must be ignored by processors as if the
+ * > An empty dictionary (`{}`) carries no localised values and must be ignored by processors as if the
  * > owning field were omitted from the enclosing resource.
  *
- * @see {@link template!Locale} for the corresponding retrieval template
+ * @see {@link template!Locales} for the corresponding retrieval template
  * @see {@link https://www.rfc-editor.org/rfc/rfc5646.html RFC 5646 - Tags for Identifying Languages}
  * @see {@link https://iso639-3.sil.org/code/und ISO 639 und - Undetermined Language}
  */
-export type Text =
+export type Dictionary =
 	| { readonly [tag: Tag]: string }
 	| { readonly [tag: Tag]: readonly string[] }
 

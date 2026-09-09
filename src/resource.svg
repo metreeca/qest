@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns="http://www.w3.org/2000/svg" xmlns:xl="http://www.w3.org/1999/xlink" version="1.1" viewBox="-55 185 248 183" width="248" height="183">
+<svg xmlns:dc="http://purl.org/dc/elements/1.1/" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xl="http://www.w3.org/1999/xlink" viewBox="-55 185 257 183" width="257" height="183">
   <defs>
     <marker orient="auto" overflow="visible" markerUnits="strokeWidth" id="StickArrow_Marker" stroke-linejoin="miter" stroke-miterlimit="10" viewBox="-1 -10 26 20" markerWidth="26" markerHeight="20" color="black">
       <g>
@@ -13,7 +13,7 @@
       </g>
     </marker>
   </defs>
-  <g id="resource" stroke-opacity="1" stroke-dasharray="none" fill-opacity="1" fill="none" stroke="none">
+  <g id="resource" stroke="none" stroke-opacity="1" stroke-dasharray="none" fill-opacity="1" fill="none">
     <title>resource</title>
     <g id="resource_Layer_1">
       <title>Layer 1</title>
@@ -90,9 +90,9 @@
       </g>
       <g id="Group_941">
         <g id="Graphic_942">
-          <rect x="138.22518" y="261.2148" width="35.667" height="17.261063" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
-          <text transform="translate(147.22518 264.2148)" fill="black">
-            <tspan font-family="Helvetica Neue" font-weight="bold" font-size="9" fill="black" x="6412648e-19" y="9" xml:space="preserve">Text</tspan>
+          <rect x="125.14818" y="261.2148" width="61.821" height="17.261063" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".25"/>
+          <text transform="translate(134.14818 264.2148)" fill="black">
+            <tspan font-family="Helvetica Neue" font-weight="bold" font-size="9" fill="black" x="0" y="9" xml:space="preserve">Dictionary</tspan>
           </text>
         </g>
       </g>

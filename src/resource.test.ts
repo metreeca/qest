@@ -16,7 +16,7 @@
 
 import { describe, expect, it } from "vitest";
 import { app } from "./index.js";
-import { isText, isResource, isValue, isValues } from "./resource.core.js";
+import { isDictionary, isResource, isValue, isValues } from "./resource.core.js";
 import { decodeResource, encodeResource, type Resource } from "./resource.js";
 
 
@@ -48,7 +48,7 @@ describe("guards", () => {
 		["isResource", isResource],
 		["isValues", isValues],
 		["isValue", isValue],
-		["isText", isText]
+		["isDictionary", isDictionary]
 	])("%s shared rejections", (_name, guard) => {
 
 		it.each(sharedRejections)("should reject %s", (_label, value) => {
@@ -75,11 +75,11 @@ describe("guards", () => {
 			expect(isResource({ tags: ["a", "b", "c"] })).toBe(true);
 		});
 
-		it("should accept object with single-valued Text", () => {
+		it("should accept object with single-valued Dictionary", () => {
 			expect(isResource({ name: { en: "Hello", de: "Hallo" } })).toBe(true);
 		});
 
-		it("should accept object with multi-valued Text", () => {
+		it("should accept object with multi-valued Dictionary", () => {
 			expect(isResource({ tags: { en: ["hello", "hi"], de: ["hallo"] } })).toBe(true);
 		});
 
@@ -198,11 +198,11 @@ describe("guards", () => {
 			expect(isValues({ id: "/test", name: "Test" })).toBe(true);
 		});
 
-		it("should accept single-valued Text", () => {
+		it("should accept single-valued Dictionary", () => {
 			expect(isValues({ en: "Hello", de: "Hallo" })).toBe(true);
 		});
 
-		it("should accept multi-valued Text", () => {
+		it("should accept multi-valued Dictionary", () => {
 			expect(isValues({ en: ["hello", "hi"], de: ["hallo"] })).toBe(true);
 		});
 
@@ -307,86 +307,86 @@ describe("guards", () => {
 
 	});
 
-	describe("isText", () => {
+	describe("isDictionary", () => {
 
 		it("should accept single-valued language map", () => {
-			expect(isText({ en: "Hello" })).toBe(true);
-			expect(isText({ en: "Hello", de: "Hallo", fr: "Bonjour" })).toBe(true);
+			expect(isDictionary({ en: "Hello" })).toBe(true);
+			expect(isDictionary({ en: "Hello", de: "Hallo", fr: "Bonjour" })).toBe(true);
 		});
 
 		it("should accept multi-valued language map", () => {
-			expect(isText({ en: ["Hello", "Hi"] })).toBe(true);
-			expect(isText({ en: ["Hello"], de: ["Hallo", "Guten Tag"] })).toBe(true);
+			expect(isDictionary({ en: ["Hello", "Hi"] })).toBe(true);
+			expect(isDictionary({ en: ["Hello"], de: ["Hallo", "Guten Tag"] })).toBe(true);
 		});
 
 		it("should accept empty arrays", () => {
-			expect(isText({ en: [] })).toBe(true);
+			expect(isDictionary({ en: [] })).toBe(true);
 		});
 
 		it("should accept empty object", () => {
-			expect(isText({})).toBe(true);
+			expect(isDictionary({})).toBe(true);
 		});
 
 		it("should accept the und and zxx neutral tags", () => {
 			// §4.3: language-neutral content uses und / zxx, never the @none key
-			expect(isText({ und: "Acme" })).toBe(true);
-			expect(isText({ zxx: "SKU-12345" })).toBe(true);
+			expect(isDictionary({ und: "Acme" })).toBe(true);
+			expect(isDictionary({ zxx: "SKU-12345" })).toBe(true);
 		});
 
 		it("should reject plain string shorthand", () => {
-			expect(isText("hello")).toBe(false);
-			expect(isText("")).toBe(false);
+			expect(isDictionary("hello")).toBe(false);
+			expect(isDictionary("")).toBe(false);
 		});
 
 		it("should reject plain string array shorthand", () => {
-			expect(isText(["a", "b"])).toBe(false);
-			expect(isText([])).toBe(false);
+			expect(isDictionary(["a", "b"])).toBe(false);
+			expect(isDictionary([])).toBe(false);
 		});
 
 		it("should reject mixed scalar/array content", () => {
-			expect(isText({ en: "hello", fr: ["bonjour"] })).toBe(false);
-			expect(isText({ en: ["hello"], fr: "bonjour" })).toBe(false);
+			expect(isDictionary({ en: "hello", fr: ["bonjour"] })).toBe(false);
+			expect(isDictionary({ en: ["hello"], fr: "bonjour" })).toBe(false);
 		});
 
 		it("should reject invalid language tags", () => {
-			expect(isText({ invalid_tag: "value" })).toBe(false);
-			expect(isText({ "123": "value" })).toBe(false);
-			expect(isText({ invalid_tag: ["value"] })).toBe(false);
+			expect(isDictionary({ invalid_tag: "value" })).toBe(false);
+			expect(isDictionary({ "123": "value" })).toBe(false);
+			expect(isDictionary({ invalid_tag: ["value"] })).toBe(false);
 		});
 
 		it("should reject the @none key", () => {
 			// §4.3: the @none key MUST NOT be used
-			expect(isText({ "@none": "value" })).toBe(false);
+			expect(isDictionary({ "@none": "value" })).toBe(false);
 		});
 
 		it("should reject non-string values", () => {
-			expect(isText({ en: 42 })).toBe(false);
-			expect(isText({ en: null })).toBe(false);
+			expect(isDictionary({ en: 42 })).toBe(false);
+			expect(isDictionary({ en: null })).toBe(false);
 		});
 
 		it("should reject non-string array elements", () => {
-			expect(isText({ en: [42] })).toBe(false);
-			expect(isText({ en: [null] })).toBe(false);
+			expect(isDictionary({ en: [42] })).toBe(false);
+			expect(isDictionary({ en: [null] })).toBe(false);
 		});
 
 		it("should reject non-string/non-array primitives", () => {
-			expect(isText(42)).toBe(false);
-			expect(isText(null)).toBe(false);
+			expect(isDictionary(42)).toBe(false);
+			expect(isDictionary(null)).toBe(false);
 		});
 
 	});
 
-	describe("isText arbitrary JSON hardening", () => {
+	describe("isDictionary arbitrary JSON hardening", () => {
 
 		it("should reject arrays with non-string elements", () => {
-			expect(isText([1, 2])).toBe(false);
-			expect(isText(["a", 1])).toBe(false);
-			expect(isText([undefined])).toBe(false);
-			expect(isText([null])).toBe(false);
+			expect(isDictionary([1, 2])).toBe(false);
+			expect(isDictionary(["a", 1])).toBe(false);
+			expect(isDictionary([undefined])).toBe(false);
+			expect(isDictionary([null])).toBe(false);
 		});
 
 		it("should reject language maps with non-finite number values", () => {
-			expect(isText({ en: Number.NaN })).toBe(false);
+			expect(isDictionary({ en: Number.NaN })).toBe(false);
 		});
 
 	});

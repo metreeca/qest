@@ -9,7 +9,7 @@ non-portable ways:
 
 - **Client-Driven**: clients specify what they need, retrieving complex envelopes in a single call
 - **Queryable**: advanced filtering and aggregation, supporting faceted search and analytics
-- **Localised content**: full support for internationalised content with language-tagged text maps
+- **Localised content**: full support for internationalised content with language-tagged dictionaries
 
 Developers seek these features in frameworks like GraphQL; **@metreeca/qest** brings them to REST/JSON, achieving:
 
@@ -292,10 +292,10 @@ A single call returns pre-aggregated category counts, ready for UI faceting or a
 }
 ```
 
-## Localised Text
+## Localised Properties
 
-Resource properties can hold localised text using language maps, which map
-[BCP 47](https://www.rfc-editor.org/rfc/rfc5646.html) language tags to text values:
+Resource properties can hold localised text in a dictionary: a language map associating
+[BCP 47](https://www.rfc-editor.org/rfc/rfc5646.html) language tags with text values:
 
 ```json
 {
@@ -317,8 +317,8 @@ Resource properties can hold localised text using language maps, which map
 }
 ```
 
-A [`Text`](https://metreeca.github.io/qest/types/resource.Text.html) value set supports both single-valued and
-multi-valued forms per language. Within a single map, all values must be uniformly scalar or uniformly array.
+A [`Dictionary`](https://metreeca.github.io/qest/types/resource.Dictionary.html) supports both single-valued and
+multi-valued forms per language. Within a single dictionary, all values must be uniformly scalar or uniformly array.
 Language-neutral values are tagged with the [`und`](https://iso639-3.sil.org/code/und) (Undetermined) language tag:
 
 ```js
@@ -328,20 +328,20 @@ Language-neutral values are tagged with the [`und`](https://iso639-3.sil.org/cod
 });
 ```
 
-Projections can target localised properties through tag-range placeholders. Each row carries a complete `Text`
-value (the localised text map for the tags the binding's pattern matches) rather than fanning out one row per tag:
+Projections can target localised properties through tag-range placeholders. Each row carries a complete `Dictionary`
+value (the entries for the tags the binding's pattern matches) rather than fanning out one row per tag:
 
 ```js
 ({
     items: [{
         id: "",
-        "label=title": { "*": "" }          // all matching tags, as one Text map
+        "label=title": { "*": "" }          // all matching tags, as one Dictionary
     }]
 });
 ```
 
 Localised properties can also be filtered and sorted through their **coalesced label**: the value, or values, resolved
-from the localised text map by a request-level language priority (derived server-side, for example from
+from the dictionary by a request-level language priority (derived server-side, for example from
 `Accept-Language`). Search (`~`) acts on the resolved label, and sort order (`^`) and focus (`+`) on its single-valued
 form; the priority is supplied out of band, never in the query. See the [memo](src/index.md) for the full semantics.
 

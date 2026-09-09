@@ -15,9 +15,9 @@
  */
 
 /**
- * Query Form-Encoded Format Grammar
+ * Selection Form-Encoded Format Grammar
  *
- * @see query.ts#form-serialization
+ * @see template.ts#selection-serialisation
  */
 
 {
@@ -194,9 +194,9 @@ Integer "integer"
   = n:$("-"? [0-9]+) { return parseInt(n, 10); }
 
 
-/// Query //////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/// Selection //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-Query
+Selection
   = pairs:PairList { return mergePairs(pairs); }
 
 PairList

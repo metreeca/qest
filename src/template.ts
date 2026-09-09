@@ -33,7 +33,7 @@
  * - {@link Placeholder} — Property value template
  * - {@link Model} — Value retrieval template
  * - {@link Query} — Collection retrieval template
- * - {@link Locale} — Localised text template (structured language-tagged value)
+ * - {@link Locales} — Localised text map template (structured language-tagged value)
  * - {@link Union} — Union-typed property template
  * - {@link Branch} — Union branch key
  * - {@link Projection} — Collection property projection
@@ -63,7 +63,7 @@
  * - {@link isPlaceholder} — checks if a value is a {@link Placeholder}
  * - {@link isModel} — checks if a value is a {@link Model} single-value template
  * - {@link isQuery} — checks if a value is a {@link Query}
- * - {@link isLocale} — checks if a value is a {@link Locale}
+ * - {@link isLocales} — checks if a value is a {@link Locales}
  * - {@link isUnion} — checks if a value is a {@link Union}
  * - {@link isBranch} — checks if a value is a {@link Branch | Union branch key}
  * - {@link isProjection} — checks if a value is a {@link Projection}
@@ -147,9 +147,9 @@
  * };
  * ```
  *
- * ## Localised Text
+ * ## Localised Properties
  *
- * For multilingual properties, use {@link Locale} templates with {@link TagRange} keys to select language
+ * For multilingual properties, use {@link Locales} templates with {@link TagRange} keys to select language
  * tags to retrieve. Within a single map, all tag-range-keyed values must be uniformly scalar or uniformly
  * array:
  *
@@ -162,14 +162,13 @@
  * };
  * ```
  *
- * A localised property is a single structured value, the localised counterpart of a nested resource
- * rather than a multi-valued property: a language-tagged {@link Text} map reached through
- * {@link Locale} as its own {@link Placeholders} arm. The `TagRange` keys are RFC 4647 basic language
- * ranges that filter which locales populate the map (the standalone `*` matches every tag, and a plain
- * range such as `en` also matches more specific tags like `en-US`), while the per-tag value
- * shape (`""` or `[""]`) only selects each entry's cardinality. Tag ranges select retrieved content only and
- * are independent of {@link Selection}: a `Locale` map carries `TagRange` keys, never `Selection` operator keys.
- * Resource matching by localised text is done separately, at the enclosing collection's `Selection` via `?`/`!`.
+ * A localised property is a single structured value, the localised counterpart of a nested resource rather than a
+ * multi-valued property: a {@link Dictionary} reached through {@link Locales} as its own {@link Placeholders} arm.
+ * The `TagRange` keys are RFC 4647 basic language ranges that filter which locales populate the map (the standalone
+ * `*` matches every tag, and a plain range such as `en` also matches more specific tags like `en-US`), while the
+ * per-tag value shape (`""` or `[""]`) only selects each entry's cardinality. Tag ranges select retrieved content
+ * only and are independent of {@link Selection}: a `Locales` map carries `TagRange` keys, never `Selection` operator
+ * keys. Resource matching by localised text is done separately, at the enclosing collection's `Selection` via `?`/`!`.
  *
  * > [!IMPORTANT]
  * > The `@none` key for non-localised values is not supported; use the `und` tag for language-neutral
@@ -181,8 +180,8 @@
  * property paths with {@link Transform}.
  *
  * Plain transforms operate on individual values and may project scalar literals, linked resource references,
- * nested {@link Template | templates} expanding a linked resource inline, or {@link Locale} tag-range maps
- * declaring a localised cell that yields a complete {@link Text} value per row:
+ * nested {@link Template | templates} expanding a linked resource inline, or {@link Locales} tag-range maps
+ * declaring a localised cell that yields a complete {@link Dictionary} value per row:
  *
  * ```typescript
  * const projection: Projection = {
@@ -192,7 +191,7 @@
  *   "vendorName=vendor.name": "",            // property path
  *   "releaseYear=year:releaseDate": 0,       // transform
  *   "vendorRow=vendor": { id: "", name: "" }, // nested template
- *   "label=title": { "*": "" }                // localised cell (full Text value per row)
+ *   "label=title": { "*": "" }                // localised cell (full Dictionary value per row)
  * };
  * ```
  *
@@ -334,9 +333,8 @@
  * Comparison (`<`, `>`, `<=`, `>=`) and sort (`^`) operators rely on a total ordering over values defined by the
  * {@link https://www.w3.org/TR/xpath-functions-20/#comparison-operators XPath 2.0 comparison operators}, which are in
  * turn based on {@link https://www.w3.org/TR/xmlschema11-2/#rf-order XSD ordered value spaces}. These operators, along
- * with sort focus (`+`), target {@link Literal} values only;
- * {@link Reference} values, nested {@link Template} resources, and {@link Text} values are neither comparable nor
- * sortable:
+ * with sort focus (`+`), target {@link Literal} values only; {@link Reference} values, nested {@link Template}
+ * resources, and {@link Dictionary} values are neither comparable nor sortable:
  *
  * - `null` — undefined values sort before all defined values
  * - `boolean` — `false` < `true`
@@ -403,8 +401,8 @@
  *   - `expression<=value` for `<=expression=value` (less than or equal)
  *   - `expression>=value` for `>=expression=value` (greater than or equal)
  *
- * Values use [JSON](https://www.rfc-editor.org/rfc/rfc8259) primitive syntax, with a {@link Text}
- * string inlined through a single postfix `@tag` suffix:
+ * Values use [JSON](https://www.rfc-editor.org/rfc/rfc8259) primitive syntax, with a {@link Dictionary} entry
+ * inlined through a single postfix `@tag` suffix:
  *
  * ```text
  * value       = null | literal | tagged
@@ -414,7 +412,7 @@
  * ```
  *
  * - {@link Reference}s are serialised as strings
- * - A string may carry a single `@tag` suffix, lifting it into a one-entry {@link Text} map
+ * - A string may carry a single `@tag` suffix, lifting it into a one-entry {@link Dictionary}
  *   (for example, `"text"@en` decodes to `{ en: "text" }`)
  * - The encoder always produces double-quoted strings; the decoder accepts unquoted strings as a shorthand
  *
@@ -456,9 +454,9 @@ import { TagRange } from "@metreeca/core/language";
 import { internalize, isIRI, resolve } from "@metreeca/core/resource";
 import { immutable } from "@metreeca/core/structures";
 import { type DecoderOpts, app, type EncoderOpts } from "./index.js";
-import { type Literal, type Reference, Resource, Text } from "./resource.js";
+import { type Literal, type Reference, Resource, Dictionary } from "./resource.js";
 import { isProbe, isSelection, isTemplate } from "./template.core.js";
-import * as QueryParser from "./template.pegjs.js";
+import * as SelectionParser from "./template.pegjs.js";
 
 export * from "./template.core.js";
 
@@ -547,7 +545,7 @@ export type Template = {
  * single-value and a collection-valued arm:
  *
  * - {@link Model} — single-value placeholder retrieving one property value, grouping the {@link Union}
- *   (*keyed* union form), {@link Placeholder} (non-union value), and {@link Locale} (localised text) shapes
+ *   (*keyed* union form), {@link Placeholder} (non-union value), and {@link Locales} (localised text) shapes
  * - {@link Query} — collection-valued placeholder, covering nested resource collections and
  *   tabular projections, each optionally constrained through {@link Selection}
  *
@@ -592,7 +590,8 @@ export type Placeholder =
  * - {@link Union} — per-branch placeholder for a union-typed slot (*keyed* form)
  * - {@link Placeholder} — single non-union value placeholder: a {@link Literal} or {@link Reference}, or a nested
  *   {@link Template} expanding a linked resource inline
- * - {@link Locale} — localised text placeholder, a tag-range-keyed map yielding a single structured {@link Text} value
+ * - {@link Locales} — localised text map placeholder, a tag-range-keyed map yielding a single structured
+ *   {@link Dictionary} value
  *
  * `Model` reaches property templates at two sites: as the single-value arm of {@link Placeholders}, paired with the
  * collection-valued {@link Query}, and as the cell value of a {@link Projection}, which allots one `Model` value per
@@ -605,7 +604,7 @@ export type Placeholder =
 export type Model =
 	| Union
 	| Placeholder
-	| Locale
+	| Locales
 
 /**
  * Collection retrieval template.
@@ -639,9 +638,9 @@ export type Query =
 
 
 /**
- * Localised text template.
+ * Localised text map template.
  *
- * Retrieves a localised property as a single structured {@link Text} value: the localised
+ * Retrieves a localised property as a single structured {@link Dictionary} value: the localised
  * counterpart of a nested {@link Template}, not a multi-valued or collection property. The
  * {@link TagRange | tag range} keys are RFC 4647 basic language ranges (a subtag sequence or the
  * standalone `*`) and select which locales populate that structured value; each range filters the
@@ -658,14 +657,14 @@ export type Query =
  * The value position is an inert placeholder (`""` or `[""]`): it carries no data and only selects
  * the per-tag cardinality, leaving the {@link TagRange} keys alone to drive locale selection.
  *
- * `Locale` is one of the {@link Model} single-value forms, reaching {@link Placeholders} through the single-value
+ * `Locales` is one of the {@link Model} single-value forms, reaching {@link Placeholders} through the single-value
  * arm alongside {@link Placeholder} and {@link Union} rather than under {@link Query}, reflecting that a localised
  * property is one structured value and not a collection. Its {@link TagRange} keys select retrieved content only and
- * are independent of {@link Selection}: a `Locale` map carries tag ranges, never `Selection` operator keys. Resource
+ * are independent of {@link Selection}: a `Locales` map carries tag ranges, never `Selection` operator keys. Resource
  * matching by a localised property is done separately, at the enclosing collection's {@link Selection} via `?`/`!`.
  *
  * > [!NOTE]
- * > - If the query specifies a single- or multi-valued form, the retrieved {@link Text} entry
+ * > - If the query specifies a single- or multi-valued form, the retrieved {@link Dictionary} entry
  * >   should use the corresponding form
  * > - The `@none` key for non-localised values is not supported; use the `und` tag for
  * >   language-neutral values
@@ -676,10 +675,10 @@ export type Query =
  * > ignored by processors as if the owning field were omitted from the enclosing template.
  *
  * @see {@link Model} for the single-value umbrella admitting this and the other non-collection forms
- * @see {@link resource!Text} for the corresponding state type
+ * @see {@link resource!Dictionary} for the corresponding state type
  * @see {@link https://www.rfc-editor.org/rfc/rfc4647.html RFC 4647 - Matching of Language Tags}
  */
-export type Locale =
+export type Locales =
 	| { readonly [range: TagRange]: string }
 	| { readonly [range: TagRange]: readonly [string] }
 
@@ -701,11 +700,11 @@ export type Locale =
  * stays a property-level concern, expressed by wrapping the whole `Union` in a {@link Query}.
  *
  * > [!NOTE]
- * > A branch may also be a {@link Locale} map, but only within a {@link Projection}: when a binding's
+ * > A branch may also be a {@link Locales} map, but only within a {@link Projection}: when a binding's
  * > {@link Expression} traverses a multi-step path through a union-typed step to a downstream localised property and
- * > addresses it structurally, that branch retrieves a {@link resource!Text} map. A `Locale` branch never arises when
- * > retrieving a resource property directly, where a localised property is retrieved through {@link Locale} as a
- * > sibling {@link Model} form rather than as a union branch.
+ * > addresses it structurally, that branch retrieves a {@link resource!Dictionary}. A `Locales` branch never arises
+ * > when retrieving a resource property directly, where a localised property is retrieved through {@link Locales} as
+ * > a sibling {@link Model} form rather than as a union branch.
  *
  * > [!NOTE]
  * > The `` `${number}` `` key space is disjoint from the {@link Binding} / {@link Identifier} key spaces used by
@@ -726,7 +725,7 @@ export type Locale =
  */
 export type Union = {
 
-	readonly [branch: Branch]: Placeholder | Locale
+	readonly [branch: Branch]: Placeholder | Locales
 
 }
 
@@ -759,8 +758,8 @@ export type Branch =
  *   a union-typed value
  * - a {@link Placeholder} — a {@link Literal}, a {@link Reference} to a linked resource, or a
  *   nested {@link Template} for inline resource expansion
- * - a {@link Locale} placeholder — a tag-range-keyed map declaring a localised cell that yields a complete
- *   {@link Text} value for the row's owning resource. The map is materialised by deferred expansion: pass 1
+ * - a {@link Locales} placeholder — a tag-range-keyed map declaring a localised cell that yields a complete
+ *   {@link Dictionary} value for the row's owning resource. The map is materialised by deferred expansion: pass 1
  *   projects the owning resource handle, pass 2 batch-fetches the tagged values and assembles the map (see
  *   [Projection Composition](./index.md#56-projection))
  *
@@ -770,10 +769,10 @@ export type Branch =
  *   or aggregate values derived from property paths and {@link Transform | transforms}; a `Template` accepts
  *   only plain {@link Identifier} keys matching actual resource properties
  * - **values** — a `Projection` admits a {@link Model} single-value placeholder per cell ({@link Union},
- *   {@link Placeholder}, or {@link Locale}) but excludes the collection-valued {@link Query}, because Projection
- *   Composition allots one value per cell; a {@link Locale} map counts as a single (structured) {@link Text} value,
- *   and nested {@link Template} placeholders remain admitted through {@link Placeholder}, so a computed binding may
- *   expand a linked resource inline
+ *   {@link Placeholder}, or {@link Locales}) but excludes the collection-valued {@link Query}, because Projection
+ *   Composition allots one value per cell; a {@link Locales} map counts as a single (structured) {@link Dictionary}
+ *   value, and nested {@link Template} placeholders remain admitted through {@link Placeholder}, so a computed
+ *   binding may expand a linked resource inline
  *
  * > [!IMPORTANT]
  * > When any binding resolves to an aggregate {@link Expression} (one whose pipe includes an
@@ -816,7 +815,7 @@ export type Projection = {
  * `"#"` keys.
  *
  * `Selection` is attached to a collection as the optional second element of a {@link Query} tuple:
- * `[Placeholder, Selection]`, `[Union, Selection]`, or `[Projection, Selection]`. A {@link Locale} placeholder is
+ * `[Placeholder, Selection]`, `[Union, Selection]`, or `[Projection, Selection]`. A {@link Locales} placeholder is
  * not a `Query` element, so it takes no second-slot `Selection`; a localised property is constrained through the
  * collection's `Selection` by matching (`?`/`!`).
  *
@@ -841,7 +840,7 @@ export type Selection = {
 	 * under the value-ordering rules.
 	 *
 	 * Applicable only where the target {@link Expression} resolves to a {@link Literal} (`boolean`, `number`,
-	 * `string`); {@link Reference}, nested resources, and {@link Text} values are not comparable. The bound
+	 * `string`); {@link Reference}, nested resources, and {@link Dictionary} values are not comparable. The bound
 	 * and the resolved value must share the same type; cross-type comparison is unpredictable and a validating
 	 * processor MUST reject it.
 	 */
@@ -854,7 +853,7 @@ export type Selection = {
 	 * under the value-ordering rules.
 	 *
 	 * Applicable only where the target {@link Expression} resolves to a {@link Literal} (`boolean`, `number`,
-	 * `string`); {@link Reference}, nested resources, and {@link Text} values are not comparable. The bound
+	 * `string`); {@link Reference}, nested resources, and {@link Dictionary} values are not comparable. The bound
 	 * and the resolved value must share the same type; cross-type comparison is unpredictable and a validating
 	 * processor MUST reject it.
 	 */
@@ -867,7 +866,7 @@ export type Selection = {
 	 * under the value-ordering rules.
 	 *
 	 * Applicable only where the target {@link Expression} resolves to a {@link Literal} (`boolean`, `number`,
-	 * `string`); {@link Reference}, nested resources, and {@link Text} values are not comparable. The bound
+	 * `string`); {@link Reference}, nested resources, and {@link Dictionary} values are not comparable. The bound
 	 * and the resolved value must share the same type; cross-type comparison is unpredictable and a validating
 	 * processor MUST reject it.
 	 */
@@ -880,7 +879,7 @@ export type Selection = {
 	 * under the value-ordering rules.
 	 *
 	 * Applicable only where the target {@link Expression} resolves to a {@link Literal} (`boolean`, `number`,
-	 * `string`); {@link Reference}, nested resources, and {@link Text} values are not comparable. The bound
+	 * `string`); {@link Reference}, nested resources, and {@link Dictionary} values are not comparable. The bound
 	 * and the resolved value must share the same type; cross-type comparison is unpredictable and a validating
 	 * processor MUST reject it.
 	 */
@@ -911,8 +910,8 @@ export type Selection = {
 	 * {@link Options} set; `null` matches undefined. An empty option set is an absent constraint, matching all
 	 * resources.
 	 *
-	 * Applicable to {@link Literal} and {@link Reference} properties (value or IRI equality) and to
-	 * {@link Text} properties through the {@link Text} option form; a nested resource is matched by its
+	 * Applicable to {@link Literal} and {@link Reference} properties (value or IRI equality) and to localised
+	 * properties through the {@link Dictionary} option form; a nested resource is matched by its
 	 * {@link Reference}, not its embedded state. The option must match the type of the target {@link Expression}'s
 	 * resolved value; a type-inconsistent option is unpredictable and a processor MUST reject it.
 	 */
@@ -928,8 +927,8 @@ export type Selection = {
 	 * combined with present values is unsatisfiable and matches nothing (not an error); a processor may
 	 * short-circuit it to an empty result without evaluating the constraint.
 	 *
-	 * Applicable to {@link Literal} and {@link Reference} properties (value or IRI equality) and to
-	 * {@link Text} properties through the {@link Text} option form; a nested resource is matched by its
+	 * Applicable to {@link Literal} and {@link Reference} properties (value or IRI equality) and to localised
+	 * properties through the {@link Dictionary} option form; a nested resource is matched by its
 	 * {@link Reference}, not its embedded state. The option must match the type of the target {@link Expression}'s
 	 * resolved value; a type-inconsistent option is unpredictable and a processor MUST reject it.
 	 */
@@ -1090,7 +1089,7 @@ export type Path =
 /**
  * Constraint option set.
  *
- * A single {@link Option} scalar, a {@link Text} language-tagged option set, or an array of {@link Option}
+ * A single {@link Option} scalar, a {@link Dictionary} of localised options, or an array of {@link Option}
  * elements. Specifies the set of values for {@link Selection} matching (`?` and `!`) and sort focus (`+`)
  * operators. Arrays follow set semantics: duplicate values are ignored, ordering is immaterial, and empty arrays
  * are treated as absent constraints. Element types may be mixed.
@@ -1101,22 +1100,22 @@ export type Path =
  * > shorthand for a single-element option set.
  *
  * > [!IMPORTANT]
- * > When constraining a localised property, use the {@link Text} branch so option values carry their
+ * > When constraining a localised property, use the {@link Dictionary} branch so option values carry their
  * > language tags inline. The scalar {@link Option} and array `readonly Option[]` branches target
  * > non-localised properties; reaching a localised slot through them is a typing escape hatch, not an intended mode.
  * > Branch/target consistency is not enforced by the type system ({@link Selection} keys are opaque
  * > {@link Expression} strings that sever the value form from the target property), so processors MUST reject
- * > inconsistent `Options`: an untagged {@link Option} or array against a localised property, or a {@link Text} set
- * > against a non-localised one.
+ * > inconsistent `Options`: an untagged {@link Option} or array against a localised property, or a
+ * > {@link Dictionary} against a non-localised one.
  *
  * > [!IMPORTANT]
- * > Consumers must accept both scalar and array {@link Text} forms when filtering or constraining on
+ * > Consumers must accept both scalar and array {@link Dictionary} forms when filtering or constraining on
  * > localised properties, regardless of the target property's cardinality: codec roundtrips may normalise
  * > between the two forms (see {@link decodeSelection}).
  */
 export type Options =
 	| Option
-	| Text
+	| Dictionary
 	| readonly Option[]
 
 /**
@@ -1254,15 +1253,15 @@ export type Operator =
  * The domain and range columns in the table below use the following type shorthands:
  *
  * - **literal** — any comparable literal: `xsd:boolean`, **numeric**, `xsd:string`, or **temporal**; excludes IRI
- * references, nested resources, and localised {@link Text}, which lack an ordering
+ * references, nested resources, and {@link Dictionary} values, which lack an ordering
  * - **numeric** — `xsd:integer` | `xsd:decimal` | `xsd:float` | `xsd:double`, mapped to JSON `number`
  * (IEEE 754 double); note that JSON numbers can only represent a subset of `xsd:integer` and `xsd:decimal` values
  * - **temporal** — `xsd:dateTime` | `xsd:date` | `xsd:time`, mapped to JSON `string`; note that
  * temporal types may be accepted only by a specific subset of temporal transforms. `xsd:duration` is not a
  * temporal processing type and is treated as an opaque `xsd:string`
  *
- * String-to-string transform pipes (for example, `lower`, `upper`) may also be applied to {@link Text}
- * values: the pipe is applied individually to each string value in the localised text map. The `min`/`max`
+ * String-to-string transform pipes (for example, `lower`, `upper`) may also be applied to {@link Dictionary}
+ * values: the pipe is applied individually to each string value in the dictionary. The `min`/`max`
  * aggregates require an ordering that localised text lacks, so it lies outside their domain.
  *
  * | Transform      | Definition                                                       | Domain       | Range         |
@@ -1449,7 +1448,7 @@ export type Instance<T> =
  * Declaration emit serialises numeric keys as bare numerics (`{ 0; 1 }`) rather than string
  * literals (`{ "0"; "1" }`), so both forms must be matched for the collapse to survive a
  * cross-package `.d.ts` round-trip. Wide `number` / `string` index signatures (for example
- * {@link Locale} maps) are excluded so they keep mapping through {@link Slots}.
+ * {@link Locales} maps) are excluded so they keep mapping through {@link Slots}.
  *
  * @typeParam T The object type whose numeric-literal keys to extract
  */
@@ -1466,7 +1465,7 @@ export type Index<T> =
  * Rewrites each property of `T` homomorphically: maps the key through {@link Name} (dropping
  * {@link Selection} constraint and pagination keys and extracting {@link Binding} identifiers)
  * and maps the value recursively through {@link Instance}. Shared by the plain-template branch
- * of `Instance` and the string-indexed fallback for {@link Locale} tag-range maps.
+ * of `Instance` and the string-indexed fallback for {@link Locales} tag-range maps.
  *
  * @typeParam T The template-shaped object type to rewrite
  */
@@ -1642,7 +1641,7 @@ export function decodeTemplate(encoded: string, {
  * Serialises a {@link Selection} into an
  * [`application/x-www-form-urlencoded`](https://url.spec.whatwg.org/#application/x-www-form-urlencoded) string,
  * recursively {@link internalize | internalising} absolute IRIs against the provided `base`; see
- * [Form Serialisation](#form-serialisation) for the wire format.
+ * [Selection Serialisation](#selection-serialisation) for the wire format.
  *
  * > [!NOTE]
  * > The encoder always produces canonical form:
@@ -1651,14 +1650,14 @@ export function decodeTemplate(encoded: string, {
  * > - String values are JSON double-quoted (for example, `name="widget"`)
  * > - Numbers, booleans, and `null` remain unquoted (JSON literals)
  * > - Sorting criteria are always numeric (for example, `^price=1`, `^name=-2`)
- * > - A {@link Text} string value is flattened using a single postfix `@tag` suffix (for example, `"text"@en`)
+ * > - A {@link Dictionary} entry is flattened using a single postfix `@tag` suffix (for example, `"text"@en`)
  * >
  * > This ensures consistent, predictable output. The decoder accepts both canonical and shorthand forms (for example,
  * > postfix operators like `price>=100`, unquoted strings like `name=widget`).
  *
  * > [!WARNING]
  * > The codec treats the `@tag` suffix as an opaque key and assigns it no semantic meaning. Consumers are
- * > responsible for interpreting the resulting {@link Text} map using schema-based information.
+ * > responsible for interpreting the resulting {@link Dictionary} using schema-based information.
  *
  * @param selection The selection to encode
  * @param options Encoding options
@@ -1757,14 +1756,14 @@ export function encodeSelection(selection: Selection, {
  * > - Postfix operators (shorthand): `price>=100`
  * > - Double-quoted strings (canonical): `name="widget"`
  * > - Unquoted strings (shorthand): `name=widget`
- * > - A string value may carry a single postfix `@tag` suffix, lifting it into a one-entry {@link Text} map
+ * > - A string value may carry a single postfix `@tag` suffix, lifting it into a one-entry {@link Dictionary}
  * >
  * > Keyed values are always reconstructed in the multi-valued form, since {@link Options} are inherently multi-valued
  * > and scalar/array forms are indistinguishable in form encoding.
  *
  * > [!WARNING]
  * > The codec treats the `@tag` suffix as an opaque key and assigns it no semantic meaning. Consumers are
- * > responsible for interpreting the resulting {@link Text} map using schema-based information.
+ * > responsible for interpreting the resulting {@link Dictionary} using schema-based information.
  *
  * @param encoded The form-encoded {@link Selection} string
  * @param options Decoding options
@@ -1812,7 +1811,7 @@ export function decodeSelection(encoded: string, {
 				// form format (application/x-www-form-urlencoded) parsed via Peggy grammar
 				// decode keys separately while preserving encoded values for the parser's value handling
 
-				return resolveIRIs(base, QueryParser.parse(parseForm(encoded), { startRule: "Query" }));
+				return resolveIRIs(base, SelectionParser.parse(parseForm(encoded), { startRule: "Selection" }));
 
 			}
 
@@ -1910,7 +1909,7 @@ export function decodeProbe(key: string): Probe {
 
 	try {
 
-		const probe = QueryParser.parse(key, { startRule: "Probe" });
+		const probe = SelectionParser.parse(key, { startRule: "Probe" });
 
 		return immutable(probe, isProbe, "malformed probe");
 

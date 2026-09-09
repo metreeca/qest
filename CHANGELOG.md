@@ -32,8 +32,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Rename `./state` module to `./resource`; rename `./model` module to `./template`
 - Rename the `defaultBase` codec base IRI constant to `app`
 - Split `CodecOpts` into separate `EncoderOpts` and `DecoderOpts` types
-- Merge `Local`/`Locals` types into a unified `Text` type; merge `isLocal`/`isLocals` into `isText`
-- Merge `LocalModel`/`LocalsModel` into a unified `Locale` template; merge their guards into `isLocale`
+- Merge `Local`/`Locals` types into a unified `Dictionary` type; merge `isLocal`/`isLocals` into `isDictionary`
+- Merge `LocalModel`/`LocalsModel` into a unified `Locales` template; merge their guards into `isLocales`
 - Rename `ValuesModel` to `Template`; rename `isValuesModel` to `isTemplate`
 - Rename `Criterion` to `Probe`; rename `isCriterion`/`encodeCriterion`/`decodeCriterion` accordingly
 - Rename `encodeQuery`/`decodeQuery` to `encodeTemplate`/`decodeTemplate`
@@ -49,11 +49,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 	`Placeholders`
 - Match `Union` template placeholders against the property's declared variants by type compatibility alone, their value
 	immaterial rather than positional index or value-domain membership: a branch retrieves every type-compatible variant,
-	and one matching no variant is unsatisfiable and rejected; admit a `Locale` map as a branch within a `Projection`
+	and one matching no variant is unsatisfiable and rejected; admit a `Locales` map as a branch within a `Projection`
 	path crossing a union step to a localised property
 - Rename the focus-ordering `Operator` from `*` to `+`
 - Replace `zxx` language tag with `und` for language-neutral values
-- Restrict `Locale` map keys to RFC 4647 basic language ranges (a subtag sequence or the standalone `*`); extended
+- Restrict `Locales` map keys to RFC 4647 basic language ranges (a subtag sequence or the standalone `*`); extended
 	ranges (for example `de-*` or `*-CH`) are no longer accepted
 - Require `@metreeca/core` `^0.9.21` for RFC 4647 basic-filtering language ranges and the reorganised module layout
 - Reorder the total-ordering type tiers to `xsd:boolean` < `numeric` < `temporal` < `xsd:string`, ranking comparable
@@ -76,8 +76,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Fixed
 
 - Extend the form codec to encode/decode nested containers via stacked postfix `@key` suffixes
-- Reconstruct `Text` objects from tagged form parameters during form decoding
-- Accept plain strings and string arrays as `Text`/`Locale` shorthands for language-neutral values
+- Reconstruct `Dictionary` objects from tagged form parameters during form decoding
+- Accept plain strings and string arrays as `Dictionary`/`Locales` shorthands for language-neutral values
 
 ## [0.9.2](https://github.com/metreeca/qest/releases/tag/v0.9.2) - 2026-02-09
 

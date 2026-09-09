@@ -33,12 +33,12 @@ import {
 	isUnion as isVariants
 } from "@metreeca/core";
 import { isTagRange, type TagRange } from "@metreeca/core/language";
-import { isLiteral, isReference, isText } from "./resource.core.js";
-import type { Literal, Reference, Text } from "./resource.js";
+import { isLiteral, isReference, isDictionary } from "./resource.core.js";
+import type { Literal, Reference, Dictionary } from "./resource.js";
 import type {
 	Binding,
 	Expression,
-	Locale,
+	Locales,
 	Model,
 	Operator,
 	Option,
@@ -145,9 +145,9 @@ export function isPlaceholder(value: unknown): value is Placeholder {
 /**
  * Checks if a value is a {@link Model} single-value template.
  *
- * Accepts a single {@link Placeholder}, a {@link Union} per-branch placeholder, or a {@link Locale} localised text map:
- * the single-value forms admitted as {@link Placeholders} alongside the collection-valued {@link Query}, and as the
- * per-cell value of a {@link Projection}.
+ * Accepts a single {@link Placeholder}, a {@link Union} per-branch placeholder, or a {@link Locales} localised text
+ * map: the single-value forms admitted as {@link Placeholders} alongside the collection-valued {@link Query}, and as
+ * the per-cell value of a {@link Projection}.
  *
  * @param value The value to check
  *
@@ -156,7 +156,7 @@ export function isPlaceholder(value: unknown): value is Placeholder {
 export function isModel(value: unknown): value is Model {
 	return isUnion(value)
 		|| isPlaceholder(value)
-		|| isLocale(value);
+		|| isLocales(value);
 }
 
 /**
@@ -181,17 +181,17 @@ export function isQuery(value: unknown): value is Query {
 
 
 /**
- * Checks if a value is a {@link Locale} template.
+ * Checks if a value is a {@link Locales} template.
  *
  * Accepts a map keyed by RFC 4647 basic language ranges (a subtag sequence or the standalone `*`) with values
- * uniformly scalar or uniformly singleton-tuple string. A `Locale` carries no {@link Selection}; filtering by
+ * uniformly scalar or uniformly singleton-tuple string. A `Locales` carries no {@link Selection}; filtering by
  * localised text attaches at the enclosing collection's `Selection` through an {@link Expression}, not on the map.
  *
  * @param value The value to check
  *
- * @returns True if `value` is a valid Locale template; false otherwise
+ * @returns True if `value` is a valid Locales template; false otherwise
  */
-export function isLocale(value: unknown): value is Locale {
+export function isLocales(value: unknown): value is Locales {
 	return isObject(value, (v, k) => isTagRange(k) && isString(v))
 		|| isObject(value, (v, k) => isTagRange(k) && isArray(v, [isString]));
 }
@@ -200,14 +200,14 @@ export function isLocale(value: unknown): value is Locale {
  * Checks if a value is a {@link Union}.
  *
  * Accepts an object whose keys are non-negative integer strings, each mapping to a per-branch {@link Placeholder} or
- * {@link Locale} localised-text map.
+ * {@link Locales} localised text map.
  *
  * @param value The value to check
  *
  * @returns True if `value` is a valid Union; false otherwise
  */
 export function isUnion(value: unknown): value is Union {
-	return isObject(value, (v, k) => isBranch(k) && (isPlaceholder(v) || isLocale(v)));
+	return isObject(value, (v, k) => isBranch(k) && (isPlaceholder(v) || isLocales(v)));
 }
 
 /**
@@ -340,13 +340,13 @@ export function isExpression(value: unknown): value is Expression {
  *
  * @param value The value to check
  *
- * @returns True if `value` is a single {@link Option}, a {@link Text} map, or an array of
+ * @returns True if `value` is a single {@link Option}, a {@link Dictionary} of localised options, or an array of
  * {@link Option} elements; false otherwise
  */
 export function isOptions(value: unknown): value is Options {
 	return isVariants(value, [
 		isOption,
-		isText,
+		isDictionary,
 		v => isArray(v, isOption)
 	]);
 }
@@ -475,7 +475,7 @@ export function isAggregate(value: unknown): value is "count" | "min" | "max" | 
  * as if the owning field were omitted from the enclosing template:
  *
  * - the absent marker `undefined`
- * - an empty {@link Template}, {@link Union}, {@link Locale}, or {@link Projection} (`{}`)
+ * - an empty {@link Template}, {@link Union}, {@link Locales}, or {@link Projection} (`{}`)
  * - an object whose every entry is either a {@link Selection} key or a non-Selection key ({@link Identifier},
  *   {@link Binding}, {@link TagRange}, variant-index, or `""`) mapping to a vacuous value — transitively elided
  *   per the rule, leaving at most a selection-only inner

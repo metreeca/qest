@@ -77,7 +77,7 @@ remaining within standard REST/JSON conventions:
   resources
 - **Collection querying**: advanced filtering, sorting, pagination, computed projections, and aggregation, supporting
   faceted search and analytics
-- **Localised content**: full support for localised content with language-tagged text maps
+- **Localised content**: full support for localised content with language-tagged dictionaries
 
 ## 1.1. Design Goals
 
@@ -235,8 +235,9 @@ The following terms are used throughout this document:
   is resolved to an absolute IRI on decoding (Section 4.2)
 - **resource**: a JSON object describing the state of an identifiable or nested entity
 - **value**: a single value held by a property: a literal, a reference, or a nested resource
-- **value set**: a property's content: a single value, a localised text map, or an array of values (set semantics)
-- **localised text**: a language map associating BCP 47 [RFC5646] language tags with text values
+- **value set**: a property's content: a single value, a dictionary, or an array of values (set semantics)
+- **localised text**: text values differentiated by the language they are written in (Section 4.3)
+- **dictionary**: a language map associating BCP 47 [RFC5646] language tags with localised text values
 - **coalesced label**: the plain string, or array of plain strings, that a localised text property reduces to under
   language negotiation (Section 6), of corresponding cardinality
 - **expected type**: the out-of-band declaration of a property's type and cardinality (Section 3.1)
@@ -309,7 +310,7 @@ Two regimes resolve a value against the variants, according to whether it carrie
   actual content and, the variants being disjoint, MUST match exactly one. Matching tests value-domain membership, so
   variants narrowed within a single processing type are told apart by value, not by type alone, and the matched variant
   fixes the value's processing type (Section 3.3). A text variant is told apart by wire form rather than by value
-  domain: a localised text map (Section 4.3) matches it and no other variant, and a plain string matches a string
+  domain: a dictionary (Section 4.3) matches it and no other variant, and a plain string matches a string
   variant and never the text variant, so the two are disjoint whatever their value domains. A value matching no variant
   is **unsatisfiable**, one matching several is **ambiguous**, and processors MUST reject either wherever this
   specification calls for such a match (Sections 3.3 and 5.7);
@@ -361,8 +362,8 @@ ingress (Section 3.3) a payload mixing them.
 Exclusivity is per resource, not per property, and that is what lets a two-natured property be represented at all: an
 abstract type whose instances split between a translatable name and an untranslatable proper name declares both arms,
 and each resource carries whichever suits it, the proper name travelling as a plain string and the translatable name as
-a text map, each a value set form of Section 4.2. Section 4.3 sets out when to split arms in this way and when a
-language map carrying `und` entries models the absence of a localised form instead.
+a dictionary, each a value set form of Section 4.2. Section 4.3 sets out when to split arms in this way and when a
+dictionary carrying `und` entries models the absence of a localised form instead.
 
 **Folding.** Except where the text variant is addressed structurally (Section 6, through the constructs of Sections 5.3
 and 5.4), processors MUST fold it into the property's other variants, yielding a single value set, before any construct
@@ -486,7 +487,7 @@ anonymous.
 
 ## 4.2. Values
 
-Each field holds a **value set**: a single value, a localised text map (Section 4.3), or an array of values. Arrays
+Each field holds a **value set**: a single value, a dictionary (Section 4.3), or an array of values. Arrays
 follow set semantics: duplicate values are ignored, ordering is immaterial, and empty arrays are treated as absent
 values. Element types within an array MAY be mixed.
 
@@ -523,11 +524,11 @@ Nested description (expanded form):
 }
 ```
 
-## 4.3. Text
+## 4.3. Dictionary
 
-Resource properties MAY hold localised text using language maps, which map BCP 47 [RFC5646] language tags to text
-values. Within a single map, all values MUST be uniformly scalar or uniformly array; processors MUST reject mixed
-content.
+Resource properties MAY hold localised text in a **dictionary**: a language map associating BCP 47 [RFC5646] language
+tags with text values. Within a single dictionary, all values MUST be uniformly scalar or uniformly array; processors
+MUST reject mixed content.
 
 The `@none` key for non-localised values MUST NOT be used. Use the `und` (Undetermined) tag [ISO639-3.und] when the
 language is unspecified; use the `zxx` (No linguistic content) tag [ISO639-3.zxx] for values that carry no language at
@@ -535,11 +536,12 @@ all, such as identifiers, codes, or formulae.
 
 Content that has no localised form, a proper name among it, is modelled either way, and the choice turns on whether the
 absence is a property of the value or of the resource. A value sitting among translations, as in a taxonomy whose
-entries are localised on the interface and one of which happens to have no determinate language, stays in the map under
-`und`: the property remains localised text throughout, and structural access still yields a map. A resource whose name
-is a proper name in its own right, carrying no translations to sit among, is better served by a text variant alongside a
-string variant (Section 3.1): the property is then two-natured, each resource carries whichever arm suits it, and the
-two fold into one `xsd:string` set on retrieval. The two compose, a text arm still admitting `und` entries of its own.
+entries are localised on the interface and one of which happens to have no determinate language, stays in the dictionary
+under `und`: the property remains localised text throughout, and structural access still yields a dictionary. A resource
+whose name is a proper name in its own right, carrying no translations to sit among, is better served by a text variant
+alongside a string variant (Section 3.1): the property is then two-natured, each resource carries whichever arm suits
+it, and the two fold into one `xsd:string` set on retrieval. The two compose, a text arm still admitting `und` entries
+of its own.
 
 A localised property can be addressed in two ways: **structurally**, preserving its language tags, or **coalesced** to a
 plain string, or array of plain strings of corresponding cardinality, under language negotiation (Section 6).
@@ -862,7 +864,7 @@ of any other length.
 }
 ```
 
-## 5.3. Locale
+## 5.3. Locales
 
 Tag-range keys [RFC4647] select which locales to retrieve. A tag-range key MUST be a basic language range
 [RFC4647] (Section 2.1): a sequence of subtags, or the standalone `*` wildcard. Extended language ranges
@@ -870,7 +872,7 @@ Tag-range keys [RFC4647] select which locales to retrieve. A tag-range key MUST 
 or `*-CH`), MUST be rejected; under the basic filtering used here they add no matching power over their basic prefix,
 and a processor MUST NOT attempt to interpret them.
 
-The placeholder returns the subset of the property's localised text map (Section 4.3) matching the ranges by RFC 4647
+The placeholder returns the subset of the property's dictionary (Section 4.3) matching the ranges by RFC 4647
 basic **filtering** (Section 3.3.1; all matching tags) rather than **lookup** (a single best match), as a structured
 map. Each tag-range value is itself a placeholder typed to the expected result: a string where the property holds one
 value per tag, or a single-element array where it holds several (Section 4.3). Only the type matters, so the array
@@ -927,9 +929,9 @@ the union slot, not independently per branch.
 
 A variant MAY be a locale placeholder (Section 5.3) only within a projection binding (Section 5.6), addressing a branch
 that resolves to a localised property (Section 4.3), as a path through a union-typed step can (Section 5.8.1); the
-branch then occupies its own cell (Section 5.6) as a localised text map. A localised text map is not a value and cannot
-be combined into a value set (Section 4.2) alongside the literals, references, and resources of sibling branches, so a
-union retrieving a resource property directly admits no locale variant; only the per-cell decomposition of a projection
+branch then occupies its own cell (Section 5.6) as a dictionary. A dictionary is not a value and cannot be combined
+into a value set (Section 4.2) alongside the literals, references, and resources of sibling branches, so a union
+retrieving a resource property directly admits no locale variant; only the per-cell decomposition of a projection
 (Section 5.6) accommodates one. A locale variant carries its own per-tag cardinality (Section 5.3) and is therefore
 never wrapped in a collection.
 
@@ -1023,11 +1025,11 @@ Each binding's value is a **model** (Section 5.1), taking one of three forms:
 - a **locale** map (Section 5.3): a tag-range map declaring a localised result.
 
 Each binding yields one **cell** per output row, holding a single value: a literal, a reference (optionally expanded to
-a resource), or a localised text map. A union never appears in a cell; a union binding's cell holds one of its matching
-branch's values. Where the matching branch resolves to a localised property (Section 4.3), that cell is a text map. This
-per-cell decomposition is what keeps a binding representable when its expression reaches localised text downstream of a
-union (Section 5.8.1): the mixed effective type is split across cells, the localised value occupying its own text-map
-cell rather than mixing into a value set (Section 4.2), which has no shape for that combination.
+a resource), or a dictionary. A union never appears in a cell; a union binding's cell holds one of its matching
+branch's values. Where the matching branch resolves to a localised property (Section 4.3), that cell is a dictionary.
+This per-cell decomposition is what keeps a binding representable when its expression reaches localised text downstream
+of a union (Section 5.8.1): the mixed effective type is split across cells, the localised value occupying its own
+dictionary cell rather than mixing into a value set (Section 4.2), which has no shape for that combination.
 
 A projection emits one row per combination of its bindings' resolved values: a multi-valued binding fans out into a row
 per value, the result being the cross-product across bindings (a structural locale binding excepted, counting as a
@@ -1037,7 +1039,7 @@ that row.
 
 The rows of a projection are **distinct**: rows sharing the same combination of cell values MUST collapse into one, so a
 projection yields the set of distinct binding tuples, not a multiset. Two cells are equal when they hold equal literals,
-references to the same resource (whether or not expanded), or equal localised text maps; a pair of omitted labels (an
+references to the same resource (whether or not expanded), or equal dictionaries; a pair of omitted labels (an
 absent binding on both rows) counts as equal, matching the `undefined`-key rule of grouping (Section 5.8.2.1).
 Distinctness spans the whole collection, collapsing both cross-product fan-out duplicates and equal tuples contributed by
 different items; a projection that must keep otherwise-equal items apart includes an identifying binding such as `id`,
@@ -1212,7 +1214,7 @@ defeat numeric indexes, contrary to the native-alignment principle (Appendix A.1
 - Literal equality resolves in the processing type (Section 3), so a temporal option matches by value rather than
   lexically, consistent with comparison (Section 5.7.1).
 - An option is `null`, a literal, or a reference.
-- An option set is a single option, an array of options, or a localised text map (Section 4.3); in this context,
+- An option set is a single option, an array of options, or a dictionary (Section 4.3); in this context,
   single-string-per-tag map entries are shorthands for singleton sets.
 - Option sets follow set semantics: duplicate options are immaterial, and, by convention under `?` and `!` alike, an
   empty set carries no options to match and MUST be ignored, leaving the collection unconstrained.
@@ -1310,7 +1312,8 @@ Each step contributes values per input value according to the property it resolv
 - **Union property**: contributes a mixed-type set, each value of a single branch type;
 - **Localised property**: under coalesced access (Section 6.2), contributes the coalesced value as an ordinary
   `xsd:string` of corresponding cardinality; under structural access (Section 6), through a locale placeholder or
-  binding (Sections 5.3 and 5.6) or a tagged option set (Section 5.7.3), contributes the text map whole, tags preserved.
+  binding (Sections 5.3 and 5.6) or a tagged option set (Section 5.7.3), contributes the dictionary whole, tags
+  preserved.
 
 The set remaining after the last step is the path's result: an empty set resolves to `undefined`, a single value to that
 value, and several to an array. Appendix A.3 maps path resolution onto the target backends.
@@ -1488,7 +1491,7 @@ A temporal transform yields `undefined` when the input value lacks the component
 A localised property (Section 4.3) is retrieved or constrained according to the form of the value used to address it:
 
 - **structural** access preserves the language tags: a locale placeholder (Section 5.3) retrieves a tag-range subset of
-  the text map, and a language-tagged option (Section 5.7.3) matches exactly the stored tagged values;
+  the dictionary, and a language-tagged option (Section 5.7.3) matches exactly the stored tagged values;
 - **coalesced** access reduces the property to a plain string, or array of plain strings of corresponding cardinality,
   under language negotiation: a placeholder (Section 5.3) retrieves the coalesced value or values, a plain-string operand
   (Section 5.7) constrains them, a sort key (Section 5.7.5) orders by the single-valued form, and an expression step
@@ -1508,8 +1511,8 @@ access pattern:
 
 ## 6.1. Language Negotiation
 
-Text coalescing (Section 6.2) is driven by a **language priority**: an ordered list of exact language tags [RFC5646]
-against which each localised value is resolved. The priority is drawn from two sources:
+Dictionary coalescing (Section 6.2) is driven by a **language priority**: an ordered list of exact language tags
+[RFC5646] against which each localised value is resolved. The priority is drawn from two sources:
 
 - the **requested languages** carried by the `Accept-Language` header field of the request [RFC9110], a list of
   quality-weighted basic language ranges [RFC4647];
@@ -1549,12 +1552,13 @@ Accept-Language: sr-Cyrl-RS, de-AT;q=0.9, *;q=0.5, it;q=0    (with fallback chai
 6 dedupe     [sr-Cyrl, de, fr, es, und]
 ```
 
-## 6.2. Text Coalescing
+## 6.2. Dictionary Coalescing
 
-Coalescing resolves a property's map (Section 4.3) against a client-defined language priority list (Section 6.1): it
-selects the first priority tag present in the map, then gathers the value or values bound to that tag, or `undefined` if
-the map holds none of the priority's tags. The coalesced result carries the property's per-tag cardinality and is an
-ordinary `xsd:string` value or set thereafter, so coalescing adds no boundary of its own (Appendix A.5).
+Coalescing resolves a property's dictionary (Section 4.3) against a client-defined language priority list
+(Section 6.1): it selects the first priority tag present in the dictionary, then gathers the value or values bound to
+that tag, or `undefined` if the dictionary holds none of the priority's tags. The coalesced result carries the
+property's per-tag cardinality and is an ordinary `xsd:string` value or set thereafter, so coalescing adds no boundary
+of its own (Appendix A.5).
 
 Coalescing may run without a negotiated priority (Section 6.1), for example outside an HTTP request. A priority supplied
 out of band is taken literally: the trailing `und` belongs to the negotiation derivation (Section 6.1), not to
@@ -2026,7 +2030,7 @@ distinct-row rule (Section 5.6) with a set quantifier on the projected tuple: `S
 
 ## A.5. Localised Coalescing
 
-Coalescing (Section 6.2) resolves a localised text map (Section 4.3) by selecting the first tag of the priority
+Coalescing (Section 6.2) resolves a dictionary (Section 4.3) by selecting the first tag of the priority
 (Section 6.1) present in the map, then gathering the value or values bound to that tag. The priority is pre-expanded to
 exact tags, so tag selection is first-present equality and needs no in-query language-range lookup [RFC4647]. One
 construct covers both per-tag cardinalities inside the cross-backend intersection: a single-string-per-tag map gathers

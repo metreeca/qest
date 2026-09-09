@@ -19,7 +19,7 @@ import {
 	isAggregate,
 	isBinding,
 	isExpression,
-	isLocale,
+	isLocales,
 	isModel,
 	isOperator,
 	isOption,
@@ -75,7 +75,7 @@ describe("guards", () => {
 		});
 
 		it("should reject bare selection-only entry values", () => {
-			// with Locale & Selection gone, a bare operator-keyed object is not a Placeholders value
+			// with Locales & Selection gone, a bare operator-keyed object is not a Placeholders value
 			expect(isTemplate({ vendor: { "^id": "asc" } })).toBe(false);
 		});
 
@@ -129,7 +129,7 @@ describe("guards", () => {
 		});
 
 		it("should reject language maps carrying selection constraints", () => {
-			// Locale no longer combines with Selection; an operator-keyed tag map is not a Locale
+			// Locales no longer combines with Selection; an operator-keyed tag map is not a Locales
 			expect(isPlaceholders({ "en": "hello", "~": "widget" })).toBe(false);
 			expect(isPlaceholders({ "en": ["hello"], "@": 0, "#": 10 })).toBe(false);
 		});
@@ -163,7 +163,7 @@ describe("guards", () => {
 		});
 
 		it("should reject plain selection-only objects", () => {
-			// selection-only objects are no longer placeholders (Locale & Selection removed);
+			// selection-only objects are no longer placeholders (Locales & Selection removed);
 			// Selection attaches inside collection tuples, not as a bare entry value
 			expect(isPlaceholders({ "^id": "asc" })).toBe(false);
 			expect(isPlaceholders({ "~name": "widget", "^name": "asc" })).toBe(false);
@@ -288,7 +288,7 @@ describe("guards", () => {
 
 	describe("isQuery", () => {
 
-		it("should reject bare language maps (a Placeholders Locale arm, not a Query)", () => {
+		it("should reject bare language maps (a Placeholders Locales arm, not a Query)", () => {
 			expect(isQuery({ "*": "" })).toBe(false);
 			expect(isQuery({ "en": "text" })).toBe(false);
 			expect(isQuery({ "en": [""] })).toBe(false);
@@ -368,55 +368,55 @@ describe("guards", () => {
 	});
 
 
-	describe("isLocale", () => {
+	describe("isLocales", () => {
 
 		describe("accepted and rejected locale models", () => {
 
 			it("should accept single-valued wildcard tag", () => {
-				expect(isLocale({ "*": "" })).toBe(true);
-				expect(isLocale({ "*": "text" })).toBe(true);
+				expect(isLocales({ "*": "" })).toBe(true);
+				expect(isLocales({ "*": "text" })).toBe(true);
 			});
 
 			it("should accept multi-valued wildcard tag", () => {
-				expect(isLocale({ "*": [""] })).toBe(true);
-				expect(isLocale({ "*": ["text"] })).toBe(true);
+				expect(isLocales({ "*": [""] })).toBe(true);
+				expect(isLocales({ "*": ["text"] })).toBe(true);
 			});
 
 			it("should accept single-valued language tags", () => {
-				expect(isLocale({ "en": "hello" })).toBe(true);
-				expect(isLocale({ "fr": "bonjour" })).toBe(true);
+				expect(isLocales({ "en": "hello" })).toBe(true);
+				expect(isLocales({ "fr": "bonjour" })).toBe(true);
 			});
 
 			it("should accept multi-valued language tags", () => {
-				expect(isLocale({ "en": ["hello"] })).toBe(true);
-				expect(isLocale({ "fr": ["bonjour"] })).toBe(true);
+				expect(isLocales({ "en": ["hello"] })).toBe(true);
+				expect(isLocales({ "fr": ["bonjour"] })).toBe(true);
 			});
 
 			it("should accept multiple single-valued language tags", () => {
-				expect(isLocale({ "en": "hello", "fr": "bonjour" })).toBe(true);
+				expect(isLocales({ "en": "hello", "fr": "bonjour" })).toBe(true);
 			});
 
 			it("should accept multiple multi-valued language tags", () => {
-				expect(isLocale({ "en": ["hello"], "fr": ["bonjour"] })).toBe(true);
+				expect(isLocales({ "en": ["hello"], "fr": ["bonjour"] })).toBe(true);
 			});
 
 			it("should reject plain string shorthand", () => {
-				expect(isLocale("text")).toBe(false);
-				expect(isLocale("")).toBe(false);
+				expect(isLocales("text")).toBe(false);
+				expect(isLocales("")).toBe(false);
 			});
 
 			it("should reject singleton string tuple shorthand", () => {
-				expect(isLocale(["text"])).toBe(false);
-				expect(isLocale([""])).toBe(false);
+				expect(isLocales(["text"])).toBe(false);
+				expect(isLocales([""])).toBe(false);
 			});
 
 			it("should reject multi-element string arrays", () => {
-				expect(isLocale(["hello", "hi"])).toBe(false);
+				expect(isLocales(["hello", "hi"])).toBe(false);
 			});
 
 			it("should reject empty arrays", () => {
-				expect(isLocale([])).toBe(false);
-				expect(isLocale({ "en": [] })).toBe(false);
+				expect(isLocales([])).toBe(false);
+				expect(isLocales({ "en": [] })).toBe(false);
 			});
 
 		});
@@ -424,23 +424,23 @@ describe("guards", () => {
 		describe("invalid locale models", () => {
 
 			it("should reject null and undefined", () => {
-				expect(isLocale(null)).toBe(false);
-				expect(isLocale(undefined)).toBe(false);
+				expect(isLocales(null)).toBe(false);
+				expect(isLocales(undefined)).toBe(false);
 			});
 
 			it("should reject non-string primitives", () => {
-				expect(isLocale(true)).toBe(false);
-				expect(isLocale(42)).toBe(false);
+				expect(isLocales(true)).toBe(false);
+				expect(isLocales(42)).toBe(false);
 			});
 
 			it("should reject mixed scalar/array content", () => {
-				expect(isLocale({ "en": "hello", "fr": ["bonjour"] })).toBe(false);
-				expect(isLocale({ "en": ["hello"], "fr": "bonjour" })).toBe(false);
+				expect(isLocales({ "en": "hello", "fr": ["bonjour"] })).toBe(false);
+				expect(isLocales({ "en": ["hello"], "fr": "bonjour" })).toBe(false);
 			});
 
 			it("should reject invalid tag keys", () => {
-				expect(isLocale({ "invalid tag": "text" })).toBe(false);
-				expect(isLocale({ "invalid tag": ["text"] })).toBe(false);
+				expect(isLocales({ "invalid tag": "text" })).toBe(false);
+				expect(isLocales({ "invalid tag": ["text"] })).toBe(false);
 			});
 
 		});
@@ -448,14 +448,14 @@ describe("guards", () => {
 		describe("default form", () => {
 
 			it("should reject empty-key default form", () => {
-				expect(isLocale({ "": [""] })).toBe(false);
-				expect(isLocale({ "": ["text"] })).toBe(false);
-				expect(isLocale({ "": "text" })).toBe(false);
+				expect(isLocales({ "": [""] })).toBe(false);
+				expect(isLocales({ "": ["text"] })).toBe(false);
+				expect(isLocales({ "": "text" })).toBe(false);
 			});
 
 			it("should reject empty-key default form carrying selection constraints", () => {
-				expect(isLocale({ "": [""], "~": "widget" })).toBe(false);
-				expect(isLocale({ "": ["hello"], "@": 0, "#": 25 })).toBe(false);
+				expect(isLocales({ "": [""], "~": "widget" })).toBe(false);
+				expect(isLocales({ "": ["hello"], "@": 0, "#": 25 })).toBe(false);
 			});
 
 		});
@@ -463,28 +463,28 @@ describe("guards", () => {
 		describe("selection attachment", () => {
 
 			it("should reject filter constraints alongside single-valued tag map", () => {
-				expect(isLocale({ en: "hello", "~": "widget" })).toBe(false);
-				expect(isLocale({ "*": "", "?": ["a", "b"] })).toBe(false);
+				expect(isLocales({ en: "hello", "~": "widget" })).toBe(false);
+				expect(isLocales({ "*": "", "?": ["a", "b"] })).toBe(false);
 			});
 
 			it("should reject filter constraints alongside multi-valued tag map", () => {
-				expect(isLocale({ en: ["hello"], "~": "widget" })).toBe(false);
-				expect(isLocale({ "*": [""], "?": ["a"] })).toBe(false);
+				expect(isLocales({ en: ["hello"], "~": "widget" })).toBe(false);
+				expect(isLocales({ "*": [""], "?": ["a"] })).toBe(false);
 			});
 
 			it("should reject ordering and pagination alongside tag map", () => {
-				expect(isLocale({ en: "hello", "^": "asc" })).toBe(false);
-				expect(isLocale({ en: ["hello"], "@": 0, "#": 25 })).toBe(false);
+				expect(isLocales({ en: "hello", "^": "asc" })).toBe(false);
+				expect(isLocales({ en: ["hello"], "@": 0, "#": 25 })).toBe(false);
 			});
 
 			it("should reject operator-prefixed expression keys alongside tag map", () => {
-				expect(isLocale({ en: "hello", "<=length:": 100 })).toBe(false);
-				expect(isLocale({ en: ["hello"], ">length:": 0 })).toBe(false);
+				expect(isLocales({ en: "hello", "<=length:": 100 })).toBe(false);
+				expect(isLocales({ en: ["hello"], ">length:": 0 })).toBe(false);
 			});
 
 			it("should reject selection-only map with no tag-range entries", () => {
-				expect(isLocale({ "^": "asc" })).toBe(false);
-				expect(isLocale({ "~": "widget", "@": 0, "#": 10 })).toBe(false);
+				expect(isLocales({ "^": "asc" })).toBe(false);
+				expect(isLocales({ "~": "widget", "@": 0, "#": 10 })).toBe(false);
 			});
 
 		});
@@ -512,8 +512,8 @@ describe("guards", () => {
 		});
 
 		it("should accept a localised per-branch value", () => {
-			// localised text is an admitted union branch: a qualified-tag or array-form Locale that a
-			// Template/Placeholder would reject is now accepted through the Locale arm of the branch type
+			// localised text is an admitted union branch: a qualified-tag or array-form Locales that a
+			// Template/Placeholder would reject is now accepted through the Locales arm of the branch type
 			expect(isUnion({ "0": { "en-US": "x" } })).toBe(true);
 			expect(isUnion({ "0": { "en-US": ["x"] }, "1": { id: "" } })).toBe(true);
 			expect(isUnion({ "0": { en: [""] } })).toBe(true);
@@ -639,7 +639,7 @@ describe("guards", () => {
 		});
 
 		it("should accept multi-valued localised placeholders", () => {
-			// projection cells admit the full Locale (single- or multi-valued)
+			// projection cells admit the full Locales (single- or multi-valued)
 			expect(isProjection({ "label=title": { "*": [""] } })).toBe(true);
 			expect(isProjection({ "label=title": { "en-US": [""] } })).toBe(true);
 		});
@@ -1574,25 +1574,25 @@ describe("guards", () => {
 
 		});
 
-		describe("isLocale", () => {
+		describe("isLocales", () => {
 
 			it("should reject non-plain objects", () => {
-				expect(isLocale(new Date())).toBe(false);
-				expect(isLocale(new Map())).toBe(false);
-				expect(isLocale(Object.create(null))).toBe(false);
+				expect(isLocales(new Date())).toBe(false);
+				expect(isLocales(new Map())).toBe(false);
+				expect(isLocales(Object.create(null))).toBe(false);
 			});
 
 			it("should reject functions, symbols, bigints", () => {
-				expect(isLocale(() => {})).toBe(false);
-				expect(isLocale(Symbol("x"))).toBe(false);
-				expect(isLocale(BigInt(1))).toBe(false);
+				expect(isLocales(() => {})).toBe(false);
+				expect(isLocales(Symbol("x"))).toBe(false);
+				expect(isLocales(BigInt(1))).toBe(false);
 			});
 
 			it("should reject non-string values in language maps", () => {
-				expect(isLocale({ en: 42 })).toBe(false);
-				expect(isLocale({ en: null })).toBe(false);
-				expect(isLocale({ en: [42] })).toBe(false);
-				expect(isLocale({ en: [null] })).toBe(false);
+				expect(isLocales({ en: 42 })).toBe(false);
+				expect(isLocales({ en: null })).toBe(false);
+				expect(isLocales({ en: [42] })).toBe(false);
+				expect(isLocales({ en: [null] })).toBe(false);
 			});
 
 		});
@@ -1869,13 +1869,13 @@ describe("guards", () => {
 		describe("placeholder/tuple asymmetry", () => {
 
 			it("should accept locale-shaped object as scalar Placeholders", () => {
-				// Locale is allowed as a scalar Placeholders branch
+				// Locales is allowed as a scalar Placeholders branch
 				expect(isPlaceholders({ en: "hello", fr: "bonjour" })).toBe(true);
 				expect(isPlaceholders({ "*": [""] })).toBe(true);
 			});
 
 			it("should reject locale-shaped object wrapped in singleton tuple", () => {
-				// the Query element is a Placeholder/Union/Projection, never a Locale.
+				// the Query element is a Placeholder/Union/Projection, never a Locales.
 				// A locale-only shape like { "en-GB": "" } doesn't match Template (key "en-GB"
 				// is not an identifier — hyphens forbidden), nor Union nor Projection.
 				expect(isPlaceholders([{ "en-GB": "" }])).toBe(false);
@@ -1883,7 +1883,7 @@ describe("guards", () => {
 			});
 
 			it("should accept tuple wrapping a template whose keys happen to be language tags", () => {
-				// {en: ""} is simultaneously a valid Locale AND a valid nested Template,
+				// {en: ""} is simultaneously a valid Locales AND a valid nested Template,
 				// and the Template interpretation lets it through the [Placeholder] tuple branch
 				expect(isPlaceholders([{ en: "" }])).toBe(true);
 			});
@@ -2038,23 +2038,23 @@ describe("guards", () => {
 
 		});
 
-		describe("isLocale edge cases", () => {
+		describe("isLocales edge cases", () => {
 
 			it("should reject empty-string-keyed entries", () => {
-				expect(isLocale({ "": "text" })).toBe(false);
-				expect(isLocale({ "": [""] })).toBe(false);
+				expect(isLocales({ "": "text" })).toBe(false);
+				expect(isLocales({ "": [""] })).toBe(false);
 			});
 
 			it("should reject extended language ranges", () => {
 				// RFC 4647 basic ranges only: trailing, interior, and leading `*` subtags are invalid
-				expect(isLocale({ "en-*": "" })).toBe(false);
-				expect(isLocale({ "de-*-DE": "" })).toBe(false);
-				expect(isLocale({ "*-CH": "" })).toBe(false);
+				expect(isLocales({ "en-*": "" })).toBe(false);
+				expect(isLocales({ "de-*-DE": "" })).toBe(false);
+				expect(isLocales({ "*-CH": "" })).toBe(false);
 			});
 
 			it("should reject singleton-tuple strictness violations in map values", () => {
-				expect(isLocale({ en: ["a", "b"] })).toBe(false);
-				expect(isLocale({ en: [] })).toBe(false);
+				expect(isLocales({ en: ["a", "b"] })).toBe(false);
+				expect(isLocales({ en: [] })).toBe(false);
 			});
 
 		});

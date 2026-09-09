@@ -17,10 +17,10 @@
 import type { Identifier } from "@metreeca/core";
 import type { Tag, TagRange } from "@metreeca/core/language";
 import { describe, expectTypeOf, test } from "vitest";
-import type { Reference, Text } from "./resource.js";
+import type { Reference, Dictionary } from "./resource.js";
 import type {
 	Instance,
-	Locale,
+	Locales,
 	Name,
 	Operator,
 	Option,
@@ -67,12 +67,12 @@ describe("Instance", () => {
 
 	describe("locale placeholders", () => {
 
-		test("Locale widens to Text", () => {
-			expectTypeOf<Instance<{ readonly label: Locale }>>()
-				.toEqualTypeOf<{ readonly label: Text }>();
+		test("Locales widens to Dictionary", () => {
+			expectTypeOf<Instance<{ readonly label: Locales }>>()
+				.toEqualTypeOf<{ readonly label: Dictionary }>();
 		});
 
-		test("tag-indexed object Locale variant is preserved structurally", () => {
+		test("tag-indexed object Locales variant is preserved structurally", () => {
 			type In = { readonly [range: TagRange]: string };
 			type Out = { readonly [tag: Tag]: string };
 
@@ -80,7 +80,7 @@ describe("Instance", () => {
 				.toEqualTypeOf<{ readonly label: Out }>();
 		});
 
-		test("tag-indexed singleton-array Locale variant widens the inner tuple", () => {
+		test("tag-indexed singleton-array Locales variant widens the inner tuple", () => {
 			type In = { readonly [range: TagRange]: readonly [string] };
 			type Out = { readonly [tag: Tag]: readonly string[] };
 
@@ -131,16 +131,16 @@ describe("Instance", () => {
 				.toEqualTypeOf<{ readonly v?: readonly number[] }>();
 		});
 
-		// Reference and Locale fields preserve undefined alongside the value rewrite
+		// Reference and Locales fields preserve undefined alongside the value rewrite
 
 		test("undefined | Reference is preserved", () => {
 			expectTypeOf<Instance<{ readonly link: undefined | Reference }>>()
 				.toEqualTypeOf<{ readonly link: undefined | Reference }>();
 		});
 
-		test("undefined | Locale widens to undefined | Text", () => {
-			expectTypeOf<Instance<{ readonly label: undefined | Locale }>>()
-				.toEqualTypeOf<{ readonly label: undefined | Text }>();
+		test("undefined | Locales widens to undefined | Dictionary", () => {
+			expectTypeOf<Instance<{ readonly label: undefined | Locales }>>()
+				.toEqualTypeOf<{ readonly label: undefined | Dictionary }>();
 		});
 
 		test("undefined | nested Template is preserved", () => {
@@ -291,14 +291,14 @@ describe("Instance", () => {
 				expectTypeOf<Instance<{ readonly label: Indexed }>>().toEqualTypeOf<Expected>();
 			});
 
-			test("a Locale branch widens to Text alongside the other branch types", () => {
+			test("a Locales branch widens to Dictionary alongside the other branch types", () => {
 				type Indexed = {
-					readonly "0": Locale;
+					readonly "0": Locales;
 					readonly "1": { readonly name: string };
 				};
 				type Expected = {
 					readonly creator:
-						| Text
+						| Dictionary
 						| { readonly name: string };
 				};
 
@@ -610,14 +610,14 @@ describe("Instance", () => {
 			type In = {
 				readonly id: Reference;
 				readonly count: number;
-				readonly label: Locale;
+				readonly label: Locales;
 				readonly tags: readonly [string];
 				readonly child: { readonly name: string };
 			};
 			type Expected = {
 				readonly id: Reference;
 				readonly count: number;
-				readonly label: Text;
+				readonly label: Dictionary;
 				readonly tags: readonly string[];
 				readonly child: { readonly name: string };
 			};
@@ -887,9 +887,9 @@ describe("Option / Options", () => {
 		expectTypeOf<Reference>().toExtend<Option>();
 	});
 
-	test("Options subsumes a scalar Option, a Text map, and an Option array", () => {
+	test("Options subsumes a scalar Option, a Dictionary map, and an Option array", () => {
 		expectTypeOf<Option>().toExtend<Options>();
-		expectTypeOf<Text>().toExtend<Options>();
+		expectTypeOf<Dictionary>().toExtend<Options>();
 		expectTypeOf<readonly Option[]>().toExtend<Options>();
 	});
 

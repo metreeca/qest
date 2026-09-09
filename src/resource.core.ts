@@ -34,7 +34,7 @@ import {
 } from "@metreeca/core";
 import { isTag } from "@metreeca/core/language";
 import { isIRI } from "@metreeca/core/resource";
-import type { Literal, Reference, Resource, Text, Value, Values } from "./resource.js";
+import type { Literal, Reference, Resource, Dictionary, Value, Values } from "./resource.js";
 
 
 /**
@@ -53,7 +53,7 @@ export function isResource(value: unknown): value is Resource {
 /**
  * Checks if a value is a {@link Values} set.
  *
- * Accepts the absent marker `undefined`, a single {@link Value} scalar, a {@link Text} map, or an
+ * Accepts the absent marker `undefined`, a single {@link Value} scalar, a {@link Dictionary}, or an
  * array of {@link Value} elements.
  *
  * @param value The value to check
@@ -63,7 +63,7 @@ export function isResource(value: unknown): value is Resource {
 export function isValues(value: unknown): value is Values {
 	return value === undefined || isUnion(value, [
 		isValue,
-		isText,
+		isDictionary,
 		v => isArray(v, isValue)
 	]);
 }
@@ -85,14 +85,14 @@ export function isValue(value: unknown): value is Value {
 
 
 /**
- * Checks if a value is a localised {@link Text} value set.
+ * Checks if a value is a {@link Dictionary}.
  *
  * @param value The value to check
  *
  * @returns True if `value` is a plain object with language tag keys mapping uniformly to strings or uniformly to
  * string arrays; false otherwise
  */
-export function isText(value: unknown): value is Text {
+export function isDictionary(value: unknown): value is Dictionary {
 	return isObject(value, (v, k) => isTag(k) && isString(v))
 		|| isObject(value, (v, k) => isTag(k) && isArray(v, isString));
 }
