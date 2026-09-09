@@ -5,7 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unpublished](https://github.com/metreeca/qest/compare/v0.9.2...HEAD)
+## [Unpublished](https://github.com/metreeca/qest/compare/v0.10.0...HEAD)
+
+## [0.10.0](https://github.com/metreeca/qest/compare/v0.9.2...v0.10.0) - 2026-09-09
 
 ### Added
 
@@ -56,7 +58,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Replace `zxx` language tag with `und` for language-neutral values
 - Restrict `Locales` map keys to RFC 4647 basic language ranges (a subtag sequence or the standalone `*`); extended
   ranges (for example `de-*` or `*-CH`) are no longer accepted
-- Require `@metreeca/core` `^0.9.21` for RFC 4647 basic-filtering language ranges and the reorganised module layout
+- Require `@metreeca/core` `^0.10.0` for RFC 4647 basic-filtering language ranges and the reorganised module layout
 - Reorder the total-ordering type tiers to `xsd:boolean` < `numeric` < `temporal` < `xsd:string`, ranking comparable
   temporal values ahead of plain strings (Sections 5.7.5, A.2.3); exclude XSD 1.1 temporal additions such as
   `xsd:dateTimeStamp` from the `temporal` type as non-portable opaque `xsd:string`
