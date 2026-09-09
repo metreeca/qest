@@ -67,14 +67,14 @@ npm install @metreeca/qest
 
 **@metreeca/qest** types define payload semantics and formats for standard REST operations:
 
-| Method | Type          | Description                        |
-|--------|---------------|------------------------------------|
-| GET    | [Resource][]  | Resource retrieval                 |
-| GET    | [Resource][]  | Collection retrieval               |
-| GET    | [Template][]  | Client-driven resource retrieval   |
-| POST   | [Resource][]  | Resource creation                  |
-| PUT    | [Resource][]  | Complete resource state update     |
-| DELETE | none          | Resource deletion                  |
+| Method | Type         | Description                      |
+|--------|--------------|----------------------------------|
+| GET    | [Resource][] | Resource retrieval               |
+| GET    | [Resource][] | Collection retrieval             |
+| GET    | [Template][] | Client-driven resource retrieval |
+| POST   | [Resource][] | Resource creation                |
+| PUT    | [Resource][] | Complete resource state update   |
+| DELETE | none         | Resource deletion                |
 
 [Resource]: https://metreeca.github.io/qest/types/resource.Resource.html
 
@@ -177,16 +177,16 @@ collection-shaped retrieval template. It pairs a per-item element with a
 [**Selection**](https://metreeca.github.io/qest/types/template.Selection.html) for filtering, sorting, and pagination.
 The per-item element is a nested
 [**Template**](https://metreeca.github.io/qest/types/template.Template.html), or a
-[**Projection**](https://metreeca.github.io/qest/types/template.Projection.html) for computed aggregates (faceted
-search and analytics).
+[**Projection**](https://metreeca.github.io/qest/types/template.Projection.html) for computed aggregates (faceted search
+and analytics).
 
 ```http request
 GET https://data.example.com/products/?<template>
 ```
 
 where `<template>` is the URL-encoded JSON [**Template**](https://metreeca.github.io/qest/types/template.Template.html)
-hosting a [**Query**](https://metreeca.github.io/qest/types/template.Query.html) under the collection property, a
-tuple pairing the per-item element with an optional collection-wide selection:
+hosting a [**Query**](https://metreeca.github.io/qest/types/template.Query.html) under the collection property, a tuple
+pairing the per-item element with an optional collection-wide selection:
 
 ```js
 ({
@@ -360,21 +360,21 @@ retaining full compatibility with standard JSON-LD processors.
 This controlled subset is specified by:
 
 - [compacted documents](https://www.w3.org/TR/json-ld11/#compacted-document-form) with short property names and nested
-	objects, just like regular JSON
+  objects, just like regular JSON
 - [ECMAScript identifiers](https://262.ecma-international.org/15.0/#sec-names-and-keywords) as property names
-	([terms](https://www.w3.org/TR/json-ld11/#terms)), enabling dot notation access;
-	[JSON-LD keywords](https://www.w3.org/TR/json-ld11/#keywords) (`@id`, `@type`, etc.) and
-	[blank node identifiers](https://www.w3.org/TR/json-ld11/#identifying-blank-nodes) are not allowed and must be mapped
-	to identifiers via an application-provided [`@context`](https://www.w3.org/TR/json-ld11/#the-context) (for instance,
-	`"id": "@id"`); `@context` must also map property names to IRIs for semantic interoperability
+  ([terms](https://www.w3.org/TR/json-ld11/#terms)), enabling dot notation access;
+  [JSON-LD keywords](https://www.w3.org/TR/json-ld11/#keywords) (`@id`, `@type`, etc.) and
+  [blank node identifiers](https://www.w3.org/TR/json-ld11/#identifying-blank-nodes) are not allowed and must be mapped
+  to identifiers via an application-provided [`@context`](https://www.w3.org/TR/json-ld11/#the-context) (for instance,
+  `"id": "@id"`); `@context` must also map property names to IRIs for semantic interoperability
 - native JSON primitives (`boolean`, `number`, `string`) as values;
-	[typed literals](https://www.w3.org/TR/json-ld11/#typed-values) with arbitrary datatypes are not allowed and must be
-	represented as strings with [datatype coercion](https://www.w3.org/TR/json-ld11/#type-coercion) declared in `@context`
+  [typed literals](https://www.w3.org/TR/json-ld11/#typed-values) with arbitrary datatypes are not allowed and must be
+  represented as strings with [datatype coercion](https://www.w3.org/TR/json-ld11/#type-coercion) declared in `@context`
 - [language maps](https://www.w3.org/TR/json-ld11/#language-indexing) for localised text;
-	[`@none`](https://www.w3.org/TR/json-ld11/#dfn-none) keys for non-localised values in language maps are not allowed
-	and must be handled using the [`und`](https://iso639-3.sil.org/code/und) (Undetermined) language tag
+  [`@none`](https://www.w3.org/TR/json-ld11/#dfn-none) keys for non-localised values in language maps are not allowed
+  and must be handled using the [`und`](https://iso639-3.sil.org/code/und) (Undetermined) language tag
 - [IRI references](https://www.w3.org/TR/json-ld11/#node-identifiers) for linking resources across systems and domains;
-	data structures require absolute IRIs; codec functions handle conversion to/from root-relative forms
+  data structures require absolute IRIs; codec functions handle conversion to/from root-relative forms
 
 # Support
 

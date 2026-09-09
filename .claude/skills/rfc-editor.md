@@ -33,7 +33,7 @@ consistency in `src/index.md` following the governing documents below.
 - Reference section numbers, not page numbers
 - Separate normative vs informative references
 - Limit front-page authors to five; additional contributors listed separately
-o- Lead each section with normative content (RFC 2119 requirements, grammars, rules); informative prose and examples
+- Lead each section with normative content (RFC 2119 requirements, grammars, rules); informative prose and examples
   follow, never precede
 
 # Requirement Keywords (RFC 2119 / RFC 8174)
@@ -48,7 +48,7 @@ Case-sensitive; use only for interoperability requirements:
 
 1. **Front matter**: Title, Abstract, Status of This Memo, Copyright
 2. **Body**: Introduction (§1, required), main content, IANA Considerations (mandatory), Security Considerations (
-	 mandatory)
+   mandatory)
 3. **Back matter**: Appendices (A, B, …), Acknowledgements, Contributors, Authors' Addresses (required)
 
 # Modern Format: xml2rfc v3 (RFC 7991 / RFC 7998)

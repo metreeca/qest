@@ -34,7 +34,7 @@ import {
 } from "@metreeca/core";
 import { isTag } from "@metreeca/core/language";
 import { isIRI } from "@metreeca/core/resource";
-import type { Literal, Reference, Resource, Dictionary, Value, Values } from "./resource.js";
+import type { Dictionary, Literal, Reference, Resource, Value, Values } from "./resource.js";
 
 
 /**

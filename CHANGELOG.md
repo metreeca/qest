@@ -10,15 +10,16 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - Add `Union` and `Branch` types and `isUnion`/`isBranch` guards for keyed union-typed property templates with
-	per-branch placeholders
+  per-branch placeholders
 - Add `Projection` type and `isProjection` guard for collection property projections mapping bindings to cell models
 - Add `Selection` type and `isSelection` guard for collection filtering, sorting, and pagination constraints
 - Add `Order` type, `isOrder` guard, and `getOrderPrecedence`/`getOrderDirection` accessors for `Selection` sort order
-	direction and precedence
+  direction and precedence
 - Add `encodeSelection`/`decodeSelection` codecs for `Selection` form serialization
 - Add `Placeholders`/`Placeholder` types and `isPlaceholders`/`isPlaceholder` guards for property template value forms
 - Add `TransformSignature` type and expose per-transform signatures through the `Transforms` registry
-- Add `Instance<T>`, `Slots<T>`, `Name<K>`, and `Index<T>` type-inference utilities deriving fetched resource shapes from templates
+- Add `Instance<T>`, `Slots<T>`, `Name<K>`, and `Index<T>` type-inference utilities deriving fetched resource shapes
+  from templates
 - Add `Pipe` and `Path` type aliases extracted from `Expression`
 - Add `isSelector`, `isAggregate`, and `isVacuous` type guards
 - Add `lower`, `upper`, `length` string transforms
@@ -38,32 +39,32 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Rename `Criterion` to `Probe`; rename `isCriterion`/`encodeCriterion`/`decodeCriterion` accordingly
 - Rename `encodeQuery`/`decodeQuery` to `encodeTemplate`/`decodeTemplate`
 - Redefine `Model` as the single-value placeholder union (scalar, union branch, or localised), replacing the former
-	resource projection model
+  resource projection model
 - Redefine `Query` as an `[element, Selection?]` tuple (`[Union | Placeholder | Projection, Selection?]`); filtering,
-	sorting, and pagination move to `Selection`
+  sorting, and pagination move to `Selection`
 - Replace the `Transform` registry-entry object type with a closed string union validated by `isTransform`
 - Require `Projection` `Binding` keys in the explicit `name=expression` form, dropping the bare-`Identifier`
-	shorthand so the projection key space stays disjoint from `Template` identifier keys; reshape `Expression` to
-	`{Pipe}{Path}` with a possibly empty pipe and path
+  shorthand so the projection key space stays disjoint from `Template` identifier keys; reshape `Expression` to
+  `{Pipe}{Path}` with a possibly empty pipe and path
 - Drop the `Indexed`/`Indexable` property wrapper from `Resource` and `Template`; fields map directly to `Values` and
-	`Placeholders`
+  `Placeholders`
 - Match `Union` template placeholders against the property's declared variants by type compatibility alone, their value
-	immaterial rather than positional index or value-domain membership: a branch retrieves every type-compatible variant,
-	and one matching no variant is unsatisfiable and rejected; admit a `Locales` map as a branch within a `Projection`
-	path crossing a union step to a localised property
+  immaterial rather than positional index or value-domain membership: a branch retrieves every type-compatible variant,
+  and one matching no variant is unsatisfiable and rejected; admit a `Locales` map as a branch within a `Projection`
+  path crossing a union step to a localised property
 - Rename the focus-ordering `Operator` from `*` to `+`
 - Replace `zxx` language tag with `und` for language-neutral values
 - Restrict `Locales` map keys to RFC 4647 basic language ranges (a subtag sequence or the standalone `*`); extended
-	ranges (for example `de-*` or `*-CH`) are no longer accepted
+  ranges (for example `de-*` or `*-CH`) are no longer accepted
 - Require `@metreeca/core` `^0.9.21` for RFC 4647 basic-filtering language ranges and the reorganised module layout
 - Reorder the total-ordering type tiers to `xsd:boolean` < `numeric` < `temporal` < `xsd:string`, ranking comparable
-	temporal values ahead of plain strings (Sections 5.7.5, A.2.3); exclude XSD 1.1 temporal additions such as
-	`xsd:dateTimeStamp` from the `temporal` type as non-portable opaque `xsd:string`
+  temporal values ahead of plain strings (Sections 5.7.5, A.2.3); exclude XSD 1.1 temporal additions such as
+  `xsd:dateTimeStamp` from the `temporal` type as non-portable opaque `xsd:string`
 - Specify that a descending sort key reverses the entire total order, placing `undefined` last, and align the backend
-	mapping to direction-dependent null placement (`NULLS FIRST`/`NULLS LAST`) (Sections 5.7.5, A.2.3)
+  mapping to direction-dependent null placement (`NULLS FIRST`/`NULLS LAST`) (Sections 5.7.5, A.2.3)
 - Migrate to the reorganised `@metreeca/core` API: `immutable` is imported from `@metreeca/core/structures`, `error`
-	from `@metreeca/core`, and `encodeTemplate` requests the URL-safe base64 alphabet explicitly, keeping the
-	`format: "base64"` output unchanged as unpadded base64url
+  from `@metreeca/core`, and `encodeTemplate` requests the URL-safe base64 alphabet explicitly, keeping the
+  `format: "base64"` output unchanged as unpadded base64url
 
 ### Removed
 

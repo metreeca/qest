@@ -18,6 +18,7 @@ import { describe, expect, it } from "vitest";
 import {
 	isAggregate,
 	isBinding,
+	isBranch,
 	isExpression,
 	isLocales,
 	isModel,
@@ -35,7 +36,6 @@ import {
 	isTemplate,
 	isTransform,
 	isUnion,
-	isBranch,
 	isVacuous
 } from "./template.core.js";
 import {
@@ -2139,13 +2139,13 @@ describe("codecs", () => {
 			it("should default to json encoding", () => {
 				const template: Template = { id: "" };
 
-				expect(encodeTemplate(template)).toBe('{"id":""}');
+				expect(encodeTemplate(template)).toBe("{\"id\":\"\"}");
 			});
 
 			it("should produce plain JSON when format is json", () => {
 				const template: Template = { id: "" };
 
-				expect(encodeTemplate(template, { format: "json" })).toBe('{"id":""}');
+				expect(encodeTemplate(template, { format: "json" })).toBe("{\"id\":\"\"}");
 			});
 
 			it("should produce URL-encoded JSON when format is url", () => {
@@ -2234,11 +2234,11 @@ describe("codecs", () => {
 		});
 
 		it("should produce compact output when indent is false", () => {
-			expect(encodeTemplate({ id: "" }, { indent: false })).toBe('{"id":""}');
+			expect(encodeTemplate({ id: "" }, { indent: false })).toBe("{\"id\":\"\"}");
 		});
 
 		it("should produce compact output when indent is zero", () => {
-			expect(encodeTemplate({ id: "" }, { indent: 0 })).toBe('{"id":""}');
+			expect(encodeTemplate({ id: "" }, { indent: 0 })).toBe("{\"id\":\"\"}");
 		});
 
 	});
@@ -2265,7 +2265,7 @@ describe("codecs", () => {
 		describe("format auto-detection", () => {
 
 			it("should decode plain JSON input", () => {
-				expect(decodeTemplate('{"id":""}')).toEqual({ id: "" });
+				expect(decodeTemplate("{\"id\":\"\"}")).toEqual({ id: "" });
 			});
 
 			it("should decode URL-encoded JSON input", () => {

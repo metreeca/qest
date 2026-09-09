@@ -17,7 +17,7 @@
 import type { Identifier } from "@metreeca/core";
 import type { Tag, TagRange } from "@metreeca/core/language";
 import { describe, expectTypeOf, test } from "vitest";
-import type { Reference, Dictionary } from "./resource.js";
+import type { Dictionary, Reference } from "./resource.js";
 import type {
 	Instance,
 	Locales,
@@ -29,7 +29,6 @@ import type {
 	Probe,
 	Selection,
 	Slots,
-	Template,
 	Transform,
 	Union
 } from "./template.js";
@@ -898,8 +897,16 @@ describe("Option / Options", () => {
 describe("Probe", () => {
 
 	test("a parsed projection or constraint key shape is assignable to Probe", () => {
-		type Projection = { readonly target: Identifier; readonly pipe: readonly []; readonly path: readonly Identifier[] };
-		type Constraint = { readonly target: Operator; readonly pipe: readonly Transform[]; readonly path: readonly Identifier[] };
+		type Projection = {
+			readonly target: Identifier;
+			readonly pipe: readonly [];
+			readonly path: readonly Identifier[]
+		};
+		type Constraint = {
+			readonly target: Operator;
+			readonly pipe: readonly Transform[];
+			readonly path: readonly Identifier[]
+		};
 
 		expectTypeOf<Projection>().toExtend<Probe>();
 		expectTypeOf<Constraint>().toExtend<Probe>();

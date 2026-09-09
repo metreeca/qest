@@ -310,9 +310,9 @@ Two regimes resolve a value against the variants, according to whether it carrie
   actual content and, the variants being disjoint, MUST match exactly one. Matching tests value-domain membership, so
   variants narrowed within a single processing type are told apart by value, not by type alone, and the matched variant
   fixes the value's processing type (Section 3.3). A text variant is told apart by wire form rather than by value
-  domain: a dictionary (Section 4.3) matches it and no other variant, and a plain string matches a string
-  variant and never the text variant, so the two are disjoint whatever their value domains. A value matching no variant
-  is **unsatisfiable**, one matching several is **ambiguous**, and processors MUST reject either wherever this
+  domain: a dictionary (Section 4.3) matches it and no other variant, and a plain string matches a string variant and
+  never the text variant, so the two are disjoint whatever their value domains. A value matching no variant is
+  **unsatisfiable**, one matching several is **ambiguous**, and processors MUST reject either wherever this
   specification calls for such a match (Sections 3.3 and 5.7);
 - a **template placeholder** (Sections 5.2 and 5.4) carries no content, its value immaterial. It matches a variant by
   type compatibility alone, a literal or reference by processing kind and a nested template by structure (Section 5.4);
@@ -416,8 +416,8 @@ additional conformance requirement and do not change the surfaced transport type
 
 The data model defines the JSON representation of a resource: its property structure, value types, and linking, together
 with the JSON-LD subset and IRI conventions that constrain it. The same JSON surface syntax underlies both the resource
-payloads of the REST operations (Section 1.3) and the retrieval templates of the query layer (Section 5): field keys
-are ECMAScript identifiers; values are JSON primitives, nested objects, or arrays thereof.
+payloads of the REST operations (Section 1.3) and the retrieval templates of the query layer (Section 5): field keys are
+ECMAScript identifiers; values are JSON primitives, nested objects, or arrays thereof.
 
 The following CDDL [RFC8610] grammar is the data model's normative definition; the subsections below elaborate it in
 prose.
@@ -442,8 +442,8 @@ Within a single `text` map the values are uniformly `tstr` or uniformly `[* tstr
 An empty object (`{}`) carries no content, whether an empty nested resource or an empty `text` map; likewise an empty
 array. Processors MUST ignore such a value: drop it where it appears as an array element or as a tag's value in a
 `text` map, and otherwise treat the owning field as omitted (set semantics). Encoders MUST NOT emit one: a value set
-resolving to no content, whatever its form, is never surfaced as an empty array, `text` map, or object; the owning
-field is omitted from the document instead.
+resolving to no content, whatever its form, is never surfaced as an empty array, `text` map, or object; the owning field
+is omitted from the document instead.
 
 This data model is a controlled subset of JSON-LD 1.1 [W3C.REC-json-ld11], constraining JSON-LD to patterns that read as
 plain idiomatic JSON, so no JSON-LD processor, preprocessor, or code generator is required. Conforming documents MUST
@@ -458,11 +458,10 @@ satisfy the following constraints:
 5. Localised text is represented as JSON-LD language maps, declared with `"@container": "@language"` in `@context`; the
    `@none` language MUST NOT be used; `und` or `zxx` is used instead (Section 4.3)
 
-A field mapped to `@type` carries class references, so its expected type (Section 3.1) is `reference`. Such a
-field is commonly system-managed, derived from the expected model rather than supplied by clients; this provenance
-does not alter its retrieval semantics. It is an ordinary reference-typed field and MAY be targeted by the
-equality-based selection constraints, set matching (Section 5.7.3) and sort focus (Section 5.7.4), like any other
-reference.
+A field mapped to `@type` carries class references, so its expected type (Section 3.1) is `reference`. Such a field is
+commonly system-managed, derived from the expected model rather than supplied by clients; this provenance does not alter
+its retrieval semantics. It is an ordinary reference-typed field and MAY be targeted by the equality-based selection
+constraints, set matching (Section 5.7.3) and sort focus (Section 5.7.4), like any other reference.
 
 ## 4.1. Resource
 
@@ -487,9 +486,9 @@ anonymous.
 
 ## 4.2. Values
 
-Each field holds a **value set**: a single value, a dictionary (Section 4.3), or an array of values. Arrays
-follow set semantics: duplicate values are ignored, ordering is immaterial, and empty arrays are treated as absent
-values. Element types within an array MAY be mixed.
+Each field holds a **value set**: a single value, a dictionary (Section 4.3), or an array of values. Arrays follow set
+semantics: duplicate values are ignored, ordering is immaterial, and empty arrays are treated as absent values. Element
+types within an array MAY be mixed.
 
 A **value** is one of:
 
@@ -872,11 +871,11 @@ Tag-range keys [RFC4647] select which locales to retrieve. A tag-range key MUST 
 or `*-CH`), MUST be rejected; under the basic filtering used here they add no matching power over their basic prefix,
 and a processor MUST NOT attempt to interpret them.
 
-The placeholder returns the subset of the property's dictionary (Section 4.3) matching the ranges by RFC 4647
-basic **filtering** (Section 3.3.1; all matching tags) rather than **lookup** (a single best match), as a structured
-map. Each tag-range value is itself a placeholder typed to the expected result: a string where the property holds one
-value per tag, or a single-element array where it holds several (Section 4.3). Only the type matters, so the array
-carries exactly one element.
+The placeholder returns the subset of the property's dictionary (Section 4.3) matching the ranges by RFC 4647 basic
+**filtering** (Section 3.3.1; all matching tags) rather than **lookup** (a single best match), as a structured map. Each
+tag-range value is itself a placeholder typed to the expected result: a string where the property holds one value per
+tag, or a single-element array where it holds several (Section 4.3). Only the type matters, so the array carries exactly
+one element.
 
 A localised property MAY also be retrieved through a plain string placeholder, yielding its **coalesced label**
 (Section 6): the value or values resolved by the request's negotiated language priority (Section 6.1). The placeholder
@@ -929,9 +928,9 @@ the union slot, not independently per branch.
 
 A variant MAY be a locale placeholder (Section 5.3) only within a projection binding (Section 5.6), addressing a branch
 that resolves to a localised property (Section 4.3), as a path through a union-typed step can (Section 5.8.1); the
-branch then occupies its own cell (Section 5.6) as a dictionary. A dictionary is not a value and cannot be combined
-into a value set (Section 4.2) alongside the literals, references, and resources of sibling branches, so a union
-retrieving a resource property directly admits no locale variant; only the per-cell decomposition of a projection
+branch then occupies its own cell (Section 5.6) as a dictionary. A dictionary is not a value and cannot be combined into
+a value set (Section 4.2) alongside the literals, references, and resources of sibling branches, so a union retrieving a
+resource property directly admits no locale variant; only the per-cell decomposition of a projection
 (Section 5.6) accommodates one. A locale variant carries its own per-tag cardinality (Section 5.3) and is therefore
 never wrapped in a collection.
 
@@ -1025,11 +1024,11 @@ Each binding's value is a **model** (Section 5.1), taking one of three forms:
 - a **locale** map (Section 5.3): a tag-range map declaring a localised result.
 
 Each binding yields one **cell** per output row, holding a single value: a literal, a reference (optionally expanded to
-a resource), or a dictionary. A union never appears in a cell; a union binding's cell holds one of its matching
-branch's values. Where the matching branch resolves to a localised property (Section 4.3), that cell is a dictionary.
-This per-cell decomposition is what keeps a binding representable when its expression reaches localised text downstream
-of a union (Section 5.8.1): the mixed effective type is split across cells, the localised value occupying its own
-dictionary cell rather than mixing into a value set (Section 4.2), which has no shape for that combination.
+a resource), or a dictionary. A union never appears in a cell; a union binding's cell holds one of its matching branch's
+values. Where the matching branch resolves to a localised property (Section 4.3), that cell is a dictionary. This
+per-cell decomposition is what keeps a binding representable when its expression reaches localised text downstream of a
+union (Section 5.8.1): the mixed effective type is split across cells, the localised value occupying its own dictionary
+cell rather than mixing into a value set (Section 4.2), which has no shape for that combination.
 
 A projection emits one row per combination of its bindings' resolved values: a multi-valued binding fans out into a row
 per value, the result being the cross-product across bindings (a structural locale binding excepted, counting as a
@@ -1039,11 +1038,11 @@ that row.
 
 The rows of a projection are **distinct**: rows sharing the same combination of cell values MUST collapse into one, so a
 projection yields the set of distinct binding tuples, not a multiset. Two cells are equal when they hold equal literals,
-references to the same resource (whether or not expanded), or equal dictionaries; a pair of omitted labels (an
-absent binding on both rows) counts as equal, matching the `undefined`-key rule of grouping (Section 5.8.2.1).
-Distinctness spans the whole collection, collapsing both cross-product fan-out duplicates and equal tuples contributed by
-different items; a projection that must keep otherwise-equal items apart includes an identifying binding such as `id`,
-which makes each item's row unique.
+references to the same resource (whether or not expanded), or equal dictionaries; a pair of omitted labels (an absent
+binding on both rows) counts as equal, matching the `undefined`-key rule of grouping (Section 5.8.2.1). Distinctness
+spans the whole collection, collapsing both cross-product fan-out duplicates and equal tuples contributed by different
+items; a projection that must keep otherwise-equal items apart includes an identifying binding such as `id`, which makes
+each item's row unique.
 
 A structural locale binding counts as a single value and does not fan out rows, however many tags it holds. The `label`
 binding below yields the full `{ <tag>: <value>, … }` map for the matching tags as one cell:
@@ -1065,9 +1064,9 @@ Faceted search is one of the major use cases supported by aggregate projections:
 common facet patterns.
 
 A **category breakdown** groups items by a property and counts each group. The projection pairs a non-aggregate binding,
-`category=category`, which becomes the grouping key (Section 5.8.2.1), with the aggregate `count=count:`, which counts the items
-in each group; the sibling selection's `^count:` then orders the groups by descending count (Section 5.7.5). The query
-returns one row per distinct `category` value, each carrying its item count:
+`category=category`, which becomes the grouping key (Section 5.8.2.1), with the aggregate `count=count:`, which counts
+the items in each group; the sibling selection's `^count:` then orders the groups by descending count (Section 5.7.5).
+The query returns one row per distinct `category` value, each carrying its item count:
 
 ```json
 {
@@ -1321,8 +1320,8 @@ value, and several to an array. Appendix A.3 maps path resolution onto the targe
 A path's **effective type** is that of its final step's property, or, for an empty path, the item type of the collection
 it ranges over; a union-typed step yields a mixed-type set. Where a step downstream of a union-typed step resolves one
 property under a distinct declaration per branch, union coherence keeping it a single property (Section 3.2), the
-effective type is the disjunction of those per-branch types. That disjunction can
-include localised text, where a branch's resolved property is localised (Section 4.3) and addressed structurally
+effective type is the disjunction of those per-branch types. That disjunction can include localised text, where a
+branch's resolved property is localised (Section 4.3) and addressed structurally
 (Section 6); such a branch is expressed by a locale variant (Section 5.4). A localised step yields `xsd:string` instead
 under coalesced access (Section 6.2), at the property's per-tag cardinality.
 
@@ -1352,8 +1351,8 @@ Each transform contributes to the result according to its kind:
   branch (well-typedness, below) before computing (see Appendix A.4.2 for filtering on target backends); if none remain,
   the empty-set rules of Section 5.8.2.1 apply
 - **Scalar transform**: maps each in-domain value to a single value, element-wise; the value of an incompatible branch,
-  or an `undefined` input, yields `undefined`, which propagates through the rest of the pipe (see Appendix A.4.1 for type
-  guards on target backends).
+  or an `undefined` input, yields `undefined`, which propagates through the rest of the pipe (see Appendix A.4.1 for
+  type guards on target backends).
 
 The set left after the last transform is the pipe's result, mapped to `undefined`, a value, or an array as for a path
 (Section 5.8.1).
@@ -1493,7 +1492,8 @@ A localised property (Section 4.3) is retrieved or constrained according to the 
 - **structural** access preserves the language tags: a locale placeholder (Section 5.3) retrieves a tag-range subset of
   the dictionary, and a language-tagged option (Section 5.7.3) matches exactly the stored tagged values;
 - **coalesced** access reduces the property to a plain string, or array of plain strings of corresponding cardinality,
-  under language negotiation: a placeholder (Section 5.3) retrieves the coalesced value or values, a plain-string operand
+  under language negotiation: a placeholder (Section 5.3) retrieves the coalesced value or values, a plain-string
+  operand
   (Section 5.7) constrains them, a sort key (Section 5.7.5) orders by the single-valued form, and an expression step
   (Section 5.8.1) resolves to them, so transforms and aggregates (Section 5.8.2) range over the coalesced values.
 
@@ -1604,8 +1604,7 @@ aggregate (Section 5.8.2.1), which MUST therefore be computed solely over values
 Rejection responses can themselves disclose structure. The validation rules of this document reject unknown properties
 (Section 5.8.1), type mismatches (Section 3.3), type-incompatible transform pipes (Section 5.8.2), and malformed
 templates (Section 5.2); verbose errors confirm the existence and types of properties a client is not authorised to
-know. Servers SHOULD limit the detail of a rejection to
-what the client is authorised to learn.
+know. Servers SHOULD limit the detail of a rejection to what the client is authorised to learn.
 
 ## 8.3. IRI Injection
 
@@ -1756,14 +1755,14 @@ with no normalisation.
 
 ### A.2.3. Total Ordering
 
-The total ordering places `undefined` in the lowest tier (Section 5.7.5): it sorts first under an ascending key and
-last under a descending one. This direction-sensitive placement is the only sort divergence among backends:
+The total ordering places `undefined` in the lowest tier (Section 5.7.5): it sorts first under an ascending key and last
+under a descending one. This direction-sensitive placement is the only sort divergence among backends:
 
-| Backend    | `undefined` (null / empty) placement                                                  |
-|------------|---------------------------------------------------------------------------------------|
-| SQL:2011   | `NULLS FIRST` ascending, `NULLS LAST` descending (default is implementation-defined)   |
-| GQL:2024   | none: `null` sorts lowest natively, tracking direction                                 |
-| SPARQL 1.1 | none: an unbound value sorts lowest natively, tracking direction                       |
+| Backend    | `undefined` (null / empty) placement                                                 |
+|------------|--------------------------------------------------------------------------------------|
+| SQL:2011   | `NULLS FIRST` ascending, `NULLS LAST` descending (default is implementation-defined) |
+| GQL:2024   | none: `null` sorts lowest natively, tracking direction                               |
+| SPARQL 1.1 | none: an unbound value sorts lowest natively, tracking direction                     |
 
 A union-typed sort key may resolve to values of different types across resources. No backend mandates any order between
 value types: SPARQL 1.1 leaves cross-type comparison a type error and its `ORDER BY` placement implementation-defined,
@@ -1924,12 +1923,11 @@ coerce instead of erroring (for example, SQL `EXTRACT(HOUR FROM <date>)` returni
 Before computing, the query builder restricts each aggregate's input to its compatible values: `undefined` and nulls
 drop natively, while incompatible-branch entries (Section 5.8.2) are removed by the same branch guard as for scalar
 transforms (Appendix A.4.1), since `SUM` over a typed column (SQL:2011) and SPARQL `SUM` would otherwise raise a type
-error rather than skip.
-Aggregation uses bag semantics (Section 5.8.2.1): no aggregate applies a `DISTINCT` quantifier to its own input
-implicitly (`COUNT(DISTINCT)` and `SUM(DISTINCT)` are never emitted), unlike the row-level `SELECT DISTINCT` that
-realises the distinct-row rule for ungrouped projections (Appendix A.4.6). The target backends match the protocol's bag
-semantics natively through `COUNT` / `SUM` without `DISTINCT`; clients needing distinct-value aggregates obtain them
-through grouping (Section 5.8.2.1).
+error rather than skip. Aggregation uses bag semantics (Section 5.8.2.1): no aggregate applies a `DISTINCT` quantifier
+to its own input implicitly (`COUNT(DISTINCT)` and `SUM(DISTINCT)` are never emitted), unlike the row-level
+`SELECT DISTINCT` that realises the distinct-row rule for ungrouped projections (Appendix A.4.6). The target backends
+match the protocol's bag semantics natively through `COUNT` / `SUM` without `DISTINCT`; clients needing distinct-value
+aggregates obtain them through grouping (Section 5.8.2.1).
 
 After invalid values are excluded (Section 5.8.2), aggregates over an empty input set produce:
 

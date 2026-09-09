@@ -453,8 +453,8 @@ import { decodeBase64, encodeBase64 } from "@metreeca/core/base64";
 import { TagRange } from "@metreeca/core/language";
 import { internalize, isIRI, resolve } from "@metreeca/core/resource";
 import { immutable } from "@metreeca/core/structures";
-import { type DecoderOpts, app, type EncoderOpts } from "./index.js";
-import { type Literal, type Reference, Resource, Dictionary } from "./resource.js";
+import { app, type DecoderOpts, type EncoderOpts } from "./index.js";
+import { Dictionary, type Literal, type Reference, Resource } from "./resource.js";
 import { isProbe, isSelection, isTemplate } from "./template.core.js";
 import * as SelectionParser from "./template.pegjs.js";
 
