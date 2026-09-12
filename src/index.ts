@@ -15,7 +15,7 @@
  */
 
 /**
- * Shared options and defaults.
+ * Shared codec options.
  *
  * Governs how the resource and template codecs rewrite identifiers and format their output, keeping payload
  * identifiers portable across the hosts an API is served from.
@@ -32,20 +32,6 @@ import { type IRI } from "@metreeca/core/resource";
 
 
 /**
- * Default base IRI (`app:/`).
- *
- * Applied by codec operations when {@link EncoderOpts} or {@link DecoderOpts} omits an explicit `base`, keeping
- * identifiers independent of the host a payload is served from. The `app:` scheme is hierarchical, as codecs
- * require of any base they resolve against.
- *
- * @see {@link https://www.w3.org/TR/2013/WD-app-uri-20130516/ W3C app: URI Scheme}
- */
-export const app: IRI = "app:/";
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-/**
  * Configuration options for encoding operations.
  */
 export type EncoderOpts = {
@@ -55,7 +41,7 @@ export type EncoderOpts = {
 	 *
 	 * Converts absolute IRIs to internal (root-relative) form.
 	 *
-	 * If omitted, IRIs are internalised against {@link app}.
+	 * If omitted, IRIs are internalised against the {@link @metreeca/core!app app} namespace IRI (`app:/#`).
 	 */
 	readonly base?: IRI
 
@@ -82,7 +68,7 @@ export type DecoderOpts = {
 	 *
 	 * Resolves internal IRIs to absolute form.
 	 *
-	 * If omitted, IRIs are resolved against {@link app}.
+	 * If omitted, IRIs are resolved against the {@link @metreeca/core!app app} namespace IRI (`app:/#`).
 	 */
 	readonly base?: IRI
 

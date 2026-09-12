@@ -7,6 +7,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unpublished](https://github.com/metreeca/qest/compare/v0.10.0...HEAD)
 
+### Removed
+
+- Remove the `app` default base IRI, superseded by the `app` namespace of `@metreeca/core`: codec operations now
+  default `base` to `getNamespaceIRI(app)`
+
 ### Fixed
 
 - Omit empty arrays, nested resources, and dictionaries from `encodeResource` output, as the data model requires

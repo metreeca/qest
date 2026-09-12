@@ -270,9 +270,9 @@
 
 import { Identifier, isArray, isObject } from "@metreeca/core";
 import { Tag } from "@metreeca/core/language";
-import { internalize, IRI, isIRI, resolve } from "@metreeca/core/resource";
+import { app, getNamespaceIRI, internalize, IRI, isIRI, resolve } from "@metreeca/core/resource";
 import { immutable } from "@metreeca/core/structures";
-import { app, type DecoderOpts, type EncoderOpts } from "./index.js";
+import { type DecoderOpts, type EncoderOpts } from "./index.js";
 import { isResource } from "./resource.core.js";
 
 export * from "./resource.core.js";
@@ -382,8 +382,8 @@ export type Literal =
  *
  * > [!NOTE]
  * > A decoded reference is always absolute. In the JSON wire format a reference MAY instead appear in relative form:
- * > decoders resolve it against a known base IRI (defaulting to {@link app}), and encoders MAY conversely relativise
- * > absolute references against the same base, preferring the root-relative form.
+ * > decoders resolve it against a known base IRI (defaulting to the {@link app} namespace IRI), and encoders MAY
+ * > conversely relativise absolute references against the same base, preferring the root-relative form.
  *
  * @see {@link https://www.w3.org/TR/json-ld11/#node-identifiers JSON-LD 1.1 - Node Identifiers}
  */
@@ -427,12 +427,12 @@ export type Reference =
  */
 export function encodeResource(resource: Resource, {
 
-	base = app,
+	base = getNamespaceIRI(app),
 	indent
 
 }: EncoderOpts = {}): string {
 
-	if ( base !== app && !isIRI(base, "hierarchical") ) {
+	if ( base !== getNamespaceIRI(app) && !isIRI(base, "hierarchical") ) {
 		throw new TypeError(`expected hierarchical base IRI <${base}>`);
 	}
 
@@ -504,12 +504,12 @@ export function encodeResource(resource: Resource, {
  */
 export function decodeResource(json: string, {
 
-	base = app,
+	base = getNamespaceIRI(app),
 	lenient
 
 }: DecoderOpts = {}): Resource {
 
-	if ( base !== app && !isIRI(base, "hierarchical") ) {
+	if ( base !== getNamespaceIRI(app) && !isIRI(base, "hierarchical") ) {
 		throw new TypeError(`expected hierarchical base IRI <${base}>`);
 	}
 

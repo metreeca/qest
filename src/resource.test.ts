@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
+import { app, getNamespaceIRI } from "@metreeca/core/resource";
 import { describe, expect, it } from "vitest";
-import { app } from "./index.js";
 import { isDictionary, isResource, isValue, isValues } from "./resource.core.js";
 import { decodeResource, encodeResource, type Resource } from "./resource.js";
 
@@ -408,7 +408,7 @@ describe("codecs", () => {
 			it("should accept path-absolute IRI base", () => {
 				const resource: Resource = { id: "app:/products/42" };
 
-				expect(encodeResource(resource, { base: app }))
+				expect(encodeResource(resource, { base: getNamespaceIRI(app) }))
 					.toBe(JSON.stringify({ id: "/products/42" }));
 			});
 
@@ -629,7 +629,7 @@ describe("codecs", () => {
 			it("should accept path-absolute IRI base", () => {
 				const json = JSON.stringify({ id: "/products/42" });
 
-				expect(decodeResource(json, { base: app }))
+				expect(decodeResource(json, { base: getNamespaceIRI(app) }))
 					.toEqual({ id: "app:/products/42" });
 			});
 
