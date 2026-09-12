@@ -3415,7 +3415,8 @@ describe("codecs", () => {
 		[{ target: "city", pipe: [], path: ["customer", "address"] }, "city=customer.address"],
 		[{ target: "releaseYear", pipe: ["year"], path: ["releaseDate"] }, "releaseYear=year:releaseDate"],
 		[{ target: "avgPrice", pipe: ["round", "avg"], path: ["price"] }, "avgPrice=round:avg:price"],
-		[{ target: "total", pipe: ["count"], path: [] }, "total=count:"]
+		[{ target: "total", pipe: ["count"], path: [] }, "total=count:"],
+		[{ target: "self", pipe: [], path: [] }, "self="]
 	];
 
 	const constraintProbes: readonly [Probe, string][] = [
@@ -3430,6 +3431,7 @@ describe("codecs", () => {
 		[{ target: "^", pipe: [], path: ["price"] }, "^price"],
 		[{ target: "@", pipe: [], path: [] }, "@"],
 		[{ target: "#", pipe: [], path: [] }, "#"],
+		[{ target: "^", pipe: [], path: [] }, "^"],
 		[{ target: ">=", pipe: [], path: ["vendor", "rating"] }, ">=vendor.rating"],
 		[{ target: ">=", pipe: ["year"], path: ["releaseDate"] }, ">=year:releaseDate"]
 	];
@@ -3468,6 +3470,27 @@ describe("codecs", () => {
 
 			it.each(constraintProbes)("should decode %s into %o", (probe, encoded) => {
 				expect(decodeProbe(encoded)).toEqual(probe);
+			});
+
+		});
+
+		describe("guard agreement", () => {
+
+			// every key the guards admit must decode: the guards and the grammar are the documented pairing for
+			// filtering template keys before parsing them
+
+			it.each([
+				"self=", "name=name", "total=count:", "名前=prénom", "$result=_internal"
+			])("should decode %s admitted by isBinding", (key) => {
+				expect(isBinding(key)).toBe(true);
+				expect(() => decodeProbe(key)).not.toThrow();
+			});
+
+			it.each([
+				"^", "~price", "@", "#", ">=year:releaseDate"
+			])("should decode %s admitted by isSelector", (key) => {
+				expect(isSelector(key)).toBe(true);
+				expect(() => decodeProbe(key)).not.toThrow();
 			});
 
 		});

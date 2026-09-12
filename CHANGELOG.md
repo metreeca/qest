@@ -10,6 +10,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Fixed
 
 - Omit empty arrays, nested resources, and dictionaries from `encodeResource` output, as the data model requires
+- Accept projection bindings with an empty expression (for example, `self=`) in `decodeProbe`, aligning the parser with
+  `isBinding` and the specification
 
 ## [0.10.0](https://github.com/metreeca/qest/compare/v0.9.2...v0.10.0) - 2026-09-09
 
