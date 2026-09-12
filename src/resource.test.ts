@@ -544,6 +544,76 @@ describe("codecs", () => {
 			expect(encodeResource(resource)).toBe(JSON.stringify(resource));
 		});
 
+		describe("empty values", () => {
+
+			it("should omit fields holding an empty array", () => {
+				const resource: Resource = { id: "/products/42", categories: [] };
+
+				expect(encodeResource(resource)).toBe(JSON.stringify({ id: "/products/42" }));
+			});
+
+			it("should omit fields holding an empty nested resource", () => {
+				const resource: Resource = { id: "/products/42", vendor: {} };
+
+				expect(encodeResource(resource)).toBe(JSON.stringify({ id: "/products/42" }));
+			});
+
+			it("should omit fields holding an empty dictionary", () => {
+				const resource: Resource = { id: "/products/42", name: {} };
+
+				expect(encodeResource(resource)).toBe(JSON.stringify({ id: "/products/42" }));
+			});
+
+			it("should drop empty objects appearing as array elements", () => {
+				const resource: Resource = { categories: [{}, "/categories/home", {}] };
+
+				expect(encodeResource(resource)).toBe(JSON.stringify({ categories: ["/categories/home"] }));
+			});
+
+			it("should omit fields whose array holds nothing but empty objects", () => {
+				const resource: Resource = { id: "/products/42", categories: [{}, {}] };
+
+				expect(encodeResource(resource)).toBe(JSON.stringify({ id: "/products/42" }));
+			});
+
+			it("should omit fields emptied by pruning their own contents", () => {
+				const resource: Resource = { id: "/products/42", vendor: { address: { lines: [] } } };
+
+				expect(encodeResource(resource)).toBe(JSON.stringify({ id: "/products/42" }));
+			});
+
+			it("should prune inside nested resources and array elements", () => {
+				const resource: Resource = {
+					vendor: { name: "Acme Corp", aliases: [] },
+					offers: [{ price: 29.99, tags: [] }]
+				};
+
+				expect(encodeResource(resource)).toBe(JSON.stringify({
+					vendor: { name: "Acme Corp" },
+					offers: [{ price: 29.99 }]
+				}));
+			});
+
+			it("should drop dictionary tags holding an empty array", () => {
+				const resource: Resource = { name: { en: ["Widget"], de: [] } };
+
+				expect(encodeResource(resource)).toBe(JSON.stringify({ name: { en: ["Widget"] } }));
+			});
+
+			it("should preserve falsy literals", () => {
+				const resource: Resource = { count: 0, available: false, note: "" };
+
+				expect(encodeResource(resource)).toBe(JSON.stringify(resource));
+			});
+
+			it("should encode a resource pruned to nothing as an empty document", () => {
+				const resource: Resource = { vendor: {}, categories: [] };
+
+				expect(encodeResource(resource)).toBe(JSON.stringify({}));
+			});
+
+		});
+
 	});
 
 	describe("decodeResource", () => {

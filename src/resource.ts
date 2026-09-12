@@ -268,7 +268,7 @@
  * @module
  */
 
-import { Identifier } from "@metreeca/core";
+import { Identifier, isArray, isObject } from "@metreeca/core";
 import { Tag } from "@metreeca/core/language";
 import { internalize, IRI, isIRI, resolve } from "@metreeca/core/resource";
 import { immutable } from "@metreeca/core/structures";
@@ -399,12 +399,17 @@ export type Reference =
  * Serialises a {@link Resource} into a JSON string, recursively {@link internalize | internalising} absolute IRIs
  * against the provided `base`.
  *
+ * Values carrying no content are never surfaced: an empty array, nested {@link Resource}, or {@link Dictionary},
+ * at any nesting depth, causes the owning field to be omitted, and an empty object appearing as an array element
+ * is dropped. Omission cascades, so a field left empty once its own contents are omitted is omitted in turn, and a
+ * resource left with no content at all encodes as an empty document.
+ *
  * @param resource The resource state to encode
  * @param options Encoding options
  * @param options.base Base IRI for internalising absolute IRIs
  * @param options.indent Indentation level for pretty-printing output
  *
- * @returns The JSON string with internalised IRIs
+ * @returns The JSON string with internalised IRIs and empty values omitted
  *
  * @throws {@link !TypeError TypeError} If `base` is not a hierarchical IRI
  *
@@ -412,7 +417,7 @@ export type Reference =
  *
  * ```typescript
  * encodeResource(
- *   { id: "https://example.com/products/42", name: "Widget", price: 29.99 },
+ *   { id: "https://example.com/products/42", name: "Widget", price: 29.99, tags: [] },
  *   { base: "https://example.com/" }
  * );
  * // → '{"id":"/products/42","name":"Widget","price":29.99}'
@@ -431,13 +436,39 @@ export function encodeResource(resource: Resource, {
 		throw new TypeError(`expected hierarchical base IRI <${base}>`);
 	}
 
-	return JSON.stringify(resource, replacer, indent === true ? 2 : indent || undefined);
+	return JSON.stringify(
+		normalize(resource) ?? {},
+		undefined,
+		indent === true ? 2 : indent || undefined
+	);
 
 
-	function replacer(_key: string, value: unknown): unknown {
-		return isIRI(value, "absolute")
-			? internalize(base, value)
-			: value;
+	function normalize(value: unknown): unknown {
+		if ( isArray(value) ) {
+
+			const elements = value
+				.map(value => normalize(value))
+				.filter(value => value !== undefined);
+
+			return elements.length > 0 ? elements : undefined;
+
+		} else if ( isObject(value) ) {
+
+			const entries = Object.entries(value)
+				.map(([field, value]) => [field, normalize(value)])
+				.filter(([, value]) => value !== undefined);
+
+			return entries.length > 0 ? Object.fromEntries(entries) : undefined;
+
+		} else if ( isIRI(value, "absolute") ) {
+
+			return internalize(base, value);
+
+		} else {
+
+			return value;
+
+		}
 	}
 
 }

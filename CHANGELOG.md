@@ -7,6 +7,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unpublished](https://github.com/metreeca/qest/compare/v0.10.0...HEAD)
 
+### Fixed
+
+- Omit empty arrays, nested resources, and dictionaries from `encodeResource` output, as the data model requires
+
 ## [0.10.0](https://github.com/metreeca/qest/compare/v0.9.2...v0.10.0) - 2026-09-09
 
 ### Added
