@@ -318,7 +318,8 @@ Resource properties can hold localised text in a dictionary: a language map asso
 ```
 
 A [`Dictionary`](https://metreeca.github.io/qest/types/resource.Dictionary.html) supports both single-valued and
-multi-valued forms per language. Within a single dictionary, all values must be uniformly scalar or uniformly array.
+multi-valued forms per language. Within a single dictionary, all values must be uniformly scalar or uniformly array, in
+the form the property declares: a state carrying the other form under any tag is rejected as malformed.
 Language-neutral values are tagged with the [`und`](https://iso639-3.sil.org/code/und) (Undetermined) language tag:
 
 ```js

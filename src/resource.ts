@@ -253,7 +253,9 @@
  * })
  * ```
  *
- * Within a single dictionary, all values must be uniformly scalar or uniformly array.
+ * Within a single dictionary, all values must be uniformly scalar or uniformly array, and the form chosen must be the
+ * one the property declares: a payload carrying an array under a tag for a property holding one string per tag, or the
+ * converse, is malformed and rejected by servers.
  *
  * > [!IMPORTANT]
  * > The `@none` key for non-localised values is not supported; use the `und` tag for language-neutral
@@ -342,6 +344,10 @@ export type Value =
  * - a single string value per tag, or
  * - an array of string values per tag
  *
+ * Which of the two a dictionary takes is fixed by the property it belongs to: a resource state carrying the other
+ * form under any tag is malformed and rejected. Localised {@link template!Options | options} are exempt, being
+ * matched against stored values rather than stored, and accept either form.
+ *
  * > [!NOTE]
  * > - A dictionary is conceptually equivalent to an array of language-tagged strings, which idiomatic JSON
  * >   doesn't directly support
@@ -349,7 +355,8 @@ export type Value =
  *
  * > [!NOTE]
  * > An empty dictionary (`{}`) carries no localised values and must be ignored by processors as if the
- * > owning field were omitted from the enclosing resource.
+ * > owning field were omitted from the enclosing resource. An empty array standing as a tag's value carries no
+ * > values either and is ignored in the same way, admissible only where the property takes the array form.
  *
  * @see {@link template!Locales} for the corresponding retrieval template
  * @see {@link https://www.rfc-editor.org/rfc/rfc5646.html RFC 5646 - Tags for Identifying Languages}
@@ -400,9 +407,10 @@ export type Reference =
  * against the provided `base`.
  *
  * Values carrying no content are never surfaced: an empty array, nested {@link Resource}, or {@link Dictionary},
- * at any nesting depth, causes the owning field to be omitted, and an empty object appearing as an array element
- * is dropped. Omission cascades, so a field left empty once its own contents are omitted is omitted in turn, and a
- * resource left with no content at all encodes as an empty document.
+ * at any nesting depth, causes the owning field to be omitted, while an empty object appearing as an array element,
+ * or an empty array standing as a tag's value in a {@link Dictionary}, is dropped from its container. Omission
+ * cascades, so a field left empty once its own contents are omitted is omitted in turn, and a resource left with no
+ * content at all encodes as an empty document.
  *
  * @param resource The resource state to encode
  * @param options Encoding options

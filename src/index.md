@@ -238,6 +238,8 @@ The following terms are used throughout this document:
 - **value set**: a property's content: a single value, a dictionary, or an array of values (set semantics)
 - **localised text**: text values differentiated by the language they are written in (Section 4.3)
 - **dictionary**: a language map associating BCP 47 [RFC5646] language tags with localised text values
+- **per-tag cardinality**: whether a dictionary binds each tag to a single string or to an array of strings; a property
+  fixes it for its localised text through its expected type (Section 3.1)
 - **coalesced label**: the plain string, or array of plain strings, that a localised text property reduces to under
   language negotiation (Section 6), of corresponding cardinality
 - **expected type**: the out-of-band declaration of a property's type and cardinality (Section 3.1)
@@ -294,8 +296,8 @@ Processors resolve payloads and templates against the **expected type** of each 
 expected type is one or more **variants**, each:
 
 - a processing type, optionally narrowed to a sub-domain of its values, a reference, or a nested resource;
-- **localised text** (Section 4.3), together with its per-tag shape, a single string or an array per tag; a property
-  declares at most one such **text variant**.
+- **localised text** (Section 4.3), together with its per-tag cardinality, a single string or an array per tag; a
+  property declares at most one such **text variant**.
 
 A property with several variants is **union-typed**, its variants expected to be disjoint and resolved per branch by
 matching, not by position (Section 5.4), and further constrained by Section 3.2. A property whose only variant is
@@ -385,7 +387,10 @@ specific processing type is expected for the value (Section 3.1).
 
 A value that cannot be represented as the processing type expected for it, such as a literal whose JSON kind does not
 match or a string that is not a valid lexical form of the expected temporal type, is malformed and MUST be rejected by
-processors.
+processors. In a state (Section 4), a dictionary (Section 4.3) whose entries do not carry the per-tag cardinality the
+property declares (Section 3.1), an empty array standing as a tag's value included, is malformed on the same ground and
+MUST be rejected. An option set (Section 5.7.3) is matched rather than stored and is not held to the declared
+cardinality.
 
 Over a union-typed property (Section 3.1), the value is matched against the variants and mapped to the one it singles
 out. Since the variants are expected disjoint, the value matches at most one: a value matching no variant is
@@ -444,6 +449,12 @@ array. Processors MUST ignore such a value: drop it where it appears as an array
 `text` map, and otherwise treat the owning field as omitted (set semantics). Encoders MUST NOT emit one: a value set
 resolving to no content, whatever its form, is never surfaced as an empty array, `text` map, or object; the owning field
 is omitted from the document instead.
+
+Dropping an empty array standing as a tag's value in a state is subject to the expected type (Section 3.1): the form is
+admitted only where the per-tag cardinality is an array per tag, and is malformed on a property fixing a single string
+per tag (Section 3.3). The empty `text` map carries no content under either per-tag cardinality. The qualification is
+confined to state values: in an option set (Section 5.7.3) an array under a tag is the general form whatever the
+property's per-tag cardinality.
 
 This data model is a controlled subset of JSON-LD 1.1 [W3C.REC-json-ld11], constraining JSON-LD to patterns that read as
 plain idiomatic JSON, so no JSON-LD processor, preprocessor, or code generator is required. Conforming documents MUST
@@ -527,7 +538,8 @@ Nested description (expanded form):
 
 Resource properties MAY hold localised text in a **dictionary**: a language map associating BCP 47 [RFC5646] language
 tags with text values. Within a single dictionary, all values MUST be uniformly scalar or uniformly array; processors
-MUST reject mixed content.
+MUST reject mixed content. Uniformity alone does not admit a dictionary carried in a state: its entries must also match
+the per-tag cardinality the property declares (Sections 3.1 and 3.3).
 
 The `@none` key for non-localised values MUST NOT be used. Use the `und` (Undetermined) tag [ISO639-3.und] when the
 language is unspecified; use the `zxx` (No linguistic content) tag [ISO639-3.zxx] for values that carry no language at
@@ -1213,8 +1225,9 @@ defeat numeric indexes, contrary to the native-alignment principle (Appendix A.1
 - Literal equality resolves in the processing type (Section 3), so a temporal option matches by value rather than
   lexically, consistent with comparison (Section 5.7.1).
 - An option is `null`, a literal, or a reference.
-- An option set is a single option, an array of options, or a dictionary (Section 4.3); in this context,
-  single-string-per-tag map entries are shorthands for singleton sets.
+- An option set is a single option, an array of options, or a dictionary (Section 4.3); the map is not held to the
+  property's declared per-tag cardinality (Section 3.3), and single-string-per-tag entries are shorthands for singleton
+  sets.
 - Option sets follow set semantics: duplicate options are immaterial, and, by convention under `?` and `!` alike, an
   empty set carries no options to match and MUST be ignored, leaving the collection unconstrained.
 - `!` suits multi-valued targets; a single-valued one satisfies only a single-element set.
