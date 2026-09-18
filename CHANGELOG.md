@@ -7,8 +7,38 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unpublished](https://github.com/metreeca/qest/compare/v0.10.0...HEAD)
 
+### Added
+
+- Add `Atomic` type and `isAtomic` guard for the atomic value template (`{}`), which retrieves a property's value as it
+  stands: a literal, an unexpanded reference, or a localised property's coalesced label
+- Add `Query<T>` type and `isQuery` guard for a retrieval node carrying its collection's constraints alongside its
+  retrieval keys
+- Add the `isCriterion` guard, holding a single `Criteria` entry to its operator's contract
+
+### Changed
+
+- Rename `./resource` module to `./state`; rename `./template` module to `./model`
+- Drop value mimicry from the retrieval model: every placeholder is a JSON object and every leaf is `{}`, so a template
+  carries no value of its own and matches variants by form rather than by literal kind
+- Attach collection constraints to the entry retrieving the collection instead of to a `[element, Selection?]` tuple:
+  `{ items: [{ name: "" }, { "#": 25 }] }` becomes `{ items: { name: {}, "#": 25 } }`
+- Retrieve a localised property coalesced through an `Atomic` and structurally through a `Locale` tag-range map
+  whose entries are `Atomic`s; per-tag cardinality now follows the declared model
+- Rename `Locales` to `Locale` and `isLocales` to `isLocale`
+- Rename `isSelection` to `isCriteria` and `encodeSelection`/`decodeSelection` to `encodeCriteria`/`decodeCriteria`,
+  matching the specification, which names a collection's constraints its criteria
+- Inline the `Branch` union-key type and the `isBranch` guard into `Union` and `isUnion`, dropping both
+- Parameterise `Union` by the form admitted per branch and admit `Locale` branches uniformly
+- Withdraw the elision rule: `{}` is an `Atomic` rather than an omission, and every writable document denotes a
+  request
+
 ### Removed
 
+- Remove the `Placeholders` and `Model` umbrella types and their `isPlaceholders`/`isModel` guards, subsumed by
+  `Placeholder` and `Query`
+- Remove the `Instance<T>`, `Slots<T>`, `Index<T>`, and `Name<K>` inference utilities: type and cardinality are owned
+  by the declared model, not by the retrieval model, so result typing is left to the caller
+- Remove the `isVacuous` guard along with the elision rule it reported
 - Remove the `app` default base IRI, superseded by the `app` namespace of `@metreeca/core`: codec operations now
   default `base` to `getNamespaceIRI(app)`
 
@@ -134,7 +164,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- Query types for client-driven REST/JSON APIs with property selection, filtering, ordering, and pagination
+- Query types for client-driven REST/JSON APIs with property criteria, filtering, ordering, and pagination
 - State types for JSON-LD compatible resource representations
 - Query string codecs supporting JSON and form-encoded formats
 - Probe key codecs for encoding/decoding query operators

@@ -17,8 +17,8 @@
 /**
  * Shared codec options.
  *
- * Governs how the resource and template codecs rewrite identifiers and format their output, keeping payload
- * identifiers portable across the hosts an API is served from.
+ * Governs how the resource state and retrieval model codecs rewrite identifiers and format their output, keeping
+ * payload identifiers portable across the hosts an API is served from.
  *
  * **Codec configuration**
  *

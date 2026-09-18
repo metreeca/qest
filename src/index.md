@@ -1,21 +1,21 @@
 ---
 title: "QEST: Queryable REST/JSON APIs"
-summary: A REST/JSON data model and client-driven template language for retrieval, filtering, and aggregation
+summary: A REST/JSON data model and a client-driven retrieval model for projection, filtering, and aggregation
 description: |
   Defines a JSON data model and a client-driven retrieval protocol for REST/JSON APIs. A uniform JSON payload,
   including localised text, carries resources through the standard create, read, update, and delete operations, while
-  client-driven templates add retrieval, collection filtering, sorting, pagination, and computed projections, without
-  requiring specialised client libraries or departing from standard HTTP caching semantics.
+  a client-driven retrieval model adds property projection, collection filtering, sorting, pagination, and computed
+  projections, without requiring specialised client libraries or departing from standard HTTP caching semantics.
 ---
 
 # Abstract
 
 This document specifies a data model and a client-driven retrieval protocol for REST/JSON APIs. The data model defines a
 JSON-LD-based resource representation that serves as the uniform payload across the standard create, read, update, and
-delete (CRUD) operations of HTTP. On top of this baseline, the protocol defines a JSON-based template language that
+delete (CRUD) operations of HTTP. On top of this baseline, the protocol defines a JSON-based retrieval model that
 allows clients to specify which properties to retrieve from a resource, how deeply to expand linked resources, and, for
-collections, how to filter, sort, paginate, and aggregate results. The template is transmitted as a URL-encoded JSON
-object in the query string of a standard HTTP GET request, preserving compatibility with content delivery networks
+collections, how to filter, sort, paginate, and aggregate results. The retrieval model is transmitted as a URL-encoded
+JSON object in the query string of a standard HTTP GET request, preserving compatibility with content delivery networks
 (CDNs) and browser caches.
 
 The data model is grounded in JSON-LD 1.1 [W3C.REC-json-ld11] but constrains JSON-LD to a controlled subset that looks
@@ -68,7 +68,7 @@ control the shape and scope of the responses they read back. Without one, client
 server-defined payloads, leading to over-fetching of unwanted fields and under-fetching that requires additional round
 trips, or rely on ad-hoc, non-portable query parameters.
 
-This specification defines a **data model** and a **template language** that together address these limitations while
+This specification defines a **data model** and a **retrieval model** that together address these limitations while
 remaining within standard REST/JSON conventions:
 
 - **Uniform payload**: a single JSON resource representation serves as the request and response body across create,
@@ -85,7 +85,7 @@ remaining within standard REST/JSON conventions:
 - **Simplicity**: plain JSON serves as both the query and the response format
 - **No tooling**: no specialised libraries, preprocessors, or code generators required
 - **Automation**: model-driven development, reducing server implementation effort
-- **Cacheability**: templates transmitted as GET query strings, fully compatible with CDN and browser caches
+- **Cacheability**: the retrieval model transmitted as a GET query string, fully compatible with CDN and browser caches
 - **Portability**: backend-agnostic operators with semantics defined by XPath 2.0 [W3C.REC-xpath-functions], chosen so
   each has a well-defined counterpart across representative target backends (SQL:2011 [ISO.9075.2011], GQL:2024
   [ISO.39075.2024], and SPARQL 1.1 [W3C.REC-sparql11-query])
@@ -120,7 +120,7 @@ driven by the internal data model, not by client-supplied mappings.
 
 Each verb targets a resource by its request URL, with POST targeting the owning collection. HTTP defines the operation
 semantics, status codes, and content negotiation; this specification adds only how payloads are interpreted (the data
-model, Section 4) and how responses are shaped (client-driven retrieval templates, Section 5). Processors MUST validate
+model, Section 4) and how responses are shaped (the client-driven retrieval model, Section 5). Processors MUST validate
 every resource payload they accept against the data model (Section 4).
 
 Response status codes follow HTTP [RFC9110]. Servers SHOULD use the following codes for the conditions this document
@@ -137,44 +137,40 @@ defines:
 A validation failure SHOULD carry a problem-details payload [RFC9457] including a machine-readable error trace, subject
 to the disclosure limits of Section 8.2.
 
-A **retrieval request** is a standard HTTP GET whose query component carries the template, encoded as described in
-Section 5. The template is optional: a GET without one returns the server's default representation of the target
-resource (Section 5). When a template is present, the response is a resource (Section 4) shaped to it: it contains
+A **retrieval request** is a standard HTTP GET whose query component carries a retrieval model, encoded as described in
+Section 5. The model is optional: a GET without one returns the server's default representation of the target
+resource (Section 5). When a model is present, the response is a resource (Section 4) shaped to it: it contains
 exactly the requested properties, with linked resources expanded and everything else omitted. A requested property
 resolving to no value is itself omitted, never surfaced as an empty structure (Section 4). For collections, the results
-are filtered, sorted, paginated, and aggregated as specified. Because the template travels in the query string of a GET,
+are filtered, sorted, paginated, and aggregated as specified. Because the model travels in the query string of a GET,
 retrieval remains safe, idempotent, and cacheable by CDNs and browser caches [RFC9110].
 
 For example, a collection query that selects four item properties, filters by price, sorts ascending, and limits the
 page to twenty-five items is issued as a single GET request:
 
 ```text
-GET /products/?%7B%22items%22%3A%5B%7B%22id%22%3A%22%22%2C%22name%22%3A%22%22%2C%22price%22%3A0
-  %2C%22vendor%22%3A%7B%22id%22%3A%22%22%2C%22name%22%3A%22%22%7D%7D%2C%7B%22%3E%3Dprice%22%3A50
-  %2C%22%3C%3Dprice%22%3A150%2C%22%5Eprice%22%3A%22asc%22%2C%22%23%22%3A25%7D%5D%7D
+GET /products/?%7B%22items%22%3A%7B%22id%22%3A%7B%7D%2C%22name%22%3A%7B%7D%2C%22price%22%3A%7B%7D
+  %2C%22vendor%22%3A%7B%22id%22%3A%7B%7D%2C%22name%22%3A%7B%7D%7D%2C%22%3E%3Dprice%22
+  %3A50%2C%22%3C%3Dprice%22%3A150%2C%22%5Eprice%22%3A%22asc%22%2C%22%23%22%3A25%7D%7D
 ```
 
 whose query string decodes to the template:
 
 ```json
 {
-  "items": [
-    {
-      "id": "",
-      "name": "",
-      "price": 0,
-      "vendor": {
-        "id": "",
-        "name": ""
-      }
+  "items": {
+    "id": {},
+    "name": {},
+    "price": {},
+    "vendor": {
+      "id": {},
+      "name": {}
     },
-    {
-      ">=price": 50,
-      "<=price": 150,
-      "^price": "asc",
-      "#": 25
-    }
-  ]
+    ">=price": 50,
+    "<=price": 150,
+    "^price": "asc",
+    "#": 25
+  }
 }
 ```
 
@@ -225,8 +221,8 @@ values [RFC8259]. These grammars are normative; any accompanying reference-imple
 
 The following terms are used throughout this document:
 
-- **processor**: an engine, typically model-driven, that validates and processes payloads and templates per this
-  specification
+- **processor**: an engine, typically driven by the data model, that validates and processes payloads and retrieval
+  models per this specification
 - **server**: the HTTP endpoint hosting a processor, responsible for request handling and response generation
 - **IRI**: Internationalized Resource Identifier as defined in [RFC3987]
 - **identifier**: a property name conforming to ECMAScript identifier rules [ECMA-262], Section 12.7
@@ -247,14 +243,25 @@ The following terms are used throughout this document:
   several branch types in a form that no single expected type (Section 3.1) could express
 - **undefined**: the result of resolving an expression, path, or transform (Section 5.8) to no value; an absent value
   (Section 4.2) resolves to `undefined`
+- **retrieval model**: the JSON structure a retrieval request carries, stating what to retrieve from the target
+  resource and how to constrain the collections it reaches (Section 5)
 - **template**: a JSON object specifying which properties to retrieve from a resource
-- **placeholder**: a template value standing in for a property value, signalling its expected type rather than carrying
-  retrieved data. Its value is immaterial and need not be a legal value of that type; only its kind (literal, reference,
-  or template) matters, matching it to the type-compatible variants of a union-typed property (Section 5.4)
-- **selection**: a set of constraints (filtering, sorting, pagination) applied to a collection
-- **expression**: a property path, optionally piped through transforms, targeted by selection and projection keys
+- **placeholder**: a template entry standing in for a property value, stating how far to retrieve it rather than
+  carrying retrieved data. Every placeholder is a JSON object and carries no value of its own: a template (Section 5.1)
+  expands a linked resource, an atomic ends the retrieval, and a locale (Section 5.4) preserves language tags
+- **atomic**: the empty object `{}`, the placeholder requesting a property's value as it stands (Section 5.3)
+- **locale**: a tag-range-keyed object requesting a localised property structurally (Section 5.4)
+- **union**: a branch-keyed object requesting a union-typed property one variant at a time (Section 5.5)
+- **branch**: a union key, an opaque non-negative integer string labelling one alternative (Section 5.5)
+- **query**: the template entry retrieving a collection, carrying its criteria alongside its retrieval keys
+  (Section 5.6)
+- **criteria**: a set of constraints (filtering, sorting, pagination) applied to a collection, carried by the query
+  retrieving it (Section 5.6)
+- **criterion key**: the key stating a single criterion, an operator prefix followed by an expression, or the literal
+  `@` or `#` (Section 5.7)
+- **expression**: a property path, optionally piped through transforms, targeted by criteria and projection keys
 - **binding**: a projection key naming a computed expression as `name=expression`
-- **projection**: a template whose keys are computed bindings
+- **projection**: a query's retrieval half when it yields computed values, keyed by bindings (Section 5.2)
 
 # 3. Type System
 
@@ -280,8 +287,7 @@ back before returning it (**egress**).
 
 References and localised text are not mapped into the processing space: a reference participates only in equality
 matching (Section 5.7.3), and localised text is matched per tag (Section 5.7.3) or coalesced to a plain string or array
-of plain strings (Section 6)
-before any operation applies.
+of plain strings (Section 6) before any operation applies.
 
 The `temporal` type comprises the point-in-time datatypes that are component-extractable and totally ordered (the latter
 under XPath 2.0's implicit-timezone comparison) over the shared XSD 1.0 / XPath 2.0 basis of the target backends
@@ -292,15 +298,15 @@ carried, is treated as an opaque `xsd:string` (equality and set matching only).
 
 ## 3.1. Expected Types
 
-Processors resolve payloads and templates against the **expected type** of each property they process. A property's
-expected type is one or more **variants**, each:
+Processors resolve payloads and retrieval models against the **expected type** of each property they process. A
+property's expected type is one or more **variants**, each:
 
 - a processing type, optionally narrowed to a sub-domain of its values, a reference, or a nested resource;
 - **localised text** (Section 4.3), together with its per-tag cardinality, a single string or an array per tag; a
   property declares at most one such **text variant**.
 
 A property with several variants is **union-typed**, its variants expected to be disjoint and resolved per branch by
-matching, not by position (Section 5.4), and further constrained by Section 3.2. A property whose only variant is
+matching, not by position (Section 5.5), and further constrained by Section 3.2. A property whose only variant is
 localised text is a **localised property** (Section 4.3); a path may also resolve to localised text per branch
 downstream of a union-typed step (Section 5.8.1).
 
@@ -308,7 +314,7 @@ Alongside its type, each property carries an expected **cardinality**, single- o
 
 Two regimes resolve a value against the variants, according to whether it carries content:
 
-- a **data value**, whether a state value on ingress (Section 3.3) or a selection bound or option (Section 5.7), carries
+- a **data value**, whether a state value on ingress (Section 3.3) or a criteria bound or option (Section 5.7), carries
   actual content and, the variants being disjoint, MUST match exactly one. Matching tests value-domain membership, so
   variants narrowed within a single processing type are told apart by value, not by type alone, and the matched variant
   fixes the value's processing type (Section 3.3). A text variant is told apart by wire form rather than by value
@@ -316,27 +322,28 @@ Two regimes resolve a value against the variants, according to whether it carrie
   never the text variant, so the two are disjoint whatever their value domains. A value matching no variant is
   **unsatisfiable**, one matching several is **ambiguous**, and processors MUST reject either wherever this
   specification calls for such a match (Sections 3.3 and 5.7);
-- a **template placeholder** (Sections 5.2 and 5.4) carries no content, its value immaterial. It matches a variant by
-  type compatibility alone, a literal or reference by processing kind and a nested template by structure (Section 5.4);
-  any value-domain narrowing on the variant (Section 3.1) is ignored, and the placeholder need not be a legal value. It
-  matches every type-compatible variant and MAY match more than one, retrieving each. Like a data value, it MUST match
-  at least one variant: one matching none is **unsatisfiable** and MUST be rejected, and a union placeholder (Section
-  5.4) applies this to each of its alternatives.
+- a **placeholder** (Sections 5.3 and 5.5) carries no content and states only how far to retrieve. It matches a variant
+  by form: an atomic matches every variant, a template the nested-resource variants its properties are valid on
+  (Section 5.5), and a locale the text variant; any value-domain narrowing on the variant (Section 3.1) is ignored. It
+  matches every compatible variant and MAY match more than one, retrieving each. Like a data value, it MUST match at
+  least one variant: one matching none is **unsatisfiable** and MUST be rejected, and a union placeholder (Section 5.5)
+  applies this to each of its alternatives.
 
 Expected types are supplied out of band, whether declared by a static property schema or derived dynamically by the
 application; this specification constrains neither their source nor their provisioning, and they add no conformance
 requirement of their own. They are definitional: the rules that reference an expected or declared characteristic, among
-them ingress mapping (Section 3.3), placeholder matching (Section 5.2), locale classification (Section 5.3), union
-retrieval (Section 5.4), collection queries (Section 5.5), selection (Section 5.7), and path resolution (Section 5.8.1),
+them ingress mapping (Section 3.3), placeholder matching (Section 5.3), locale classification (Section 5.4), union
+retrieval (Section 5.5), collection queries (Section 5.6), criteria (Section 5.7), and path resolution (Section 5.8.1),
 are evaluated against them, and a property without an expected type is unknown (Section 5.8.1).
 
 ## 3.2. Union Constraints
 
 A union is the one construct in this specification whose cost multiplies rather than adds. A processor compiling a
-template or an expression carries a candidate set per union, and every construct reached through the union is evaluated
-against each candidate, so a path of two union-typed steps over three branches apiece already carries nine candidates
-and each emitted query grows to match. Where a text variant is among the branches, an unconstrained union also breaks
-serialisation, since a value set has no form holding localised text alongside values of other kinds (Section 4.2).
+retrieval model or an expression carries a candidate set per union, and every construct reached through the union is
+evaluated against each candidate, so a path of two union-typed steps over three branches apiece already carries nine
+candidates and each emitted query grows to match. Where a text variant is among the branches, an unconstrained union
+also breaks serialisation, since a value set has no form holding localised text alongside values of other kinds
+(Section 4.2).
 
 Three rules bound these two costs, beyond the disjointness the variants are expected to satisfy: coherence bounds the
 first at declaration; exclusivity and folding bound the second, on ingress and before any construct reads the property.
@@ -367,12 +374,12 @@ and each resource carries whichever suits it, the proper name travelling as a pl
 a dictionary, each a value set form of Section 4.2. Section 4.3 sets out when to split arms in this way and when a
 dictionary carrying `und` entries models the absence of a localised form instead.
 
-**Folding.** Except where the text variant is addressed structurally (Section 6, through the constructs of Sections 5.3
-and 5.4), processors MUST fold it into the property's other variants, yielding a single value set, before any construct
+**Folding.** Except where the text variant is addressed structurally (Section 6, through the constructs of Sections 5.4
+and 5.5), processors MUST fold it into the property's other variants, yielding a single value set, before any construct
 reads them. The text variant contributes its coalesced value (Section 6.2), an ordinary `xsd:string` of the variant's
 per-tag cardinality holding the strings the map coalesces to as if the property stored them, and contributes nothing
 where coalescing yields `undefined`. The folded set carries no localised text, and every construct that reads the
-property, among them placeholder matching (Section 5.2), selection (Section 5.7), and path resolution (Section 5.8.1),
+property, among them placeholder matching (Section 5.3), criteria (Section 5.7), and path resolution (Section 5.8.1),
 reads the folded set.
 
 Folding keeps the text variant out of the union a processor compiles against, so localised content that is never
@@ -421,7 +428,7 @@ additional conformance requirement and do not change the surfaced transport type
 
 The data model defines the JSON representation of a resource: its property structure, value types, and linking, together
 with the JSON-LD subset and IRI conventions that constrain it. The same JSON surface syntax underlies both the resource
-payloads of the REST operations (Section 1.3) and the retrieval templates of the query layer (Section 5): field keys are
+payloads of the REST operations (Section 1.3) and the retrieval model of the query layer (Section 5): field keys are
 ECMAScript identifiers; values are JSON primitives, nested objects, or arrays thereof.
 
 The following CDDL [RFC8610] grammar is the data model's normative definition; the subsections below elaborate it in
@@ -471,8 +478,8 @@ satisfy the following constraints:
 
 A field mapped to `@type` carries class references, so its expected type (Section 3.1) is `reference`. Such a field is
 commonly system-managed, derived from the expected model rather than supplied by clients; this provenance does not alter
-its retrieval semantics. It is an ordinary reference-typed field and MAY be targeted by the equality-based selection
-constraints, set matching (Section 5.7.3) and sort focus (Section 5.7.4), like any other reference.
+its retrieval semantics. It is an ordinary reference-typed field and MAY be targeted by the equality-based constraints,
+set matching (Section 5.7.3) and sort focus (Section 5.7.4), like any other reference.
 
 ## 4.1. Resource
 
@@ -578,70 +585,61 @@ plain string, or array of plain strings of corresponding cardinality, under lang
 
 # 5. Client-Driven Retrieval
 
-Clients control the shape and scope of what they read back through JSON templates: which properties to retrieve, how
-deeply to expand linked resources, and, for collections, how to filter, sort, paginate, and aggregate.
+Clients control the shape and scope of what they read back through a JSON retrieval model: which properties to
+retrieve, how deeply to expand linked resources, and, for collections, how to filter, sort, paginate, and aggregate.
 
 Client-driven retrieval is fully optional. Servers MUST provide defaults, typically derived from the expected types
 (Section 3.1), preserving standard REST/JSON behaviour while enabling advanced capabilities when needed.
 
-The query component of the GET request URL carries either a retrieval template (Section 5.1) or a selection
+The query component of the GET request URL carries either a retrieval template (Section 5.1) or bare criteria
 (Section 5.7). A template MUST use a URL-safe JSON encoding, either URL-encoded or base64url-encoded [RFC4648] JSON; the
-plain JSON form is reserved for transmission off the query string, such as a POST body. A selection uses the
+plain JSON form is reserved for transmission off the query string, such as a POST body. Bare criteria use the
 form-urlencoded [WHATWG.URL] shorthand detailed below. The decoder MUST auto-detect both which variant is present and,
 for a template, its input encoding. The decoded result, like every payload, MUST be validated. Reference values, in
-resource payloads and selections alike, MAY be transmitted in relative form; decoders MUST resolve them against the base
+resource payloads and criteria alike, MAY be transmitted in relative form; decoders MUST resolve them against the base
 IRI (Section 4.2), so a decoded reference is always an absolute IRI. Encoders MAY in turn relativise the references of a
 response payload, in which case the root-relative form SHOULD be preferred (Section 4.2).
 
 A localised text property (Section 4.3) coalesces to a plain string, or array of plain strings of corresponding
-cardinality, under language negotiation (Section 6). A plain string MUST therefore be accepted wherever such a property
-is targeted, in a retrieval template (Section 5.1) as the placeholder for its coalesced value (Section 5.3), and in a
-selection (Section 5.7) as an operand, including as an option value (Sections 5.7.3 and 5.7.4); the coalesced value is
-then matched under ordinary string semantics, a multi-valued one existentially. A sort key (Section 5.7.5) targeting a
-single-valued coalesced property MUST likewise be accepted, ordering by the coalesced string; localised text is never
-ordered in any other form.
+cardinality, under language negotiation (Section 6). An atomic (Section 5.3) MUST therefore be accepted in a
+retrieval template (Section 5.1) wherever such a property is targeted, requesting its coalesced value (Section 5.4), and
+a plain string MUST be accepted in criteria (Section 5.7) as an operand, including as an option value (Sections 5.7.3
+and 5.7.4); the coalesced value is then matched under ordinary string semantics, a multi-valued one existentially. A
+sort key (Section 5.7.5) targeting a single-valued coalesced property MUST likewise be accepted, ordering by the
+coalesced string; localised text is never ordered in any other form.
 
 URL-encoded templates are subject to practical URL length limits; servers SHOULD document their maximum accepted query
 string length and return `414 URI Too Long` when it is exceeded, and MAY accept an over-long template via POST with an
 appropriate content type instead.
 
-When a request query component carries a selection, the server synthesises a retrieval template for it:
+When a request query component carries bare criteria, the server synthesises a retrieval template for them:
 
-1. the selection is decoded;
+1. the criteria are decoded;
 2. the endpoint's **default collection property** is identified as the single multi-valued property expected of the
    endpoint resource (Section 3.1); if the resource has no multi-valued property, or more than one, the request MUST be
    rejected;
-3. a collection query (Section 5.5) is formed by pairing the server's default per-item template for that property with
-   the decoded selection;
-4. the query is wrapped in a template keyed by the collection property: `{ <collection-property>: [ <item-template>,
-   <selection> ] }`.
-
-The following elision rules then apply to the synthesised template. This fallback applies only at the request target;
-nested templates have none.
-
-An empty object (`{}`) as a template element carries no retrieval instructions and MUST be ignored, as if the owning
-property were omitted: this elides an empty **template** (Section 5.1), an empty **union** (Section 5.4; no variants, or
-all reducing to empty templates), an empty **locale** (Section 5.3; no tag ranges), and an empty **selection**
-(Section 5.7; no constraints). A selection has nothing to apply to once its element is empty, so a tuple carrying only a
-selection discards that selection as well.
+3. a collection query (Section 5.6) is formed by merging the decoded criteria into the server's default per-item
+   template for that property;
+4. the query is wrapped in a template keyed by the collection property: `{ <collection-property>: { <item-template>,
+   <criteria> } }`.
 
 The query string's formal syntax is defined in ABNF [RFC5234]:
 
 ```abnf
 ; query string (the request entry point; Section 5)
 
-query           = template / selection  ; the decoder auto-detects the variant
+query           = template / criteria  ; the decoder auto-detects the variant
 
 ; template variant: a `template` (CDDL below) serialised as JSON [RFC8259],
 ; then made URL-safe by percent- or base64url-encoding
 
 template        = <URL-safe JSON encoding of template, Section 5>
 
-; selection variant: form-urlencoded [WHATWG.URL] constraints
+; criteria variant: form-urlencoded [WHATWG.URL] constraints
 
-selection       = [ entry ] *( "&" [ entry ] )
+criteria        = [ criterion ] *( "&" [ criterion ] )
 
-entry           = lt / gt / lte / gte
+criterion       = lt / gt / lte / gte
                 / like / any / all
                 / focus / order
                 / offset / limit
@@ -658,7 +656,7 @@ order           = "^" expression "=" ( "asc" / "desc" / [ "-" ] 1*DIGIT )
 offset          = "@" "=" 1*DIGIT
 limit           = "#" "=" 1*DIGIT
 
-; value forms, classifying the text after "=" in each "&"-separated entry:
+; value forms, classifying the text after "=" in each "&"-separated criterion:
 
 value           = option / tagged
 option          = "null" / literal / reference
@@ -673,24 +671,26 @@ tagged          = string "@" tag   ; tag split from the right; quote the base to
 tag             = <BCP 47 language tag, [RFC5646]>
 ```
 
-Both variants decode into the **template structures**, defined in CDDL [RFC8610] (reusing `literal`, `reference`,
-`text`, and `identifier` from the data model, Section 4):
+The **retrieval model** both variants decode into is defined in CDDL [RFC8610], independently of the transport carrying
+it (reusing `literal`, `reference`, `text`, and `identifier` from the data model, Section 4):
 
 ```cddl
-template     = { * identifier => placeholders }
+retrieval   = { template }                          ; the request target (Section 5)
 
-placeholders = model / query
-placeholder  = literal / reference / template
+template    = * identifier => query                 ; Section 5.1
+projection  = * binding => { placeholder // union } ; Section 5.2
 
-model        = union / placeholder / locale
-query        = [ union, ? selection ] / [ placeholder, ? selection ] / [ projection, ? selection ]
+placeholder = template // atomic // locale          ; Section 5.3
+atomic      = ()                                    ; Section 5.3: no keys
+locale      = * tag-range => { atomic }             ; Section 5.4
 
-locale       = { * tag-range => tstr } / { * tag-range => [ tstr ] }
-union        = { * slot => placeholder / locale }
+union       = * branch => { placeholder }           ; Section 5.5
 
-projection   = { * binding => model }
+; a query splices a collection's constraints into the node retrieving it (Section 5.6)
 
-selection    = {
+query       = { ( placeholder // union // projection ), criteria }
+
+criteria    = (                                     ; Section 5.7
   * lt         => literal,                   ; <
   * gt         => literal,                   ; >
   * lte        => literal,                   ; <=
@@ -702,7 +702,7 @@ selection    = {
   * order      => "asc" / "desc" / int,      ; ^
   ? offset     => number,                    ; @
   ? limit      => number                     ; #
-}
+)
 
 ; the *-key syntaxes are defined in the ABNF below
 
@@ -722,17 +722,27 @@ limit      = "#"    ; literal
 options    = option / text / [* option]
 option     = null / literal / reference
 
-tag-range  = tstr   ; RFC 4647 basic language range [RFC4647] (Section 5.3)
-slot       = tstr   ; opaque Union key: a non-negative integer string (Section 5.4)
+tag-range  = tstr   ; RFC 4647 basic language range [RFC4647] (Section 5.4)
+branch     = tstr   ; opaque union key: a non-negative integer string (Section 5.5)
 binding    = tstr   ; see ABNF below
 ```
 
-A selector key is an operator prefix followed by an expression, the prefix fixing the value type per the `selection`
-group above; the pagination keys `@` and `#` are literals, not selectors. The textual micro-syntaxes are defined in
-ABNF:
+A `query` splices the `criteria` group into the node retrieving a collection, so one object states both what to
+retrieve and which items to retrieve it for. Every template property maps to a `query`, so the grammar admits a
+criterion key on every entry alike, keeping one notation for every retrieval form rather than carving out exceptions.
+
+Where a criterion key means anything is settled by the target, not by the syntax: only a multi-valued property
+(Section 3.1) is narrowed by criteria. A criterion key reaching a target that admits none is an error rather than a key
+to ignore, and processors MUST reject it, reporting the offending key: on a single-valued property (Sections 5.3
+and 5.6), which supplies no collection to constrain, and on a locale (Section 5.4), which is filtered by its own tag
+ranges.
+
+A criterion key is an operator prefix followed by an expression, the prefix fixing the value type per the `criteria`
+group above; the pagination keys `@` and `#` are literals, carrying no expression. The textual micro-syntaxes are
+defined in ABNF:
 
 ```abnf
-; selector keys (selection map keys)
+; criterion keys (Section 5.7)
 
 lt-key         = "<" expression
 gt-key         = ">" expression
@@ -744,7 +754,7 @@ all-key        = "!" expression
 focus-key      = "+" expression
 order-key      = "^" expression
 
-; bindings and expressions (projection keys; Section 5.6, Section 5.8)
+; bindings and expressions (projection keys; Section 5.2, Section 5.8)
 
 binding        = name "=" expression
 name           = identifier
@@ -758,10 +768,10 @@ transform      = identifier
 identifier     = <ECMAScript IdentifierName, [ECMA-262], Section 12.7>
 ```
 
-A selection's form-urlencoded shorthand serialises the grammar above as `label=value` pairs, where labels are the
-prefixed selector keys (Section 5.7). This is a convenience for readable URLs, covering the common selection constraints
-rather than the full template grammar; a selection it cannot express is carried in the JSON template form instead. The
-shorthand observes the following rules:
+The form-urlencoded shorthand serialises the grammar above as `label=value` pairs, where labels are the prefixed
+criterion keys (Section 5.7). This is a convenience for readable URLs, covering the common constraints rather than the
+full retrieval model grammar; criteria it cannot express are carried in the JSON template form instead. The shorthand
+observes the following rules:
 
 - An option-set operator (`?`, `!`, `+`) MAY be repeated, collecting its values into a set; any other operator MUST be
   rejected if repeated.
@@ -794,12 +804,11 @@ category=electronics
 A **template** is a JSON object specifying which properties to retrieve from a resource and how deeply to expand linked
 resources.
 
-Template properties use **placeholder values** (Section 5.2) that indicate the expected type. The value of a literal
-placeholder is never returned and is immaterial: it need not be a legal value of the property's type, only its kind
-matters, matching a single-type property of that kind and, for a union-typed property (Section 5.4), every variant of
-that kind. A nested object is instead a template in its own right, whose structure does matter: it selects the
-properties of the linked resource to expand and, over a union-typed property, matches the variants it structurally
-fits (Section 5.4); an empty one is elided (Section 5).
+Template properties map to **placeholders** (Section 5.3), each stating how far to retrieve the property rather than
+what it holds. A placeholder is always a JSON object and never carries a value, so a template says what a client wants
+back and nothing else. The empty object is an **atomic**, requesting the property's own value; a non-empty object
+is a template in its own right, whose structure does matter: it selects the properties of the linked resource to expand
+and, over a union-typed property, matches the variants it structurally fits (Section 5.5).
 
 ```text
 GET /products/42?{url-encoded-template}
@@ -809,12 +818,12 @@ Template:
 
 ```json
 {
-  "id": "",
-  "name": "",
-  "price": 0,
+  "id": {},
+  "name": {},
+  "price": {},
   "vendor": {
-    "id": "",
-    "name": ""
+    "id": {},
+    "name": {}
   }
 }
 ```
@@ -835,205 +844,34 @@ Response:
 
 The response includes only the requested properties, with the linked `vendor` expanded to show only `id` and `name`.
 
-## 5.2. Placeholders
+## 5.2. Projection
 
-A **placeholder** stands in for one property value:
+A **projection** retrieves a collection as rows of computed values rather than as items. It stands as the entry of the
+template property (Section 5.1) naming the collection, keyed by **bindings**: each pairs an expression (Section 5.8)
+with a result name rather than naming an individual property, evaluated per item or, when an aggregate binding is
+present, per group (Section 5.8.2.1). Binding result names MUST be unique within a projection.
 
-- **Literal placeholder**: `boolean`, `number`, or `string`, requesting a primitive value
-- **Reference placeholder**: an IRI reference [RFC3987], requesting a linked resource identifier (Section 4.2)
-- **Template placeholder**: a nested object (Section 5.1), requesting inline expansion of the linked resource
-
-A placeholder's value is immaterial and need not lie within the expected value domain (Section 3.1); only its kind
-matters. A placeholder MUST, by kind, match at least one variant of its property; one matching none can return nothing
-and is unsatisfiable, and MUST be rejected, as a data value is (Sections 3.3 and 5.7).
-
-A placeholder stands for data and never carries it back: its value is never returned and is immaterial. A literal
-placeholder need not be a legal value of its property's type; only its kind matters, and over a union-typed property
-that kind is what matches it to a variant (Section 5.4), a single-type property admitting any value of the kind. A
-reference or template placeholder likewise conveys only its kind. A string matches a reference variant only when it
-satisfies the `IRI-reference` production of [RFC3987], which admits the empty string together with the relative,
-root-relative, and absolute forms, excluding only a string that could not reference a resource; a string outside it
-matches no reference variant. Reference values proper, the options and operands of a selection
-(Section 5.7), are instead resolved on decoding (Section 5) and are absolute thereafter.
-
-The placeholder for a multi-valued property is a tuple, whose array form signals multi-valued cardinality. The first
-element is the per-item template; an optional second element is a collection-wide selection (Section 5.7) that filters,
-sorts, and paginates the property's values. Runtime validators MUST accept a one- or two-element tuple and reject arrays
-of any other length.
+A projection is one of the retrieval forms a query (Section 5.6) admits, and carries the collection's criteria
+(Section 5.7) alongside its bindings.
 
 ```json
 {
-  "tags": [
-    ""
-  ],
-  "categories": [
-    {
-      "id": "",
-      "name": ""
-    }
-  ]
-}
-```
-
-## 5.3. Locales
-
-Tag-range keys [RFC4647] select which locales to retrieve. A tag-range key MUST be a basic language range
-[RFC4647] (Section 2.1): a sequence of subtags, or the standalone `*` wildcard. Extended language ranges
-[RFC4647] (Section 2.2), carrying `*` in a leading, interior, or trailing subtag position (for example `de-*`
-or `*-CH`), MUST be rejected; under the basic filtering used here they add no matching power over their basic prefix,
-and a processor MUST NOT attempt to interpret them.
-
-The placeholder returns the subset of the property's dictionary (Section 4.3) matching the ranges by RFC 4647 basic
-**filtering** (Section 3.3.1; all matching tags) rather than **lookup** (a single best match), as a structured map. Each
-tag-range value is itself a placeholder typed to the expected result: a string where the property holds one value per
-tag, or a single-element array where it holds several (Section 4.3). Only the type matters, so the array carries exactly
-one element.
-
-A localised property MAY also be retrieved through a plain string placeholder, yielding its **coalesced label**
-(Section 6): the value or values resolved by the request's negotiated language priority (Section 6.1). The placeholder
-takes the ordinary string shape for the property's per-tag cardinality (Sections 5.2 and 4.3); processors MUST reject a
-mismatch in either direction (Section 5.2). The tag-range map yields the full structure instead.
-
-A locale is not syntactically disjoint from a nested template, since a tag-range such as `en` is also a valid property
-identifier; processors classify the object by the targeted property's expected type (Section 3.1): a locale over a
-property declaring a text variant (Section 4.3) and a template (Section 5.1) otherwise. A property declaring both a text
-variant and a nested-resource variant leaves the object form genuinely ambiguous and MUST be addressed through the keyed
-union form (Section 5.4), which tells the alternatives apart by key.
-
-```json
-{
-  "title": {
-    "*": ""
-  },
-  "description": {
-    "en": "",
-    "fr": ""
-  },
-  "keywords": {
-    "en": [
-      ""
-    ],
-    "fr": [
-      ""
-    ]
-  }
-}
-```
-
-## 5.4. Union
-
-For union-typed properties (Section 3.1), per-branch retrieval is expressed through a keyed object form whose values are
-the per-branch placeholders, each a plain placeholder or, only within a projection binding (Section 5.6), a locale
-placeholder (Section 5.3). Save for the folded text variant below, this keyed form is the only way to address such a
-property: a plain placeholder over one is mismatched and MUST be rejected (Section 5.2), whichever single branch it may
-resemble.
-
-Folding (Section 3.2) recasts a text variant before retrieval reaches it: its coalesced value (Section 6.2) stands in as
-an ordinary `xsd:string` branch. A text variant paired with a string variant folds into that one branch, so the property
-is not union-typed for retrieval and is addressed by a plain placeholder like any string-valued property, yielding the
-coalesced label (Section 5.3) for the values the text variant carries. Where folding leaves two or more branches, a text
-variant paired with a reference or a nested resource among them, the keyed form applies as usual and a plain string
-alternative addresses the folded branch.
-
-A variant carries a single value, never a collection: cardinality is defined for the property as a whole and applies to
-the union slot, not independently per branch.
-
-A variant MAY be a locale placeholder (Section 5.3) only within a projection binding (Section 5.6), addressing a branch
-that resolves to a localised property (Section 4.3), as a path through a union-typed step can (Section 5.8.1); the
-branch then occupies its own cell (Section 5.6) as a dictionary. A dictionary is not a value and cannot be combined into
-a value set (Section 4.2) alongside the literals, references, and resources of sibling branches, so a union retrieving a
-resource property directly admits no locale variant; only the per-cell decomposition of a projection
-(Section 5.6) accommodates one. A locale variant carries its own per-tag cardinality (Section 5.3) and is therefore
-never wrapped in a collection.
-
-The keys are opaque: they label the alternatives but carry no positional or nominal meaning. Keys MUST be non-negative
-integer strings (no decimals, negatives, or exponential forms), a namespace disjoint from property identifiers, and a
-processor MUST NOT read positional meaning into them. Each value is an alternative placeholder, and the branches it
-retrieves are fixed by matching the placeholder against the property's variants (Section 5.2), not by the key. Matching
-is by kind, not by value: a literal alternative matches every variant of its processing kind, a reference alternative
-every reference variant, and a template alternative every nested-resource variant whose type its properties are valid on
-(Section 5.2). A placeholder's value is immaterial and need not be a legal value of any variant. An alternative MAY
-match more than one variant, retrieving each, but like any placeholder MUST match at least one: one matching no variant
-can return nothing and is unsatisfiable, and MUST be rejected (Sections 3.1 and 5.2). A literal or reference alternative
-does not tell same-kind variants apart, while a template's structure discriminates the resource variants it fits.
-Variants left unmatched are skipped at retrieval, contributing no values.
-
-```json
-{
-  "id": "",
-  "creator": {
-    "0": {
-      "id": "",
-      "name": ""
+  "items": {
+    "vendor=vendor": {
+      "id": {},
+      "name": {}
     },
-    "1": {
-      "id": "",
-      "legalName": ""
-    }
+    "items=count:": {},
+    "avgPrice=avg:price": {}
   }
 }
 ```
 
-Where variants share a processing type, a placeholder matches them all by kind, its value immaterial: here `region` has
-two string branches, an ISO 3166 alpha-2 country code and an internal macro-zone code. A single string alternative
-already matches both, so retrieval returns whichever branch the stored value belongs to; the values `"US"` and `"EMEA"`
-below are inert placeholders that select nothing, the two slots being equivalent:
+Each binding's value is a single-value cell, taking one of two forms:
 
-```json
-{
-  "id": "",
-  "region": {
-    "0": "US",
-    "1": "EMEA"
-  }
-}
-```
-
-Numeric keys suit the machine-generated templates that tooling, code generation, and schema-driven translation produce
-and keep the surface syntax sigil-free; being disjoint from the identifier, binding, and operator-prefixed key spaces,
-they leave a union structurally unambiguous while remaining opaque labels with no positional force.
-
-## 5.5. Query
-
-A **query** retrieves a collection, a multi-valued property (Section 3.1) of the enclosing resource. In the template,
-that property maps to a tuple of two parts: a per-item element that shapes each item, and an optional selection (Section
-5.7) that filters, sorts, and paginates the collection as a whole. A single-valued property cannot take such a tuple; a
-query targeting one MUST be rejected.
-
-The per-item element takes one of three forms, giving three query variants:
-
-- a **placeholder** (Section 5.2) retrieves each item by its type, covering scalar collections (literals or references)
-  and collections of shaped resources (nested templates);
-- a **union** (Section 5.4) retrieves each union-typed item through the branch matching its variant, one placeholder per
-  branch;
-- a **projection** (Section 5.6) yields **computed values** per item or group, through expressions and aggregates.
-
-## 5.6. Projection
-
-A **projection** is a collection template whose keys are **bindings**: each pairs an expression with a result name
-rather than naming an individual property, evaluated per item or, when an aggregate binding is present, per group
-(Section 5.8.2.1). Binding result names MUST be unique within a projection.
-
-```json
-{
-  "items": [
-    {
-      "vendor=vendor": {
-        "id": "",
-        "name": ""
-      },
-      "items=count:": 0,
-      "avgPrice=avg:price": 0
-    }
-  ]
-}
-```
-
-Each binding's value is a **model** (Section 5.1), taking one of three forms:
-
-- a **union** (Section 5.4): one placeholder per branch, when the bound expression is union-typed;
-- a **placeholder** (Section 5.2): a literal, a reference, or a nested template expanding a linked resource;
-- a **locale** map (Section 5.3): a tag-range map declaring a localised result.
+- a **placeholder** (Section 5.3): an atomic, a nested template expanding a linked resource, or a locale map
+  (Section 5.4) declaring a localised result;
+- a **union** (Section 5.5): one placeholder per branch, when the bound expression is union-typed.
 
 Each binding yields one **cell** per output row, holding a single value: a literal, a reference (optionally expanded to
 a resource), or a dictionary. A union never appears in a cell; a union binding's cell holds one of its matching branch's
@@ -1061,14 +899,12 @@ binding below yields the full `{ <tag>: <value>, … }` map for the matching tag
 
 ```json
 {
-  "items": [
-    {
-      "id=id": "",
-      "label=title": {
-        "*": ""
-      }
+  "items": {
+    "id=id": {},
+    "label=title": {
+      "*": {}
     }
-  ]
+  }
 }
 ```
 
@@ -1077,20 +913,16 @@ common facet patterns.
 
 A **category breakdown** groups items by a property and counts each group. The projection pairs a non-aggregate binding,
 `category=category`, which becomes the grouping key (Section 5.8.2.1), with the aggregate `count=count:`, which counts
-the items in each group; the sibling selection's `^count:` then orders the groups by descending count (Section 5.7.5).
+the items in each group; the sibling `^count:` criterion then orders the groups by descending count (Section 5.7.5).
 The query returns one row per distinct `category` value, each carrying its item count:
 
 ```json
 {
-  "items": [
-    {
-      "category=category": "",
-      "count=count:": 0
-    },
-    {
-      "^count:": "desc"
-    }
-  ]
+  "items": {
+    "category=category": {},
+    "count=count:": {},
+    "^count:": "desc"
+  }
 }
 ```
 
@@ -1099,12 +931,10 @@ property. With no non-aggregate binding there is no grouping key, so the two agg
 
 ```json
 {
-  "items": [
-    {
-      "min=min:price": 0,
-      "max=max:price": 0
-    }
-  ]
+  "items": {
+    "min=min:price": {},
+    "max=max:price": {}
+  }
 }
 ```
 
@@ -1113,20 +943,188 @@ A **result total** reduces the collection to a single row holding the number of 
 
 ```json
 {
-  "items": [
-    {
-      "count=count:": 0
-    }
-  ]
+  "items": {
+    "count=count:": {}
+  }
 }
 ```
 
-## 5.7. Selection
+## 5.3. Placeholder
 
-A **selection** is a collection query's optional second element (Section 5.5): a map of constraints that filters, sorts,
-and paginates the collection as a whole. Each constraint key uses the `"{operator}{expression}"` syntax, where the
-operator determines the constraint type and the expression (Section 5.8) identifies the target property or computed
-value.
+A **placeholder** stands in for one property value and takes one of three forms, each a JSON object:
+
+- **atomic**: the empty object `{}`, requesting the property's value as it stands;
+- **template**: a non-empty object of property keys (Section 5.1), requesting inline expansion of the linked resource;
+- **locale**: a tag-range-keyed object (Section 5.4), requesting a localised property structurally.
+
+A placeholder carries no data and never returns any: it states how far to retrieve, and the retrieved value comes back
+under the property's own key. A placeholder MUST match at least one variant of its property; one matching none can
+return nothing and is unsatisfiable, and MUST be rejected, as a data value is (Sections 3.3 and 5.7).
+
+The forms match by shape. An atomic matches every variant, whatever a property holds: a literal comes back as a
+literal, a linked resource as its reference (Section 4.2), and localised text as its coalesced label (Section 6.2). A
+template matches the nested-resource variants its properties are valid on, and a locale matches the text variant. A
+template over a property declaring no nested-resource variant, or a locale over one declaring no text variant, is
+therefore unsatisfiable. Reference values proper, the options and operands of criteria (Section 5.7), are resolved on
+decoding (Section 5) and are absolute thereafter.
+
+Cardinality is not stated by a placeholder: single- and multi-valued properties take the same forms, and which one a key
+names is fixed by its expected type (Section 3.1). A multi-valued property is constrained by merging criteria into
+its entry (Section 5.6); a single-valued one admits no constraints, and processors MUST reject them there.
+
+```json
+{
+  "tags": {},
+  "categories": {
+    "id": {},
+    "name": {}
+  }
+}
+```
+
+## 5.4. Locale
+
+Tag-range keys [RFC4647] select which locales to retrieve. A tag-range key MUST be a basic language range
+[RFC4647] (Section 2.1): a sequence of subtags, or the standalone `*` wildcard. Extended language ranges
+[RFC4647] (Section 2.2), carrying `*` in a leading, interior, or trailing subtag position (for example `de-*`
+or `*-CH`), MUST be rejected; under the basic filtering used here they add no matching power over their basic prefix,
+and a processor MUST NOT attempt to interpret them.
+
+The placeholder returns the subset of the property's dictionary (Section 4.3) matching the ranges by RFC 4647 basic
+**filtering** (Section 3.3.1; all matching tags) rather than **lookup** (a single best match), as a structured map. Each
+tag-range value is an atomic (Section 5.3): the map's request lives wholly in its keys, and the retrieved entries
+carry the per-tag cardinality the property declares (Sections 3.1 and 4.3), which the template does not restate.
+
+A localised property MAY also be retrieved through an atomic, yielding its **coalesced label** (Section 6): the
+value or values resolved by the request's negotiated language priority (Section 6.1). The tag-range map yields the full
+structure instead.
+
+A locale carries no criteria (Section 5.7), being filtered by its own tag ranges: the notation admits them on every
+entry alike (Section 5.6), but processors MUST reject a criterion key on a locale. Matching resources by localised text
+is stated at the enclosing collection instead, through `?` and `!` (Section 5.7.3).
+
+A locale is not syntactically disjoint from a nested template, since a tag-range such as `en` is also a valid property
+identifier; processors classify the object by the targeted property's expected type (Section 3.1): a locale over a
+property declaring a text variant (Section 4.3) and a template (Section 5.1) otherwise. A property declaring both a text
+variant and a nested-resource variant leaves the object form genuinely ambiguous and MUST be addressed through the keyed
+union form (Section 5.5), which tells the alternatives apart by key.
+
+```json
+{
+  "label": {},
+  "title": {
+    "*": {}
+  },
+  "description": {
+    "en": {},
+    "fr": {}
+  }
+}
+```
+
+## 5.5. Union
+
+For union-typed properties (Section 3.1), per-branch retrieval is expressed through a keyed object form whose values are
+the per-branch placeholders, each a plain placeholder or, only within a projection binding (Section 5.2), a locale
+placeholder (Section 5.4). The keyed form is what lets variants be retrieved to different depths; a property whose
+variants are all served by one placeholder is addressed directly, without branching, an atomic (Section 5.3)
+retrieving whichever variant a resource carries.
+
+Folding (Section 3.2) recasts a text variant before retrieval reaches it: its coalesced value (Section 6.2) stands in as
+an ordinary `xsd:string` branch. A text variant paired with a string variant folds into that one branch, so the property
+is not union-typed for retrieval and is addressed by an atomic like any string-valued property, yielding the
+coalesced label (Section 5.4) for the values the text variant carries. Where folding leaves two or more branches, a text
+variant paired with a reference or a nested resource among them, the keyed form applies as usual and an atomic
+alternative addresses the folded branch.
+
+A variant carries a single value, never a collection: cardinality is defined for the property as a whole and applies to
+the union as a whole, not independently per branch.
+
+A variant MAY be a locale placeholder (Section 5.4) only within a projection binding (Section 5.2), addressing a branch
+that resolves to a localised property (Section 4.3), as a path through a union-typed step can (Section 5.8.1); the
+branch then occupies its own cell (Section 5.2) as a dictionary. A dictionary is not a value and cannot be combined into
+a value set (Section 4.2) alongside the literals, references, and resources of sibling branches, so a union retrieving a
+resource property directly admits no locale variant; only the per-cell decomposition of a projection
+(Section 5.2) accommodates one. A locale variant carries its own per-tag cardinality (Section 5.4) and is therefore
+never wrapped in a collection.
+
+The keys are opaque: they label the alternatives but carry no positional or nominal meaning. Keys MUST be non-negative
+integer strings (no decimals, negatives, or exponential forms), a namespace disjoint from property identifiers, and a
+processor MUST NOT read positional meaning into them. Each value is an alternative placeholder, and the branches it
+retrieves are fixed by matching the placeholder against the property's variants (Section 5.3), not by the key. Matching
+is by form: an atomic alternative matches every variant, a template alternative every nested-resource variant whose
+type its properties are valid on, and a locale alternative the text variant (Section 5.3). An alternative MAY match more
+than one variant, retrieving each, but like any placeholder MUST match at least one: one matching no variant can return
+nothing and is unsatisfiable, and MUST be rejected (Sections 3.1 and 5.3). Variants left unmatched are skipped at
+retrieval, contributing no values.
+
+```json
+{
+  "id": {},
+  "creator": {
+    "0": {
+      "id": {},
+      "name": {}
+    },
+    "1": {
+      "id": {},
+      "legalName": {}
+    }
+  }
+}
+```
+
+A union earns its keys only where the alternatives differ in shape, as `creator` does above. Where one placeholder
+serves every variant, branching adds nothing: a `region` declaring two string variants, an ISO 3166 alpha-2 country code
+and an internal macro-zone code, is retrieved by an atomic alone, which returns whichever variant the stored value
+belongs to:
+
+```json
+{
+  "id": {},
+  "region": {}
+}
+```
+
+Numeric keys suit the machine-generated templates that tooling, code generation, and schema-driven translation produce
+and keep the surface syntax sigil-free; being disjoint from the identifier, binding, and operator-prefixed key spaces,
+they leave a union structurally unambiguous while remaining opaque labels with no positional force.
+
+## 5.6. Query
+
+A **query** retrieves a collection, a multi-valued property (Section 3.1) of the enclosing resource. In the template,
+that property maps to a single object carrying two kinds of key: the retrieval keys that shape each item, and the
+criteria (Section 5.7) that filter, sort, and paginate the collection as a whole. A single-valued property admits no
+criteria; a query targeting one MUST be rejected.
+
+The retrieval keys take one of three forms, giving three query variants:
+
+- a **placeholder** (Section 5.3) retrieves each item as it comes or expands it, covering scalar collections and
+  collections of shaped resources;
+- a **union** (Section 5.5) retrieves each union-typed item through the branch matching its variant, one placeholder per
+  branch;
+- a **projection** (Section 5.2) yields **computed values** per item or group, through expressions and aggregates.
+
+A query carrying criteria alone retrieves the collection's item values under those constraints, the retrieval half
+being an atomic (Section 5.3); one carrying retrieval keys alone retrieves every item.
+
+```json
+{
+  "items": {
+    "name": {},
+    "~name": "widget",
+    "^name": "asc",
+    "#": 25
+  }
+}
+```
+
+## 5.7. Criteria
+
+A collection query (Section 5.6) selects the items it retrieves through the **criteria** merged into it: the
+constraints that filter, sort, and paginate the collection as a whole. Each **criterion** key uses the
+`"{operator}{expression}"` syntax, where the operator determines the constraint type and the expression (Section 5.8)
+identifies the target property or computed value.
 
 A constraint expression MAY include an aggregate transform (Section 5.8.2.1). In a grouped query (Section 5.8.2.1),
 aggregate constraints filter groups and non-aggregate ones filter items; in an ungrouped query, an aggregate constraint
@@ -1250,7 +1248,7 @@ defeat numeric indexes, contrary to the native-alignment principle (Appendix A.1
 - Focus ranking needs one value per resource, hence the single-valued target.
 - A `null` option ranks resources whose value is absent first, mirroring the absent-value match of set matching
   (Section 5.7.3).
-- Focus overrides the regular sort criteria (Section 5.7.5).
+- Focus overrides the regular sort order (Section 5.7.5).
 
 A common use of sort focus is to prioritise a user's selections within a discrete facet: the chosen option values rank
 first while the rest of the listing keeps its order, keeping selected items visible without filtering the others out.
@@ -1273,10 +1271,9 @@ first while the rest of the listing keeps its order, keeping selected items visi
 - The sort order is total: in ascending direction `undefined` first, then by processing type (`xsd:boolean` <
   `numeric` < `temporal` < `xsd:string`), then within each type by the comparison rules (Section 5.7.1). The `order`
   sign reverses this entire order, the `undefined` tier and the processing-type ranking included, so a descending key
-  places `undefined` last. Ranking by processing type keeps
-  `temporal` a tier distinct from `xsd:string`, ordering comparable temporal values ahead of plain strings, though
-  egress surfaces both as JSON strings (Section 3), so a union-typed key sorts deterministically across mixed-type
-  values.
+  places `undefined` last. Ranking by processing type keeps `temporal` a tier distinct from `xsd:string`, ordering
+  comparable temporal values ahead of plain strings, though egress surfaces both as JSON strings (Section 3), so a
+  union-typed key sorts deterministically across mixed-type values.
 - Appendix A.2.3 maps total ordering onto the target backends.
 
 ### 5.7.6. Pagination
@@ -1296,7 +1293,7 @@ first while the rest of the listing keeps its order, keeping selected items visi
 ## 5.8. Expression
 
 An **expression** is a property path optionally preceded by a pipeline of transforms, targeted by projection
-(Section 5.6) and selection (Section 5.7) keys.
+(Section 5.2) and criteria (Section 5.7) keys.
 
 ```text
 name                       simple property
@@ -1324,7 +1321,7 @@ Each step contributes values per input value according to the property it resolv
 - **Union property**: contributes a mixed-type set, each value of a single branch type;
 - **Localised property**: under coalesced access (Section 6.2), contributes the coalesced value as an ordinary
   `xsd:string` of corresponding cardinality; under structural access (Section 6), through a locale placeholder or
-  binding (Sections 5.3 and 5.6) or a tagged option set (Section 5.7.3), contributes the dictionary whole, tags
+  binding (Sections 5.4 and 5.2) or a tagged option set (Section 5.7.3), contributes the dictionary whole, tags
   preserved.
 
 The set remaining after the last step is the path's result: an empty set resolves to `undefined`, a single value to that
@@ -1334,13 +1331,13 @@ A path's **effective type** is that of its final step's property, or, for an emp
 it ranges over; a union-typed step yields a mixed-type set. Where a step downstream of a union-typed step resolves one
 property under a distinct declaration per branch, union coherence keeping it a single property (Section 3.2), the
 effective type is the disjunction of those per-branch types. That disjunction can include localised text, where a
-branch's resolved property is localised (Section 4.3) and addressed structurally
-(Section 6); such a branch is expressed by a locale variant (Section 5.4). A localised step yields `xsd:string` instead
-under coalesced access (Section 6.2), at the property's per-tag cardinality.
+branch's resolved property is localised (Section 4.3) and addressed structurally (Section 6); such a branch is expressed
+by a locale variant (Section 5.5). A localised step yields `xsd:string` instead under coalesced access (Section 6.2), at
+the property's per-tag cardinality.
 
 An effective type is a derived type, not an expected type (Section 3.1), and is never materialised as a value set
-(Section 4.2): a mixed effective type that includes localised text is consumed per branch by a selection (Section 5.7)
-and per cell by a projection (Section 5.6), each value keeping its own type, so it never forms a single serialised value
+(Section 4.2): a mixed effective type that includes localised text is consumed per branch by criteria (Section 5.7)
+and per cell by a projection (Section 5.2), each value keeping its own type, so it never forms a single serialised value
 set. Processors MUST NOT reject a path on the ground that its effective type mixes localised text with other branch
 types.
 
@@ -1379,7 +1376,7 @@ A pipe is **well-formed** only if it applies at most one aggregate transform; pr
 Transforms MUST be **well-typed**: a transform MAY be applied only to a value compatible with its declared domain, the
 compatibility being resolved against the type its input step produces (Section 5.8.1). A transform whose domain admits
 no value of that type is incompatible, and processors MUST report the incompatibility and reject the pipe (see Appendix
-A.4.4 for build-time rejection on target backends). Where the input type is a union (Section 5.4), at least one branch
+A.4.4 for build-time rejection on target backends). Where the input type is a union (Section 5.5), at least one branch
 MUST be compatible with the domain for the transform to be well-typed; the transform then applies to the values of the
 compatible branches and ignores those of the incompatible ones, which contribute no value (scalar) or drop from the
 reduction (aggregate). Appendix A.4.5 maps this branch selection onto the target backends.
@@ -1422,25 +1419,21 @@ Over a mixed `numeric` input set, an aggregate computes in the least common type
 (Section 4.2) dedupes only within a single property's stored array, not across the aggregate's input, so equal values
 count separately, whether from different rows or from a multi-valued fan-out within one row.
 
-When an aggregate expression appears among the projection's bindings, the query is evaluated under **grouped semantics
-**; otherwise the query is **ungrouped**: every item is evaluated independently, and an aggregate expression in the
-selection reduces over the values the path gathers from the item under evaluation (Section 5.8.1), so the constraint
-filters, sorts, or ranks the items by that reduction.
+When an aggregate expression appears among the projection's bindings, the query is evaluated under
+**grouped semantics**; otherwise the query is **ungrouped**: every item is evaluated independently, and an aggregate
+expression in the criteria reduces over the values the path gathers from the item under evaluation (Section 5.8.1), so
+the constraint filters, sorts, or ranks the items by that reduction.
 
 The ungrouped reduction supports cardinality constraints over plain templates; the query below retrieves the vendors
 carrying at least three products:
 
 ```json
 {
-  "vendors": [
-    {
-      "id": "",
-      "name": ""
-    },
-    {
-      ">=count:products": 3
-    }
-  ]
+  "vendors": {
+    "id": {},
+    "name": {},
+    ">=count:products": 3
+  }
 }
 ```
 
@@ -1457,12 +1450,11 @@ Grouping is fixed by the projection alone and is never inferred from a sort key:
 expression MUST match, verbatim, the expression of an existing grouping-key binding; binding names are not expressions,
 and processors MUST reject an expression that matches no key.
 
-Grouping applies to the fanned-out rows of Section 5.6: a multi-valued grouping-key binding fans an item into one row,
+Grouping applies to the fanned-out rows of Section 5.2: a multi-valued grouping-key binding fans an item into one row,
 and hence one group, per value. Rows sharing the same grouping-key values collapse into a single group. An `undefined`
 grouping-key value (an absent or unresolved binding) groups with itself: all rows missing that key form one group, whose
-output row omits the key, extending the no-value rule of the ungrouped case (Section 5.6). Every target backend realises
-this natively through
-`GROUP BY` null-grouping (Appendix A.4.6).
+output row omits the key, extending the no-value rule of the ungrouped case (Section 5.2). Every target backend realises
+this natively through `GROUP BY` null-grouping (Appendix A.4.6).
 
 Aggregate filter and ordering constraints are independent of any projected bindings: an aggregate MAY appear in a
 constraint without being projected, and a projected aggregate MAY appear without being constrained. Appendix A.4.6
@@ -1502,11 +1494,10 @@ A temporal transform yields `undefined` when the input value lacks the component
 
 A localised property (Section 4.3) is retrieved or constrained according to the form of the value used to address it:
 
-- **structural** access preserves the language tags: a locale placeholder (Section 5.3) retrieves a tag-range subset of
+- **structural** access preserves the language tags: a locale placeholder (Section 5.4) retrieves a tag-range subset of
   the dictionary, and a language-tagged option (Section 5.7.3) matches exactly the stored tagged values;
 - **coalesced** access reduces the property to a plain string, or array of plain strings of corresponding cardinality,
-  under language negotiation: a placeholder (Section 5.3) retrieves the coalesced value or values, a plain-string
-  operand
+  under language negotiation: an atomic (Section 5.3) retrieves the coalesced value or values, a plain-string operand
   (Section 5.7) constrains them, a sort key (Section 5.7.5) orders by the single-valued form, and an expression step
   (Section 5.8.1) resolves to them, so transforms and aggregates (Section 5.8.2) range over the coalesced values.
 
@@ -1586,7 +1577,7 @@ targeting construct, exactly as for any other string property of corresponding c
 ## 6.3. Response Caching
 
 Servers MUST include a `Vary` header field naming `Accept-Language` in any response that depends on a coalesced value
-(Section 6.2), whether through a coalesced label in the response body (Section 5.3) or through the result set (filtering
+(Section 6.2), whether through a coalesced label in the response body (Section 5.4) or through the result set (filtering
 or ordering), so that such responses are cached per language.
 
 Coalescing resolves each cell independently, so a single response MAY mix language tags across its cells. Servers MUST
@@ -1601,7 +1592,7 @@ This document has no IANA actions.
 
 ## 8.1. Query Complexity
 
-Servers SHOULD impose limits on template nesting and query paths depth, the number of expanded properties, and
+Servers SHOULD impose limits on retrieval model nesting and query paths depth, the number of expanded properties, and
 collection result sizes to prevent denial of service through excessively complex queries.
 
 Aggregate transforms (Section 5.8.2.1) can be particularly expensive on large collections; servers SHOULD support
@@ -1610,14 +1601,14 @@ disabling them on a per-endpoint or per-role basis when the computational cost i
 ## 8.2. Information Disclosure
 
 Servers MUST NOT let a query read or traverse any property path beyond what the requesting client is authorised to
-access. Template-driven retrieval does not bypass access control; it constrains the query within the bounds of the
+access. Client-driven retrieval does not bypass access control; it constrains the query within the bounds of the
 client's permissions, whether a value is returned directly, expanded from a reference, or only summarised by an
 aggregate (Section 5.8.2.1), which MUST therefore be computed solely over values the client may read.
 
 Rejection responses can themselves disclose structure. The validation rules of this document reject unknown properties
 (Section 5.8.1), type mismatches (Section 3.3), type-incompatible transform pipes (Section 5.8.2), and malformed
-templates (Section 5.2); verbose errors confirm the existence and types of properties a client is not authorised to
-know. Servers SHOULD limit the detail of a rejection to what the client is authorised to learn.
+retrieval models (Section 5.3); verbose errors confirm the existence and types of properties a client is not authorised
+to know. Servers SHOULD limit the detail of a rejection to what the client is authorised to learn.
 
 ## 8.3. IRI Injection
 
@@ -1968,9 +1959,8 @@ For SQL `sum`:
 | SPARQL 1.1 | none: `SUM` returns `0` natively                |
 
 For SPARQL `avg`, Section 18.5.1.4 of [W3C.REC-sparql11-query] defines `Avg` piecewise with
-`Avg(M) = "0"^^xsd:integer when Count(M) = 0`, a literal `0`
-rather than a derivation from `Sum/Count`. The protocol requires `undefined`. Wrap the binding to force an unbound
-projection on the empty case:
+`Avg(M) = "0"^^xsd:integer when Count(M) = 0`, a literal `0` rather than a derivation from `Sum/Count`. The protocol
+requires `undefined`. Wrap the binding to force an unbound projection on the empty case:
 
 | Backend    | Normalisation                                                                               |
 |------------|---------------------------------------------------------------------------------------------|
@@ -1994,7 +1984,7 @@ builder walks the pipe from its innermost transform outward, and for each transf
 the effective type of its input step (the path's type for the innermost transform, the preceding transform's range
 otherwise). It rejects the pipe when an intersection is empty, reporting the incompatibility before emitting any
 backend-specific code. A non-empty intersection admits the transform: covering the whole input type needs no guard,
-while covering only some branches of a union-typed input (Section 5.4) admits the transform on those branches and marks
+while covering only some branches of a union-typed input (Section 5.5) admits the transform on those branches and marks
 the rest for guarding.
 
 The builder then uses that shape information to place the branch guards (scalar, Appendix A.4.1; aggregate, Appendix
@@ -2019,7 +2009,7 @@ See Appendix A.4.1 (scalar) and A.4.2 (aggregate) for the filtering mechanism.
 
 ### A.4.6. Filtering and Grouping
 
-Selection constraints (Section 5.7) partition by aggregate-awareness into pre-grouping filters, grouping keys,
+Criteria constraints (Section 5.7) partition by aggregate-awareness into pre-grouping filters, grouping keys,
 post-grouping (aggregate) filters, and, in ungrouped queries, per-item reductions (Section 5.8.2.1):
 
 | Rule                                            | SQL:2011            | GQL:2024           | SPARQL 1.1        |
@@ -2035,7 +2025,7 @@ enforces this through an explicit `GROUP BY` clause, which folds a null or unbou
 every backend, realising the `undefined`-key rule (Section 5.8.2.1) natively.
 
 An ungrouped projection (no aggregate binding, Section 5.8.2.1) carries no `GROUP BY`; each backend realises the
-distinct-row rule (Section 5.6) with a set quantifier on the projected tuple: `SELECT DISTINCT` (SQL:2011),
+distinct-row rule (Section 5.2) with a set quantifier on the projected tuple: `SELECT DISTINCT` (SQL:2011),
 `RETURN DISTINCT` (GQL:2024), and `SELECT DISTINCT` (SPARQL 1.1). A grouped projection needs no such quantifier: its
 `GROUP BY` already emits one row per distinct grouping-key tuple, so the quantifier is redundant and is omitted.
 

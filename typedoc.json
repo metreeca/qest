@@ -11,6 +11,9 @@
     "@metreeca/core": {
       "isIdentifier": "https://metreeca.github.io/core/functions/index.isIdentifier.html",
       "Identifier": "https://metreeca.github.io/core/types/index.Identifier.html",
+      "Optional": "https://metreeca.github.io/core/types/index.Optional.html",
+      "Guard": "https://metreeca.github.io/core/types/index.Guard.html",
+      "key": "https://metreeca.github.io/core/variables/index.key.html",
       "IRI": "https://metreeca.github.io/core/types/resource.IRI.html",
       "app": "https://metreeca.github.io/core/variables/resource.app.html",
       "Variant": "https://metreeca.github.io/core/types/resource.Variant.html",

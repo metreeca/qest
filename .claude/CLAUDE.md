@@ -16,6 +16,27 @@ description: Development guidelines and conventions for the @metreeca/qest packa
 > operators alike, and the forms are told apart at runtime by the validators, never by the compiler. Templates are
 > normally produced by tooling rather than written by hand. **NEVER** raise weak structural discrimination, alias
 > erosion, or missing compile-time checks as a finding: it is a known and accepted property of the design.
+>
+> **This extends to every consequence of that erosion, however it surfaces.** The retrieval types exist to *state* the
+> model for readers and for TypeDoc; whether the compiler can tell two of them apart is immaterial. **NEVER** raise,
+> in any phrasing:
+>
+> - a type that collapses or degenerates (a mapped type over a `string`-aliased key set, a generic that resolves to
+>   the same type for every argument, a union whose arms are mutually assignable)
+> - union arms, type parameters or branded slots that are "redundant", "subsumed", "buy nothing" or "document rather
+>   than constrain" — naming the forms *is* their purpose
+> - values or keys the types wrongly admit, or simplifications that would drop an arm to match what the compiler sees
+>
+> **Discrimination of every kind is out of scope, at compile time and at run time alike.** The types describe a wire
+> format whose forms are told apart by the model: the server knows what to expect at each field. So **NEVER** raise
+> ambiguity between forms, colliding key spaces (`Identifier` against `TagRange`, and the like), a literal that could
+> be read as two forms, or a decoder or grammar that cannot classify a node standalone. Re-raising the same objection
+> in fresh wording — "soundness", "the decoder can't tell", "the form isn't recoverable" — is the same violation.
+>
+> Review these types against the **wire format** instead: can every request the model admits be written down, does
+> every writable document denote something, is the notation economical and regular, does each name read right, does
+> the shape match the issue at hand. A finding that would vanish if forms were self-identifying is out of scope; a
+> finding about a form that cannot be expressed, or notation that carries no information, is the point.
 
 # References
 

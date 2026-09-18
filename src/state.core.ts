@@ -17,7 +17,7 @@
 /**
  * Type guards for resource state types.
  *
- * Runtime validators for the state types declared in the `resource` module, re-exported through it.
+ * Runtime validators for the state types declared in the `state` module, re-exported through it.
  *
  * @module
  */
@@ -34,7 +34,7 @@ import {
 } from "@metreeca/core";
 import { isTag } from "@metreeca/core/language";
 import { isIRI } from "@metreeca/core/resource";
-import type { Dictionary, Literal, Reference, Resource, Value, Values } from "./resource.js";
+import type { Dictionary, Literal, Reference, Resource, Value, Values } from "./state.js";
 
 
 /**
@@ -42,7 +42,7 @@ import type { Dictionary, Literal, Reference, Resource, Value, Values } from "./
  *
  * @param value The value to check
  *
- * @returns True if `value` is a plain object whose keys are all {@link Identifier}s and whose values
+ * @returns True if `value` is a plain object whose keys are all {@link Identifier | identifiers} and whose entries
  * are all valid {@link Values} sets; false otherwise
  */
 export function isResource(value: unknown): value is Resource {
@@ -53,12 +53,10 @@ export function isResource(value: unknown): value is Resource {
 /**
  * Checks if a value is a {@link Values} set.
  *
- * Accepts the absent marker `undefined`, a single {@link Value} scalar, a {@link Dictionary}, or an
- * array of {@link Value} elements.
- *
  * @param value The value to check
  *
- * @returns True if `value` is a valid Values set; false otherwise
+ * @returns True if `value` is the absent marker `undefined`, a single {@link Value} scalar, a {@link Dictionary}, or
+ * an array of {@link Value} elements; false otherwise
  */
 export function isValues(value: unknown): value is Values {
 	return value === undefined || isUnion(value, [

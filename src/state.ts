@@ -20,7 +20,7 @@
  * Defines types for describing resource states and partial updates in REST/JSON APIs, using native JSON types
  * with localised text support.
  *
- * <img src="resource.svg" alt="State type hierarchy" style="zoom: 1.75; display: block; margin: auto;" />
+ * <img src="state.svg" alt="State type hierarchy" style="zoom: 1.75; display: block; margin: auto;" />
  *
  * **Data model**
  *
@@ -42,8 +42,8 @@
  *
  * **Codecs**
  *
- * - {@link encodeResource} — encode a {@link Resource} as JSON
- * - {@link decodeResource} — decode a {@link Resource} from JSON
+ * - {@link encodeResource} — encodes a {@link Resource} as JSON
+ * - {@link decodeResource} — decodes a {@link Resource} from JSON
  *
  * # Resource Operations
  *
@@ -201,9 +201,9 @@
  *
  * A {@link Value} is a single scalar:
  *
- * - **{@link Literal}**: primitive data (`boolean`, `number`, `string`)
- * - **{@link Reference}**: absolute IRI identifying a linked resource
- * - **{@link Resource}**: nested resource state
+ * - {@link Literal} — primitive data (`boolean`, `number`, `string`)
+ * - {@link Reference} — absolute IRI identifying a linked resource
+ * - {@link Resource} — nested resource state
  *
  * A {@link Values} set extends {@link Value} with collection forms:
  *
@@ -234,7 +234,7 @@
  * ## Dictionaries
  *
  * For multilingual content, use a {@link Dictionary}. Language {@link Tag | tags} follow
- * [RFC 5646](https://www.rfc-editor.org/rfc/rfc5646.html) (for example, `en`, `de-CH`, `zh-Hans`):
+ * {@link https://www.rfc-editor.org/rfc/rfc5646.html RFC 5646} (for example, `en`, `de-CH`, `zh-Hans`):
  *
  * ```js
  * // single value per language
@@ -253,7 +253,7 @@
  * })
  * ```
  *
- * Within a single dictionary, all values must be uniformly scalar or uniformly array, and the form chosen must be the
+ * Within a single dictionary, all values MUST be uniformly scalar or uniformly array, and the form chosen MUST be the
  * one the property declares: a payload carrying an array under a tag for a property holding one string per tag, or the
  * converse, is malformed and rejected by servers.
  *
@@ -266,18 +266,17 @@
  * @see {@link https://datatracker.ietf.org/doc/html/rfc9110#section-9.3.4 RFC 9110 - HTTP PUT Method}
  * @see {@link https://www.rfc-editor.org/rfc/rfc5646.html RFC 5646 - Tags for Identifying Languages}
  *
- *
  * @module
  */
 
-import { Identifier, isArray, isObject } from "@metreeca/core";
+import { Identifier, isArray, isObject, type Optional } from "@metreeca/core";
 import { Tag } from "@metreeca/core/language";
 import { app, getNamespaceIRI, internalize, IRI, isIRI, resolve } from "@metreeca/core/resource";
 import { immutable } from "@metreeca/core/structures";
 import { type DecoderOpts, type EncoderOpts } from "./index.js";
-import { isResource } from "./resource.core.js";
+import { isResource } from "./state.core.js";
 
-export * from "./resource.core.js";
+export * from "./state.core.js";
 
 
 /**
@@ -289,17 +288,16 @@ export * from "./resource.core.js";
  * field elided at construction time (for example, a conditionally included property) and is equivalent to omission.
  *
  * > [!NOTE]
- * > An empty nested `Resource` (`{}`) carries no state and must be ignored by processors:
+ * > An empty nested `Resource` (`{}`) carries no state and MUST be ignored by processors:
  * > dropped when it appears as an element of a {@link Values} array, or treated as if the
  * > owning field were omitted from the enclosing resource otherwise.
  *
- * @see {@link template!Template} for the corresponding retrieval template
  * @see {@link https://datatracker.ietf.org/doc/html/rfc9110#section-9.3.1 RFC 9110 - HTTP GET Method}
  * @see {@link https://datatracker.ietf.org/doc/html/rfc9110#section-9.3.4 RFC 9110 - HTTP PUT Method}
  */
 export type Resource = {
 
-	readonly [field: Identifier]: undefined | Values
+	readonly [field: Identifier]: Optional<Values>
 
 }
 
@@ -310,8 +308,6 @@ export type Resource = {
  * A single {@link Value} scalar, a {@link Dictionary}, or an array of {@link Value} elements.
  * Arrays follow set semantics: duplicate values are ignored, ordering is immaterial, and empty arrays are
  * treated as absent values. Element types may be mixed.
- *
- * @see {@link template!Placeholders} for the corresponding retrieval template
  */
 export type Values =
 	| Value
@@ -326,8 +322,6 @@ export type Values =
  * - {@link Literal} — primitive data (`boolean`, `number`, `string`)
  * - {@link Reference} — absolute IRI identifying a linked resource
  * - {@link Resource} — nested resource state
- *
- * @see {@link template!Placeholder} for the corresponding retrieval template
  */
 export type Value =
 	| Literal
@@ -345,7 +339,7 @@ export type Value =
  * - an array of string values per tag
  *
  * Which of the two a dictionary takes is fixed by the property it belongs to: a resource state carrying the other
- * form under any tag is malformed and rejected. Localised {@link template!Options | options} are exempt, being
+ * form under any tag is malformed and rejected. Localised {@link model!Options | options} are exempt, being
  * matched against stored values rather than stored, and accept either form.
  *
  * > [!NOTE]
@@ -354,11 +348,10 @@ export type Value =
  * > - The `@none` key for non-localised values is not supported; use the `und` tag for language-neutral values
  *
  * > [!NOTE]
- * > An empty dictionary (`{}`) carries no localised values and must be ignored by processors as if the
+ * > An empty dictionary (`{}`) carries no localised values and MUST be ignored by processors as if the
  * > owning field were omitted from the enclosing resource. An empty array standing as a tag's value carries no
  * > values either and is ignored in the same way, admissible only where the property takes the array form.
  *
- * @see {@link template!Locales} for the corresponding retrieval template
  * @see {@link https://www.rfc-editor.org/rfc/rfc5646.html RFC 5646 - Tags for Identifying Languages}
  * @see {@link https://iso639-3.sil.org/code/und ISO 639 und - Undetermined Language}
  */
@@ -369,8 +362,8 @@ export type Dictionary =
 /**
  * Literal value.
  *
- * Convenience alias grouping `boolean`, `number`, and `string` JSON primitives used as property values in
- * resources. Corresponds to JSON-LD's primitive value types.
+ * Primitive data carried by a resource property: a JSON `boolean`, `number`, or `string`. Corresponds to JSON-LD's
+ * primitive value types.
  */
 export type Literal =
 	| boolean
@@ -430,8 +423,6 @@ export type Reference =
  * );
  * // → '{"id":"/products/42","name":"Widget","price":29.99}'
  * ```
- *
- * @see {@link decodeResource}
  */
 export function encodeResource(resource: Resource, {
 
@@ -507,8 +498,6 @@ export function encodeResource(resource: Resource, {
  * );
  * // → { id: "https://example.com/products/42", name: "Widget", price: 29.99 }
  * ```
- *
- * @see {@link encodeResource}
  */
 export function decodeResource(json: string, {
 

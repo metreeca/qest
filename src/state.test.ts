@@ -16,8 +16,8 @@
 
 import { app, getNamespaceIRI } from "@metreeca/core/resource";
 import { describe, expect, it } from "vitest";
-import { isDictionary, isResource, isValue, isValues } from "./resource.core.js";
-import { decodeResource, encodeResource, type Resource } from "./resource.js";
+import { isDictionary, isResource, isValue, isValues } from "./state.core.js";
+import { decodeResource, encodeResource, type Resource } from "./state.js";
 
 
 const sharedRejections: ReadonlyArray<readonly [string, unknown]> = [

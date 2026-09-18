@@ -17,68 +17,59 @@
 /**
  * Client-driven resource retrieval.
  *
- * Defines types for specifying the data envelope to retrieve in REST/JSON APIs, including property selection, linked
+ * Defines types for specifying the data envelope to retrieve in REST/JSON APIs, including property projection, linked
  * resource expansion, and, for collections, filtering, sorting, and pagination.
  *
- * <img src="template.svg" alt="Model type hierarchy" style="zoom: 1.75; display: block; margin: auto;" />
+ * <img src="model.svg" alt="Model type hierarchy" style="zoom: 1.75; display: block; margin: auto;" />
  *
  * > [!NOTE]
  * > QEST's [design rationale](./index.md#5-client-driven-retrieval) covers the client-driven retrieval approach;
  * > [Appendix A](./index.md#appendix-a-target-backends) covers cross-backend semantics and normalisation.
  *
- * **Data model**
+ * **Retrieval model**
  *
  * - {@link Template} — Resource retrieval template
- * - {@link Placeholders} — Property value set template
- * - {@link Placeholder} — Property value template
- * - {@link Model} — Value retrieval template
- * - {@link Query} — Collection retrieval template
- * - {@link Locales} — Localised text map template (structured language-tagged value)
- * - {@link Union} — Union-typed property template
- * - {@link Branch} — Union branch key
  * - {@link Projection} — Collection property projection
- * - {@link Selection} — Collection retrieval constraints
+ * - {@link Placeholder} — Property value template
+ * - {@link Atomic} — Atomic value template
+ * - {@link Locale} — Localised text map template (structured language-tagged value)
+ * - {@link Union} — Union-typed property template
+ * - {@link Query} — Constrained retrieval node
+ * - {@link Criteria} — Collection retrieval constraints
  * - {@link Binding} — Named computed expression
  * - {@link Expression} — Computed expression
  * - {@link Pipe} — Transform pipe
  * - {@link Path} — Property path
  * - {@link Options} — Constraint option set
  * - {@link Option} — Constraint option
- * - {@link Probe} — Parsed {@link Selection} or {@link Projection} key
+ * - {@link Probe} — Parsed {@link Criteria} or {@link Projection} key
  * - {@link Operator} — Constraint operator symbols
  * - {@link Order} — Sort order direction and precedence
  * - {@link Transform} — Value transforms for computed {@link Expression | expressions}
  * - {@link TransformSignature} — Static typing profile of a {@link Transform}
- *
- * **Type inference**
- *
- * - {@link Instance} — Infers the {@link Resource} type fetched by a {@link Template}
- * - {@link Slots} — Projects a template-shaped object through {@link Instance}
- * - {@link Name} — Projects an {@link Instance} property key to its output name
+ * - {@link Transforms} — Signature table covering every {@link Transform}
  *
  * **Type guards**
  *
  * - {@link isTemplate} — checks if a value is a {@link Template}
- * - {@link isPlaceholders} — checks if a value is a {@link Placeholders} set
- * - {@link isPlaceholder} — checks if a value is a {@link Placeholder}
- * - {@link isModel} — checks if a value is a {@link Model} single-value template
- * - {@link isQuery} — checks if a value is a {@link Query}
- * - {@link isLocales} — checks if a value is a {@link Locales}
- * - {@link isUnion} — checks if a value is a {@link Union}
- * - {@link isBranch} — checks if a value is a {@link Branch | Union branch key}
  * - {@link isProjection} — checks if a value is a {@link Projection}
- * - {@link isSelection} — checks if a value is a {@link Selection}
+ * - {@link isPlaceholder} — checks if a value is a {@link Placeholder}
+ * - {@link isAtomic} — checks if a value is an {@link Atomic}
+ * - {@link isLocale} — checks if a value is a {@link Locale}
+ * - {@link isUnion} — checks if a value is a {@link Union}
+ * - {@link isQuery} — checks if a value is a {@link Query} over a given retrieval form
+ * - {@link isCriteria} — checks if a value is a {@link Criteria}
+ * - {@link isCriterion} — checks if an entry is a valid {@link Criteria} entry
+ * - {@link isSelector} — checks if a value is a {@link Criteria} constraint key
  * - {@link isBinding} — checks if a value is a {@link Binding}
  * - {@link isExpression} — checks if a value is an {@link Expression}
  * - {@link isOptions} — checks if a value is an {@link Options} set
  * - {@link isOption} — checks if a value is an {@link Option}
  * - {@link isOrder} — checks if a value is an {@link Order}
  * - {@link isProbe} — checks if a value is a {@link Probe}
- * - {@link isSelector} — checks if a value is a valid {@link Selection} entry key
  * - {@link isOperator} — checks if a value is an {@link Operator}
  * - {@link isTransform} — checks if a value is a {@link Transform}
- * - {@link isAggregate} — checks whether a value is an aggregate {@link Transform}
- * - {@link isVacuous} — checks if a value is vacuous per the template elision rule
+ * - {@link isAggregate} — checks if a value is an aggregate {@link Transform}
  *
  * **Accessors**
  *
@@ -87,12 +78,12 @@
  *
  * **Codecs**
  *
- * - {@link encodeTemplate} — encode a {@link Template} as URL-safe JSON
- * - {@link decodeTemplate} — decode a {@link Template} from URL-safe JSON
- * - {@link encodeSelection} — encode a {@link Selection} as a form-urlencoded string
- * - {@link decodeSelection} — decode a {@link Selection} from a form-urlencoded string
- * - {@link encodeProbe} — encode a {@link Probe} as a key string
- * - {@link decodeProbe} — decode a {@link Probe} from a key string
+ * - {@link encodeTemplate} — encodes a {@link Template} as URL-safe JSON
+ * - {@link decodeTemplate} — decodes a {@link Template} from URL-safe JSON
+ * - {@link encodeCriteria} — encodes a {@link Criteria} as a form-urlencoded string
+ * - {@link decodeCriteria} — decodes a {@link Criteria} from a form-urlencoded string
+ * - {@link encodeProbe} — encodes a {@link Probe} as a key string
+ * - {@link decodeProbe} — decodes a {@link Probe} from a key string
  *
  * # Retrieval Patterns
  *
@@ -103,72 +94,73 @@
  *
  * ```typescript
  * const template: Template = {
- *   id: "",               // resource identifier
- *   name: "",             // string property
- *   price: 0,             // numeric property
- *   available: true,      // boolean property
- *   vendor: {             // nested resource
- *     id: "",
- *     name: ""
+ *   id: {},               // resource identifier
+ *   name: {},             // string property
+ *   price: {},            // numeric property
+ *   available: {},        // boolean property
+ *   vendor: {             // nested resource, expanded
+ *     id: {},
+ *     name: {}
  *   }
  * };
  * ```
  *
+ * Every request is an object and every leaf is `{}`, the {@link Atomic} standing for the value as it comes: a
+ * literal, the reference of a linked resource left unexpanded, or the coalesced label of a localised property. A
+ * template carries no data of its own, so what a client writes is a pure statement of what it wants back.
+ *
  * ## Collection Retrieval
  *
- * A {@link Query} specifies how to retrieve a {@link Resource} collection — the collection-shaped counterpart of
- * {@link Template}, combining a per-item element (a scalar, a nested `Template` (or per-branch {@link Union}), or
- * a {@link Projection} for computed aggregates) with a {@link Selection} for filtering, ordering, and pagination.
- * Collection queries appear inside a managing resource
- * that owns the collection, following REST/JSON best practices. A collection is a tuple pairing the per-item
- * element with an optional {@link Selection} — a single call retrieves filtered, sorted, and paginated results
- * with arbitrarily deep expansions, no over-fetching, no under-fetching:
+ * A collection is reached through the resource that owns it, following REST/JSON practice, and is constrained
+ * there: the entry naming it carries the {@link Criteria} keys that filter, sort, and paginate it alongside the
+ * per-item keys. A single call retrieves filtered, sorted, and paginated results with arbitrarily deep expansions:
  *
  * ```typescript
  * const template: Template = {
- *   items: [
- *     {                                        // per-item element (a nested Template)
- *       id: "",
- *       name: "",
- *       price: 0,
- *       vendor: { id: "", name: "" }           // nested resource
- *     },
- *     {                                        // collection-wide Selection
- *       ">=price": 50,                         // price ≥ 50
- *       "<=price": 150,                        // price ≤ 150
- *       "~name": "widget",                     // name contains "widget"
- *       "?category": ["electronics", "home"],  // category in list
- *       "^price": 1,                           // sort by price ascending
- *       "^name": -2,                           // then by name descending
- *       "@": 0,                                // skip first 0 results
- *       "#": 25                                // return at most 25 results
- *     }
- *   ]
+ *   items: {
+ *
+ *     id: {},                                // per-item keys
+ *     name: {},
+ *     price: {},
+ *     vendor: { id: {}, name: {} },          // nested resource
+ *
+ *     ">=price": 50,                         // price ≥ 50
+ *     "<=price": 150,                        // price ≤ 150
+ *     "~name": "widget",                     // name contains "widget"
+ *     "?category": ["electronics", "home"],  // category in list
+ *     "^price": 1,                           // sort by price ascending
+ *     "^name": -2,                           // then by name descending
+ *     "@": 0,                                // skip first 0 results
+ *     "#": 25                                // return at most 25 results
+ *
+ *   }
  * };
  * ```
+ *
+ * Cardinality is not stated by the notation: the same entry shape serves a single-valued and a multi-valued
+ * property, and which one a field names is settled by the model. Constraints are simply meaningless on a
+ * single-valued property and are rejected there.
  *
  * ## Localised Properties
  *
- * For multilingual properties, use {@link Locales} templates with {@link TagRange} keys to select language
- * tags to retrieve. Within a single map, all tag-range-keyed values must be uniformly scalar or uniformly
- * array:
+ * A localised property is retrieved in either of two ways. An {@link Atomic} yields its **coalesced** label, the
+ * plain string resolved under the request's negotiated language priority; a {@link Locale} map yields the tagged
+ * values **structurally**, as a {@link Dictionary} restricted to the locales its {@link TagRange} keys select:
  *
  * ```typescript
  * const template: Template = {
- *   id: "",
- *   title: { "*": "" },                   // all available languages
- *   description: { "en": "", "fr": "" },  // English or French
- *   keywords: { "en": [""], "fr": [""] }  // multi-valued, English or French
+ *   id: {},
+ *   label: {},                          // coalesced under language negotiation
+ *   title: { "*": {} },                 // all available languages
+ *   description: { "en": {}, "fr": {} } // English and French
  * };
  * ```
  *
- * A localised property is a single structured value, the localised counterpart of a nested resource rather than a
- * multi-valued property: a {@link Dictionary} reached through {@link Locales} as its own {@link Placeholders} arm.
  * The `TagRange` keys are RFC 4647 basic language ranges that filter which locales populate the map (the standalone
- * `*` matches every tag, and a plain range such as `en` also matches more specific tags like `en-US`), while the
- * per-tag value shape (`""` or `[""]`) only selects each entry's cardinality. Tag ranges select retrieved content
- * only and are independent of {@link Selection}: a `Locales` map carries `TagRange` keys, never `Selection` operator
- * keys. Resource matching by localised text is done separately, at the enclosing collection's `Selection` via `?`/`!`.
+ * `*` matches every tag, and a plain range such as `en` also matches more specific tags like `en-US`). Per-tag
+ * cardinality follows the property, not the template. Tag ranges select retrieved content only and are independent
+ * of {@link Criteria}: a `Locale` map carries `TagRange` keys, never constraint keys. Resource matching by localised
+ * text is done separately, at the enclosing collection via `?`/`!`.
  *
  * > [!IMPORTANT]
  * > The `@none` key for non-localised values is not supported; use the `und` tag for language-neutral
@@ -179,19 +171,19 @@
  * {@link Projection | Projections} can define computed properties using {@link Expression | expressions} combining
  * property paths with {@link Transform}.
  *
- * Plain transforms operate on individual values and may project scalar literals, linked resource references,
- * nested {@link Template | templates} expanding a linked resource inline, or {@link Locales} tag-range maps
+ * Plain transforms operate on individual values and may project literals, linked resource references,
+ * nested {@link Template | templates} expanding a linked resource inline, or {@link Locale} tag-range maps
  * declaring a localised cell that yields a complete {@link Dictionary} value per row:
  *
  * ```typescript
  * const projection: Projection = {
- *   "id=id": "",
- *   "name=name": "",
- *   "price=price": 0,
- *   "vendorName=vendor.name": "",            // property path
- *   "releaseYear=year:releaseDate": 0,       // transform
- *   "vendorRow=vendor": { id: "", name: "" }, // nested template
- *   "label=title": { "*": "" }                // localised cell (full Dictionary value per row)
+ *   "id=id": {},
+ *   "name=name": {},
+ *   "price=price": {},
+ *   "vendorName=vendor.name": {},              // property path
+ *   "releaseYear=year:releaseDate": {},        // transform
+ *   "vendorRow=vendor": { id: {}, name: {} },  // nested template
+ *   "label=title": { "*": {} }                 // localised cell (full Dictionary value per row)
  * };
  * ```
  *
@@ -202,10 +194,11 @@
  *
  * ## Aggregate Grouping
  *
- * Aggregate {@link Transform | transforms} operate on sets of values. When at least one aggregate
- * {@link Expression} appears in a {@link Projection} or the sibling {@link Selection}, the query is
- * evaluated under grouped semantics; otherwise every row is projected independently and no grouping
- * applies.
+ * Aggregate {@link Transform | transforms} operate on sets of values. A collection is evaluated under
+ * grouped semantics when at least one {@link Projection} binding resolves to an aggregate
+ * {@link Expression}; otherwise it stays ungrouped, every item is projected on its own, and an aggregate
+ * constraint reduces over the values its path gathers from the item under evaluation, filtering, sorting,
+ * or ranking the items by that reduction.
  *
  * Under grouped semantics, each operator's role is determined by whether its expression references an
  * aggregate transform:
@@ -218,7 +211,7 @@
  *   grouping keys; an aggregate ordering expression sorts them by its post-aggregation value
  *
  * Grouping is fixed by the projection alone and is never inferred from a sort key: a non-aggregate
- * ordering expression must reference an existing grouping key, and processors must reject one that
+ * ordering expression MUST reference an existing grouping key, and processors MUST reject one that
  * matches none.
  *
  * Rows sharing the same grouping-key values collapse into a single group. Aggregate filter and
@@ -228,16 +221,29 @@
  * Aggregate expressions use bag semantics over their inputs: `count:` (empty path) returns the
  * number of rows in scope; a non-empty path (for example, `sum:price`) ranges over the values
  * resolved by the path for each input row, with multi-valued path fan-outs contributing every
- * resolved value individually. No implicit deduplication is applied — clients needing
+ * resolved value individually. No implicit deduplication is applied: clients needing
  * distinct-value aggregates project the value of interest as a non-aggregate grouping binding.
  *
  * ```typescript
  * const template: Template = {
- *   items: [{
- *     "vendor=vendor": { id: "", name: "" },  // group by vendor
- *     "items=count:": 0,                      // count of items per vendor
- *     "avgPrice=avg:price": 0                 // average price per vendor
- *   }]
+ *   items: {
+ *     "vendor=vendor": { id: {}, name: {} },  // group by vendor
+ *     "items=count:": {},                     // count of items per vendor
+ *     "avgPrice=avg:price": {}                // average price per vendor
+ *   }
+ * };
+ * ```
+ *
+ * The ungrouped reduction states cardinality constraints over a plain template, retrieving the vendors
+ * carrying at least three products:
+ *
+ * ```typescript
+ * const template: Template = {
+ *   vendors: {
+ *     id: {},
+ *     name: {},
+ *     ">=count:products": 3
+ *   }
  * };
  * ```
  *
@@ -252,11 +258,11 @@
  * // Category facet with product counts
  *
  * const categoryFacet: Template = {
- *   items: [{
- *     "category=category": "",
- *     "count=count:": 0,
- *     "^count": "desc"
- *   }]
+ *   items: {
+ *     "category=category": {},
+ *     "count=count:": {},
+ *     "^count:": "desc"
+ *   }
  * };
  *
  * // → { items: [
@@ -267,10 +273,10 @@
  * // Price range for slider bounds
  *
  * const priceRange: Template = {
- *   items: [{
- *     "min=min:price": 0,
- *     "max=max:price": 0
- *   }]
+ *   items: {
+ *     "min=min:price": {},
+ *     "max=max:price": {}
+ *   }
  * };
  *
  * // → { items: [{ min: 9.99, max: 1299.00 }] }
@@ -278,9 +284,9 @@
  * // Total product count
  *
  * const productCount: Template = {
- *   items: [{
- *     "count=count:": 0
- *   }]
+ *   items: {
+ *     "count=count:": {}
+ *   }
  * };
  *
  * // → { items: [{ count: 284 }] }
@@ -291,14 +297,15 @@
  * For properties whose declared range is a union type, a {@link Union} declares per-branch retrieval by mapping
  * opaque keys to the {@link Placeholder} to fetch for each variant of interest. The keys carry no positional or
  * nominal meaning: the variant a placeholder retrieves is fixed by matching it against the property's declared
- * variants, and an unmatched variant is skipped at runtime:
+ * variants, and an unmatched variant is skipped at runtime. Branch out only where the alternatives want different
+ * shapes; where one shape serves them all, a plain {@link Placeholder} addresses the property directly:
  *
  * ```typescript
  * const template: Template = {
- *   id: "",
+ *   id: {},
  *   creator: {
- *     "0": { id: "", name: "" },       // a person-shaped branch
- *     "1": { id: "", legalName: "" }   // an organisation-shaped branch
+ *     "0": { id: {}, name: {} },       // a person-shaped branch
+ *     "1": { id: {}, legalName: {} }   // an organisation-shaped branch
  *   }
  * };
  * ```
@@ -346,32 +353,12 @@
  * > Cross-type comparisons and values that fall outside these rules produce
  * > unpredictable, system-dependent results.
  *
- * # Type Inference
+ * # Result Typing
  *
- * {@link Instance} infers the type of the {@link Resource} fetched by a given {@link Template},
- * so client code can declare strongly-typed result variables without restating the type:
- *
- * ```typescript
- * const template = {
- *   id: "",
- *   name: "",
- *   tags: [""],
- *   vendor: { id: "", name: "" }
- * } satisfies Template;
- *
- * type ProductView = Instance<typeof template>;
- * // → {
- * //     readonly id: Reference;
- * //     readonly name: string;
- * //     readonly tags: readonly string[];
- * //     readonly vendor: { readonly id: Reference; readonly name: string };
- * //   }
- * ```
- *
- * The projection drops {@link Selection} metadata, widens collection tuples into homogeneous arrays,
- * projects a {@link Union} into a union of per-branch results, recurses through
- * nested templates and collection projections, and reduces each {@link Binding} key in a nested
- * {@link Projection} to its {@link Identifier} portion, mirroring how the runtime materialises a fetched resource.
+ * A template says what to retrieve, not what the retrieved values are: an {@link Atomic} leaf stands for whatever
+ * the property holds, so a template alone cannot tell a `string` property from a `number` one. Result types come
+ * from the declared model instead. The keys a client writes and the keys it reads back differ too: {@link Criteria}
+ * constraints carry nothing back, and a {@link Binding} lands under its result name, the part before the `=`.
  *
  * # Serialisation
  *
@@ -381,27 +368,27 @@
  * internalisation and resolution handled transparently. The encoder emits plain JSON by default and optionally
  * URL-encoded JSON or URL-safe base64url-encoded JSON for transport; the decoder auto-detects the input encoding.
  *
- * ## Selection Serialisation
+ * ## Criteria Serialisation
  *
- * {@link Selection} objects are serialised as
- * [`application/x-www-form-urlencoded`](https://url.spec.whatwg.org/#application/x-www-form-urlencoded) strings via
- * {@link encodeSelection} / {@link decodeSelection} for transmission as URL query strings in GET requests.
+ * {@link Criteria} objects are serialised as
+ * {@link https://url.spec.whatwg.org/#application/x-www-form-urlencoded application/x-www-form-urlencoded} strings via
+ * {@link encodeCriteria} / {@link decodeCriteria} for transmission as URL query strings in GET requests.
  *
  * > [!WARNING]
- * >
- * > Form serialisation specifies only selection constraints; servers are expected to convert to a collection template
- * > by wrapping inside the target endpoint's collection property and providing a default resource retrieval template.
+ * > Form serialisation carries constraints alone; servers are expected to convert to a collection template by merging
+ * > them into the entry naming the target endpoint's collection property, alongside a default per-item retrieval
+ * > template.
  *
  * The format encodes queries as `label=value` pairs where:
  *
- * - Labels use the same prefixed operator syntax as {@link Selection} constraint keys
+ * - Labels use the same prefixed operator syntax as {@link Criteria} constraint keys
  * - Each pair carries a single value; repeated labels are merged into arrays where accepted
  * - Postfix aliases provide natural form syntax for some operators:
  *   - `expression=value` for `?expression=value` (disjunctive matching)
  *   - `expression<=value` for `<=expression=value` (less than or equal)
  *   - `expression>=value` for `>=expression=value` (greater than or equal)
  *
- * Values use [JSON](https://www.rfc-editor.org/rfc/rfc8259) primitive syntax, with a {@link Dictionary} entry
+ * Values use {@link https://www.rfc-editor.org/rfc/rfc8259 JSON} primitive syntax, with a {@link Dictionary} entry
  * inlined through a single postfix `@tag` suffix:
  *
  * ```text
@@ -448,17 +435,17 @@
  * @module
  */
 
-import { error, Identifier, isArray, isIdentifier, isObject, isString } from "@metreeca/core";
+import { error, Identifier, isArray, isIdentifier, isObject, isString, key, type Optional } from "@metreeca/core";
 import { decodeBase64, encodeBase64 } from "@metreeca/core/base64";
 import { TagRange } from "@metreeca/core/language";
 import { app, getNamespaceIRI, internalize, isIRI, resolve } from "@metreeca/core/resource";
 import { immutable } from "@metreeca/core/structures";
 import { type DecoderOpts, type EncoderOpts } from "./index.js";
-import { Dictionary, type Literal, type Reference, Resource } from "./resource.js";
-import { isProbe, isSelection, isTemplate } from "./template.core.js";
-import * as SelectionParser from "./template.pegjs.js";
+import { Dictionary, type Literal, type Reference, Resource } from "./state.js";
+import { isProbe, isCriteria, isTemplate } from "./model.core.js";
+import * as CriteriaParser from "./model.pegjs.js";
 
-export * from "./template.core.js";
+export * from "./model.core.js";
 
 
 /**
@@ -469,8 +456,6 @@ export * from "./template.core.js";
  * transform whose declared domain is met by no branch of its input type and guarding the incompatible branches of a
  * union-typed input otherwise, and to derive the aggregation kind, cardinality, and processing type of the resulting
  * pipe.
- *
- * @see {@link TransformSignature} for the meaning of each signature field
  */
 export const Transforms: Record<Transform, TransformSignature> = immutable({
 
@@ -504,334 +489,240 @@ export const Transforms: Record<Transform, TransformSignature> = immutable({
 /**
  * Resource retrieval template.
  *
- * Recursively nested field map describing which {@link Resource} values to retrieve
- * and how deeply to expand linked resources. Field keys are arbitrary {@link Identifier} names;
- * each field maps to a {@link Placeholders} value. A property left unrequested is absent from the
- * map rather than present with an empty marker; `undefined` is admitted as the absent marker for a field elided at
- * construction time (for example, a conditionally included placeholder) and is equivalent to omission.
+ * Requests a shaped view of a {@link Resource}: each {@link Identifier} key names a property to retrieve, and its
+ * value says how far to go, from the property's own value to an arbitrarily deep expansion of the resources it links
+ * to. A property left out of the map is left out of the response, so a client pays for exactly what it asks for. A
+ * field may also be set to `undefined`, the absent marker for an entry elided at construction time, keeping a
+ * conditionally assembled template assignable to `Template`.
+ *
+ * Where the named property is multi-valued, the same entry doubles as the collection request: it carries the
+ * {@link Criteria} keys that filter, sort, and paginate that collection alongside the per-item keys, so one entry
+ * states both what to retrieve and which items to retrieve it for. A collection is never addressed on its own: it is
+ * reached through the resource that owns it, and constrained there.
+ *
+ * ```typescript
+ * const template: Template = {
+ *   name: {},                          // the property's own value
+ *   vendor: { name: {} },              // a linked resource, expanded
+ *   items: { name: {}, "#": 25 },      // a collection, per-item keys and constraints together
+ *   title: { "*": {} }                 // a localised property, by tag range
+ * };
+ * ```
  *
  * > [!IMPORTANT]
- * > Placeholder values must match the type possibly declared by schemas for their {@link Identifier} keys;
- * > processors must reject queries that provide mismatched templates with an error. The `Template`
- * > type catches the most obvious structural errors at compile time, but full structural integrity
- * > (including well-formedness of nested templates and validity of inline {@link Selection} slots) is
- * > enforced at runtime by template validators.
- *
- * > [!NOTE]
- * > Primitive template values serve as type placeholders; their actual value is immaterial. An empty
- * > `Template` (`{}`), whether it appears directly as a field value or as a collection tuple's element,
- * > carries no retrieval instructions and must be ignored by processors as if the owning field were omitted
- * > from the enclosing template. A collection tuple whose element is an empty `Template`, carrying only a
- * > {@link Selection} and no per-item retrieval, is vacuous for the same reason and must be ignored likewise,
- * > discarding any attached {@link Selection} constraints. Top-level form-serialised selection-only queries are
- * > unaffected: servers substitute
- * > the endpoint's default retrieval template before the elision rule applies.
- *
- * @see {@link Query} for the collection counterpart
- * @see {@link Placeholders} for the umbrella admitting both resource and collection-valued forms
- * @see {@link resource!Resource} for the corresponding state type
+ * > Entries MUST agree with the type declared for their key by the target model; processors reject a template whose
+ * > entries do not, with an error. The `Template` type states the notation rather than policing it: the key spaces
+ * > overlap by design and the forms are told apart by the model, so structural integrity is a runtime concern.
  */
 export type Template = {
 
-	readonly [field: Identifier]: undefined | Placeholders
+	readonly [field: Identifier]: Optional<Query<
+		| Placeholder
+		| Union<Placeholder>
+		| Projection
+	>>
+
+}
+
+/**
+ * Collection property projection.
+ *
+ * Requests a collection as rows of computed values rather than as items: each {@link Binding} key names a result and
+ * the {@link Expression} that computes it, from a property path optionally piped through {@link Transform | transforms}
+ * and aggregates. Reach for it to compute totals, ranges, and category counts server-side, in the same call that
+ * retrieves the data, rather than fetching items and reducing them client-side. A binding may be set to `undefined`,
+ * the absent marker for one elided at construction time.
+ *
+ * ```typescript
+ * const projection: Projection = {
+ *   "vendor=vendor": { name: {} },  // group by vendor, expanded
+ *   "items=count:": {},             // items per vendor
+ *   "avgPrice=avg:price": {}        // average price per vendor
+ * };
+ * ```
+ *
+ * Each binding yields one cell per row, holding a single value, so a cell takes the single-value forms alone: a
+ * {@link Placeholder} or a {@link Union} of placeholders, never a nested `Projection`. A projection stands as the
+ * entry of the {@link Template} field naming the collection, carrying that collection's {@link Criteria} alongside
+ * its bindings.
+ *
+ * > [!IMPORTANT]
+ * > Result names (the {@link Identifier} portion before `=`) MUST be unique within a projection: duplicates collide
+ * > on the same cell and are rejected.
+ *
+ * > [!IMPORTANT]
+ * > A projection yields **distinct** rows: rows with the same combination of cell values collapse into one, across
+ * > the whole collection. Include an identifying binding such as `"id=id"` to keep otherwise-equal items apart.
+ *
+ * > [!IMPORTANT]
+ * > When any binding resolves to an aggregate {@link Expression}, the collection is evaluated under grouped semantics
+ * > and the non-aggregate bindings form the grouping key; see {@link Criteria} for how constraints partition across
+ * > the grouping.
+ */
+export type Projection = {
+
+	readonly [field: Binding]: Optional<
+		| Placeholder
+		| Union<Placeholder>
+	>
 
 }
 
 
 /**
- * Property value set template.
- *
- * Umbrella for the placeholder forms admitted as {@link Template} property values, split by cardinality into a
- * single-value and a collection-valued arm:
- *
- * - {@link Model} — single-value placeholder retrieving one property value, grouping the {@link Union}
- *   (*keyed* union form), {@link Placeholder} (non-union value), and {@link Locales} (localised text) shapes
- * - {@link Query} — collection-valued placeholder, covering nested resource collections and
- *   tabular projections, each optionally constrained through {@link Selection}
- *
- * @see {@link Model} for the single-value forms and {@link Query} for the collection forms
- * @see {@link Template} for the resource-shaped retrieval template hosting these placeholders
- * @see {@link resource!Values} for the corresponding state type
- */
-export type Placeholders =
-	| Model
-	| Query
-
-/**
  * Property value template.
  *
- * Individual placeholder standing in for one property value within a resource retrieval description:
+ * The forms an entry takes wherever one property value is requested:
  *
- * - {@link Literal} — primitive data (`boolean`, `number`, `string`)
- * - {@link Reference} — reference to a linked resource, identified by its IRI
- * - {@link Template} — linked resource expanded as a nested retrieval template
+ * - {@link Template} — expand the linked resource, retrieving the properties the nested template names
+ * - {@link Atomic} — retrieve the value as it comes, with no further shape
+ * - {@link Locale} — retrieve a localised property tag by tag, as a structured {@link Dictionary}
  *
- * A reference placeholder carries no data: validation checks only its reference kind (any well-formed IRI reference,
- * relative forms and the inert `""` canonical slot included), not the value-domain constraints a {@link Reference}
- * value satisfies. Codecs resolve reference values proper to an absolute {@link Reference} on decoding; those appear
- * as {@link Option} operands of a {@link Selection}.
- *
- * @see {@link Model} for the single-value umbrella admitting this and the other non-collection forms
- * @see {@link resource!Value} for the corresponding state type
+ * The three are notated alike, as objects, and are told apart by the type the model declares for the target
+ * property rather than by their own shape.
  */
 export type Placeholder =
-	| Literal
-	| Reference
 	| Template
-
-
-/**
- * Value retrieval template.
- *
- * Umbrella for the placeholder forms that shape one property value, structured or not: the single-value counterpart
- * of the collection-valued {@link Query}, which pairs a comparable element with a {@link Selection}. The admitted
- * forms are:
- *
- * - {@link Union} — per-branch placeholder for a union-typed slot (*keyed* form)
- * - {@link Placeholder} — single non-union value placeholder: a {@link Literal} or {@link Reference}, or a nested
- *   {@link Template} expanding a linked resource inline
- * - {@link Locales} — localised text map placeholder, a tag-range-keyed map yielding a single structured
- *   {@link Dictionary} value
- *
- * `Model` reaches property templates at two sites: as the single-value arm of {@link Placeholders}, paired with the
- * collection-valued {@link Query}, and as the cell value of a {@link Projection}, which allots one `Model` value per
- * cell and excludes collection-valued forms.
- *
- * @see {@link Query} for the collection counterpart
- * @see {@link Placeholders} for the umbrella admitting both single-value and collection-valued forms
- * @see {@link Projection} for the tabular projection hosting one `Model` per cell
- */
-export type Model =
-	| Union
-	| Placeholder
-	| Locales
+	| Atomic
+	| Locale
 
 /**
- * Collection retrieval template.
+ * Atomic value template.
  *
- * A tuple pairing a per-item element placeholder with an optional collection-wide {@link Selection} — filtering,
- * ordering, and pagination. For tabular collections the element is a {@link Projection}; relationally, `Projection`
- * is the projection (π) and `Selection` the selection (σ) applied over the collection.
- *
- * The accepted forms are:
- *
- * - `readonly [Union, Selection?]` — a union-typed element ({@link Union} *keyed* form), optionally followed by a
- *   {@link Selection}
- * - `readonly [Placeholder, Selection?]` — a per-item {@link Placeholder} (a {@link Literal} or {@link Reference},
- *   or a nested {@link Template}), optionally followed by a {@link Selection}
- * - `readonly [Projection, Selection?]` — a tabular projection ({@link Projection}), optionally followed by a
- *   {@link Selection}
- *
- * The leading element signals collection cardinality and carries the per-item template; the optional second element
- * carries collection-wide constraints. Runtime validators accept a one- or two-element tuple and reject arrays of
- * any other length.
- *
- * @see {@link Template} for the resource counterpart
- * @see {@link Placeholders} for the umbrella admitting both resource and collection-valued forms
- * @see {@link Selection} for the filtering, ordering, and pagination constraints in the optional second slot
- * @see {@link resource!Resource} for the corresponding state type
+ * Requests a property's value as it stands, ending the retrieval: a {@link Literal}, the {@link Reference} of a
+ * linked resource left unexpanded, or the coalesced label of a localised property under the request's negotiated
+ * language priority. Written `{}`, it is the one leaf of the notation, so a request bottoms out the same way
+ * whatever it targets and no part of a template carries a value of its own.
  */
-export type Query =
-	| readonly [Union, Selection?]
-	| readonly [Placeholder, Selection?]
-	| readonly [Projection, Selection?]
+export type Atomic = {
 
+	readonly [key]?: never
+
+}
 
 /**
  * Localised text map template.
  *
- * Retrieves a localised property as a single structured {@link Dictionary} value: the localised
- * counterpart of a nested {@link Template}, not a multi-valued or collection property. The
- * {@link TagRange | tag range} keys are RFC 4647 basic language ranges (a subtag sequence or the
- * standalone `*`) and select which locales populate that structured value; each range filters the
- * available language tags by basic filtering, and a range may expand to several tag entries in the
- * retrieved map (the standalone `*` matches every tag, and a range such as `en` matches `en` along
- * with more specific tags like `en-US`).
+ * Requests a localised property as a structured {@link Dictionary}, keeping the language tags that coalesced access
+ * discards. Each {@link TagRange} key is an RFC 4647 basic language range selecting which locales populate the
+ * retrieved map by basic filtering: the standalone `*` matches every tag, and a range such as `en` matches `en`
+ * along with more specific tags like `en-US`, so one range may bring back several entries.
  *
- * The umbrella union admits two value-shape forms that fix the per-tag cardinality of the retrieved
- * entries, not the property's own cardinality:
+ * ```typescript
+ * const template: Template = {
+ *   title: { "*": {} },              // every available language
+ *   description: { en: {}, fr: {} }  // English and French
+ * };
+ * ```
  *
- * - a single-string value per tag range, retrieving one string per matched tag, or
- * - a singleton-array value per tag range, retrieving an array of strings per matched tag
- *
- * The value position is an inert placeholder (`""` or `[""]`): it carries no data and only selects
- * the per-tag cardinality, leaving the {@link TagRange} keys alone to drive locale selection.
- *
- * `Locales` is one of the {@link Model} single-value forms, reaching {@link Placeholders} through the single-value
- * arm alongside {@link Placeholder} and {@link Union} rather than under {@link Query}, reflecting that a localised
- * property is one structured value and not a collection. Its {@link TagRange} keys select retrieved content only and
- * are independent of {@link Selection}: a `Locales` map carries tag ranges, never `Selection` operator keys. Resource
- * matching by a localised property is done separately, at the enclosing collection's {@link Selection} via `?`/`!`.
+ * The value slot carries no request of its own: every entry is the {@link Atomic} leaf, and per-tag cardinality
+ * follows the property rather than the template. Tag ranges select retrieved content only, so a locale map takes no
+ * {@link Criteria}: matching resources by localised text is stated at the enclosing collection instead, through the
+ * `?` and `!` operators.
  *
  * > [!NOTE]
- * > - If the query specifies a single- or multi-valued form, the retrieved {@link Dictionary} entry
- * >   should use the corresponding form
- * > - The `@none` key for non-localised values is not supported; use the `und` tag for
- * >   language-neutral values
+ * > The `@none` key for non-localised values is not supported; use the `und` tag for language-neutral values.
  *
- * > [!NOTE]
- * > An empty tag-range map (`{}`), whether it appears directly as a field value or as a
- * > collection tuple's element, carries no locale constraints and must be
- * > ignored by processors as if the owning field were omitted from the enclosing template.
- *
- * @see {@link Model} for the single-value umbrella admitting this and the other non-collection forms
- * @see {@link resource!Dictionary} for the corresponding state type
  * @see {@link https://www.rfc-editor.org/rfc/rfc4647.html RFC 4647 - Matching of Language Tags}
  */
-export type Locales =
-	| { readonly [range: TagRange]: string }
-	| { readonly [range: TagRange]: readonly [string] }
+export type Locale = {
+
+	readonly [range: TagRange]: Optional<Atomic>
+
+}
 
 
 /**
  * Union-typed property template.
  *
- * An object whose keys are {@link Branch | opaque non-negative integer strings}, each mapping to one branch's value
- * to retrieve. The keys only label the alternatives: the variants a branch retrieves are fixed by matching it, by type
- * compatibility, against the property's declared variants, never by its key; a variant left unmatched by any branch is
- * skipped. Matching is type-only, so a branch may match several same-typed variants, retrieving each, and its value is
- * immaterial; a branch matching no variant is unsatisfiable and rejected. Because the keys are immaterial, reordering
- * or renaming variants in the source declaration leaves existing templates valid, as long as each branch still matches
- * at least one variant. A non-union slot uses a plain {@link Placeholder} directly, the sibling {@link Model} form,
- * rather than a `Union`.
+ * Requests a union-typed property one branch at a time, so alternatives that need different shapes can each state
+ * their own. Keys are opaque non-negative integer strings labelling the alternatives; which variants
+ * a branch retrieves is fixed by matching its shape against the property's declared variants, never by its key, so
+ * reordering or renaming variants at the source leaves an existing template valid. A variant left unmatched by every
+ * branch contributes no values, and a branch matching no variant is unsatisfiable and is rejected. A branch may be
+ * set to `undefined`, the absent marker for one elided at construction time.
  *
- * A branch holds a {@link Placeholder}, never a nested `Union`: a `Union` cannot stack directly inside another, though
- * a branch {@link Template} may carry its own `Union`s. A branch is a single value, never a collection: cardinality
- * stays a property-level concern, expressed by wrapping the whole `Union` in a {@link Query}.
+ * ```typescript
+ * const template: Template = {
+ *   creator: {
+ *     "0": { name: {} },      // a person-shaped variant
+ *     "1": { legalName: {} }  // an organisation-shaped variant
+ *   }
+ * };
+ * ```
  *
- * > [!NOTE]
- * > A branch may also be a {@link Locales} map, but only within a {@link Projection}: when a binding's
- * > {@link Expression} traverses a multi-step path through a union-typed step to a downstream localised property and
- * > addresses it structurally, that branch retrieves a {@link resource!Dictionary}. A `Locales` branch never arises
- * > when retrieving a resource property directly, where a localised property is retrieved through {@link Locales} as
- * > a sibling {@link Model} form rather than as a union branch.
+ * A branch holds one value, never a collection: cardinality belongs to the property as a whole, and the
+ * {@link Criteria} constraining it ride on the entry hosting the union. A branch never holds another union directly,
+ * though a branch {@link Template} may carry unions of its own.
  *
- * > [!NOTE]
- * > The `` `${number}` `` key space is disjoint from the {@link Binding} / {@link Identifier} key spaces used by
- * > {@link Template} and {@link Projection}, so form discrimination is structural and unambiguous for fresh object
- * > literals. Runtime validators enforce numeric-key wellformedness (no decimals, negatives, or exponential forms);
- * > resolving which variant each placeholder retrieves is a processor concern, matched against the out-of-band
- * > declared variants.
+ * See [Union](./index.md#55-union) for the design rationale.
  *
- * > [!NOTE]
- * > An empty `Union` object (`{}`), whether it appears directly as a field value or as a collection
- * > tuple's element, carries no retrieval instructions and must be ignored by processors
- * > as if the owning field were omitted from the enclosing template. Variants are evaluated independently: a
- * > variant whose body is an empty `Template` (`{}`) is dropped from the union; when every variant is dropped, the
- * > whole union is elided by the same rule.
- *
- * @see {@link Model} for the single-value umbrella admitting this and the other non-collection forms
- * @see [Union](./index.md#54-union) for the design rationale
+ * @typeParam T The form admitted per branch: a {@link Placeholder}, whether the union stands at a {@link Template}
+ *              entry or in a {@link Projection} cell
  */
-export type Union = {
+export type Union<T> = {
 
-	readonly [branch: Branch]: Placeholder | Locales
+	readonly [branch: `${number}`]: Optional<T>
 
 }
 
-/**
- * Union branch key.
- *
- * The key type of a {@link Union} map: an opaque non-negative integer string (`"0"`, `"1"`, …) labelling one
- * branch. The key only names the branch; which variant that branch retrieves is fixed by matching it against the
- * property's declared variants, never by the key value, so renaming or reordering keys leaves an existing template
- * valid. The `` `${number}` `` key space is disjoint from the {@link Binding} / {@link Identifier} key spaces used by
- * {@link Template} and {@link Projection}, keeping form discrimination structural and unambiguous.
- *
- * @see {@link Union} for the enclosing branch map
- * @see {@link isBranch} for the runtime wellformedness guard
- */
-export type Branch =
-	| `${number}`;
-
 
 /**
- * Collection property projection.
+ * Constrained retrieval node.
  *
- * A field map for projected collection retrieval. Each field is keyed by a {@link Binding} naming an
- * {@link Expression} (a property path, optionally piped through a computed or aggregate transform) and maps to a
- * {@link Model} single-value cell, or to `undefined` marking an optional binding that may be elided at construction
- * time (for example, conditionally included aggregates). A `Model` cell takes one of the forms admitted by
- * [Projection Composition](./index.md#56-projection):
+ * Merges the {@link Criteria} constraining a collection into the node that retrieves it, so a multi-valued property
+ * states what to retrieve and which items to retrieve it for in one object. Reach for it to describe an entry that
+ * may address a collection: the merged form leaves every constraint key optional, so the same notation serves a
+ * single-valued property, which simply carries none.
  *
- * - a {@link Union} placeholder — a per-branch *keyed* form, when the bound expression resolves to
- *   a union-typed value
- * - a {@link Placeholder} — a {@link Literal}, a {@link Reference} to a linked resource, or a
- *   nested {@link Template} for inline resource expansion
- * - a {@link Locales} placeholder — a tag-range-keyed map declaring a localised cell that yields a complete
- *   {@link Dictionary} value for the row's owning resource. The map is materialised by deferred expansion: pass 1
- *   projects the owning resource handle, pass 2 batch-fetches the tagged values and assembles the map (see
- *   [Projection Composition](./index.md#56-projection))
+ * ```typescript
+ * const items: Query<Placeholder> = {
+ *   name: {},        // per-item keys
+ *   ">=price": 50,   // collection constraints
+ *   "#": 25
+ * };
+ * ```
  *
- * `Projection` differs from {@link Template} along two axes:
+ * The merge is admitted on every retrieval form, keeping one notation for every entry rather than carving out
+ * exceptions. Where a constraint key means anything is settled by the target rather than by the notation: only a
+ * multi-valued property is narrowed by {@link Criteria}. A constraint key reaching a target that admits none is an
+ * error rather than a key to ignore, and processors MUST reject it, reporting the offending key: on a single-valued
+ * property, which supplies no collection to constrain, and on a {@link Locale}, which is filtered by its own tag
+ * ranges.
  *
- * - **keys** — a `Projection` accepts {@link Binding | bindings} in the `name=expression` form, naming computed
- *   or aggregate values derived from property paths and {@link Transform | transforms}; a `Template` accepts
- *   only plain {@link Identifier} keys matching actual resource properties
- * - **values** — a `Projection` admits a {@link Model} single-value placeholder per cell ({@link Union},
- *   {@link Placeholder}, or {@link Locales}) but excludes the collection-valued {@link Query}, because Projection
- *   Composition allots one value per cell; a {@link Locales} map counts as a single (structured) {@link Dictionary}
- *   value, and nested {@link Template} placeholders remain admitted through {@link Placeholder}, so a computed
- *   binding may expand a linked resource inline
- *
- * > [!IMPORTANT]
- * > When any binding resolves to an aggregate {@link Expression} (one whose pipe includes an
- * > {@link isAggregate | aggregate} {@link Transform}), the query is evaluated under grouped semantics;
- * > see {@link Selection} for the full grouping and filter-partition rules. With no aggregate in either
- * > the `Projection` or the sibling `Selection`, every row is projected independently and no grouping
- * > is applied.
- *
- * > [!IMPORTANT]
- * > Projection rows are **distinct**: rows with the same combination of cell values collapse into one, so a
- * > `Projection` yields the set of distinct binding tuples rather than a multiset; distinctness spans the whole
- * > collection, folding both fan-out duplicates and equal tuples from different items. Include an identifying
- * > binding such as `id` to keep otherwise-equal items on separate rows (see
- * > [Projection](./index.md#56-projection)).
- *
- * > [!IMPORTANT]
- * > {@link Binding} identifiers (the {@link Identifier} portion before `=`) must be unique within a `Projection`.
- * > Duplicates collide on the same projected property in the resulting row and are rejected by template processors.
- *
- * > [!NOTE]
- * > An empty `Projection` (`{}`), which may only appear as a collection tuple's element, carries
- * > no column bindings and must be ignored by processors as if the owning field were omitted from the enclosing
- * > template.
- *
- * @see {@link Model} for the single-value cell forms admitted per binding
- * @see {@link resource!Resource} for the corresponding state type
+ * @typeParam T The retrieval form the constraints are merged into
  */
-export type Projection = {
-
-	readonly [field: Binding]: undefined | Model
-
-}
+export type Query<T> =
+	T extends unknown // distribute over union arms
+		? { readonly [K in keyof T | keyof Criteria]?: T[K & keyof T] | Criteria[K & keyof Criteria] }
+		: never
 
 /**
  * Collection retrieval constraints.
  *
- * Specifies filtering, sorting, and pagination criteria for collection retrieval. Constraint keys use the
- * `"{operator}{expression}"` syntax, where the {@link Operator} determines the constraint type and the
+ * Narrows a collection to the items a client actually wants: which to keep, in what order, and how many. Constraint
+ * keys use the `"{operator}{expression}"` syntax, where the {@link Operator} determines the constraint type and the
  * {@link Expression} identifies the target property or computed value. Pagination uses the literal `"@"` and
  * `"#"` keys.
  *
- * `Selection` is attached to a collection as the optional second element of a {@link Query} tuple:
- * `[Placeholder, Selection]`, `[Union, Selection]`, or `[Projection, Selection]`. A {@link Locales} placeholder is
- * not a `Query` element, so it takes no second-slot `Selection`; a localised property is constrained through the
- * collection's `Selection` by matching (`?`/`!`).
+ * Constraints ride on the entry retrieving the collection they apply to, merged in alongside its retrieval keys
+ * through {@link Query}. A {@link Locale} entry is filtered by its own tag ranges and takes none; a localised
+ * property is matched at the enclosing collection instead, through `?` and `!`.
  *
  * > [!IMPORTANT]
  * > Filtering and ordering {@link Expression | expressions} are resolved independently of any sibling
  * > {@link Projection} bindings: an aggregate constraint may reference an aggregate that is not
- * > projected, and a projected aggregate binding need not appear in any constraint. When an aggregate
- * > expression is present in the `Selection` or the sibling `Projection`, each constraint's role
+ * > projected, and a projected aggregate binding need not appear in any constraint. Where a sibling
+ * > projection binding resolves to an aggregate, the collection is grouped and each constraint's role
  * > depends on whether it references an aggregate: non-aggregate filters restrict the input set
  * > before grouping; a non-aggregate ordering expression sorts the groups by one of the grouping
  * > keys; aggregate filters select groups after aggregation; aggregate ordering expressions sort the
  * > groups by their post-aggregation values. Grouping is fixed by the projection alone and is never
- * > inferred from a sort key: a non-aggregate ordering expression must reference an existing grouping
- * > key, and processors must reject one that matches none.
+ * > inferred from a constraint: a non-aggregate ordering expression MUST reference an existing grouping
+ * > key, and processors MUST reject one that matches none. Without grouping, an aggregate constraint
+ * > reduces over the values its path gathers from each item, constraining the items by that reduction.
  */
-export type Selection = {
+export type Criteria = {
 
 	/**
 	 * Less-than filter.
@@ -841,7 +732,7 @@ export type Selection = {
 	 *
 	 * Applicable only where the target {@link Expression} resolves to a {@link Literal} (`boolean`, `number`,
 	 * `string`); {@link Reference}, nested resources, and {@link Dictionary} values are not comparable. The bound
-	 * and the resolved value must share the same type; cross-type comparison is unpredictable and a validating
+	 * and the resolved value MUST share the same type; cross-type comparison is unpredictable and a validating
 	 * processor MUST reject it.
 	 */
 	readonly [lt: `<${Expression}`]: Literal
@@ -854,7 +745,7 @@ export type Selection = {
 	 *
 	 * Applicable only where the target {@link Expression} resolves to a {@link Literal} (`boolean`, `number`,
 	 * `string`); {@link Reference}, nested resources, and {@link Dictionary} values are not comparable. The bound
-	 * and the resolved value must share the same type; cross-type comparison is unpredictable and a validating
+	 * and the resolved value MUST share the same type; cross-type comparison is unpredictable and a validating
 	 * processor MUST reject it.
 	 */
 	readonly [gt: `>${Expression}`]: Literal
@@ -867,7 +758,7 @@ export type Selection = {
 	 *
 	 * Applicable only where the target {@link Expression} resolves to a {@link Literal} (`boolean`, `number`,
 	 * `string`); {@link Reference}, nested resources, and {@link Dictionary} values are not comparable. The bound
-	 * and the resolved value must share the same type; cross-type comparison is unpredictable and a validating
+	 * and the resolved value MUST share the same type; cross-type comparison is unpredictable and a validating
 	 * processor MUST reject it.
 	 */
 	readonly [lte: `<=${Expression}`]: Literal
@@ -880,7 +771,7 @@ export type Selection = {
 	 *
 	 * Applicable only where the target {@link Expression} resolves to a {@link Literal} (`boolean`, `number`,
 	 * `string`); {@link Reference}, nested resources, and {@link Dictionary} values are not comparable. The bound
-	 * and the resolved value must share the same type; cross-type comparison is unpredictable and a validating
+	 * and the resolved value MUST share the same type; cross-type comparison is unpredictable and a validating
 	 * processor MUST reject it.
 	 */
 	readonly [gte: `>=${Expression}`]: Literal
@@ -912,7 +803,7 @@ export type Selection = {
 	 *
 	 * Applicable to {@link Literal} and {@link Reference} properties (value or IRI equality) and to localised
 	 * properties through the {@link Dictionary} option form; a nested resource is matched by its
-	 * {@link Reference}, not its embedded state. The option must match the type of the target {@link Expression}'s
+	 * {@link Reference}, not its embedded state. The option MUST match the type of the target {@link Expression}'s
 	 * resolved value; a type-inconsistent option is unpredictable and a processor MUST reject it.
 	 */
 	readonly [any: `?${Expression}`]: Options
@@ -929,7 +820,7 @@ export type Selection = {
 	 *
 	 * Applicable to {@link Literal} and {@link Reference} properties (value or IRI equality) and to localised
 	 * properties through the {@link Dictionary} option form; a nested resource is matched by its
-	 * {@link Reference}, not its embedded state. The option must match the type of the target {@link Expression}'s
+	 * {@link Reference}, not its embedded state. The option MUST match the type of the target {@link Expression}'s
 	 * resolved value; a type-inconsistent option is unpredictable and a processor MUST reject it.
 	 */
 	readonly [all: `!${Expression}`]: Options
@@ -941,7 +832,7 @@ export type Selection = {
 	 * Companion to sort order (`^`): resources whose expression value is one of the values in the {@link Options} set
 	 * rank before the rest, with the regular `^` sort applied within each group; focus takes precedence over `^`.
 	 *
-	 * Membership is tested by equality, so an option must match the target value's type; a type-inconsistent option
+	 * Membership is tested by equality, so an option MUST match the target value's type; a type-inconsistent option
 	 * is unpredictable and a processor MUST reject it. A `null` option prioritises resources whose value is
 	 * absent; an empty {@link Options} set imposes no focus.
 	 *
@@ -961,7 +852,7 @@ export type Selection = {
 	 * > [!WARNING]
 	 * > `^` requires a single-valued {@link Literal} sort key (`boolean`, `number`, `string`). A {@link Reference} or
 	 * > nested-resource target is not sortable. A multi-valued literal property is likewise invalid directly: reduce
-	 * > it explicitly with a `min`/`max` aggregate, evaluated under grouped semantics.
+	 * > it explicitly with a `min`/`max` aggregate, which supplies the single ordering key the operator needs.
 	 */
 	readonly [order: `^${Expression}`]: Order
 
@@ -995,20 +886,17 @@ export type Selection = {
  *
  * Property key for {@link Projection} fields that assigns a result name to a computed {@link Expression}, in the
  * `{name}={expression}` form. A `Projection` key always carries the `=`, keeping the binding key space disjoint from
- * the plain {@link Identifier} keys of a {@link Template} (see [Projection](./index.md#56-projection)).
+ * the plain {@link Identifier} keys of a {@link Template} (see [Projection](./index.md#52-projection)).
  *
  * @example
  *
  * ```typescript
  * const projection: Projection = {
- *   "name=name": "",                   // property binding
- *   "vendorName=vendor.name": "",      // path binding
- *   "releaseYear=year:releaseDate": 0  // transform binding
+ *   "name=name": {},                    // property binding
+ *   "vendorName=vendor.name": {},       // path binding
+ *   "releaseYear=year:releaseDate": {}  // transform binding
  * };
  * ```
- *
- * @see {@link Projection} for the field map that uses bindings as keys
- * @see {@link Expression} for the computed-field syntax bindings can carry
  */
 export type Binding =
 	| `${Identifier}=${Expression}`;
@@ -1017,7 +905,7 @@ export type Binding =
  * Computed expression.
  *
  * String syntax pairing a transform pipe with a property path, used in {@link Projection} bindings and
- * {@link Selection} constraint keys to identify the target property or computed value:
+ * {@link Criteria} constraint keys to identify the target property or computed value:
  *
  * - **pipe** — a possibly empty {@link Pipe} naming the right-to-left transform chain to apply; each transform
  *   name carries a trailing colon, so no extra separator sits between the pipe and the path
@@ -1041,13 +929,9 @@ export type Binding =
  * round:avg:scores        // transform pipeline
  * count:                  // aggregate (empty path)
  * ```
- *
- * @see {@link Pipe} for the transform pipeline syntax
- * @see {@link Path} for the property navigation syntax
  */
 export type Expression =
 	| `${Pipe}${Path}`;
-
 
 /**
  * Transform pipe.
@@ -1090,7 +974,7 @@ export type Path =
  * Constraint option set.
  *
  * A single {@link Option} scalar, a {@link Dictionary} of localised options, or an array of {@link Option}
- * elements. Specifies the set of values for {@link Selection} matching (`?` and `!`) and sort focus (`+`)
+ * elements. Specifies the set of values for {@link Criteria} matching (`?` and `!`) and sort focus (`+`)
  * operators. Arrays follow set semantics: duplicate values are ignored, ordering is immaterial, and empty arrays
  * are treated as absent constraints. Element types may be mixed.
  *
@@ -1103,15 +987,15 @@ export type Path =
  * > When constraining a localised property, use the {@link Dictionary} branch so option values carry their
  * > language tags inline. The scalar {@link Option} and array `readonly Option[]` branches target
  * > non-localised properties; reaching a localised slot through them is a typing escape hatch, not an intended mode.
- * > Branch/target consistency is not enforced by the type system ({@link Selection} keys are opaque
+ * > Branch/target consistency is not enforced by the type system ({@link Criteria} keys are opaque
  * > {@link Expression} strings that sever the value form from the target property), so processors MUST reject
  * > inconsistent `Options`: an untagged {@link Option} or array against a localised property, or a
  * > {@link Dictionary} against a non-localised one.
  *
  * > [!IMPORTANT]
- * > Consumers must accept both scalar and array {@link Dictionary} forms when filtering or constraining on
+ * > Consumers MUST accept both scalar and array {@link Dictionary} forms when filtering or constraining on
  * > localised properties, regardless of the target property's cardinality: codec roundtrips may normalise
- * > between the two forms (see {@link decodeSelection}).
+ * > between the two forms (see {@link decodeCriteria}).
  */
 export type Options =
 	| Option
@@ -1121,7 +1005,7 @@ export type Options =
 /**
  * Constraint option.
  *
- * Single value accepted by {@link Selection}'s matching (`?` and `!`) and sort focus (`+`) operators:
+ * Single value accepted by {@link Criteria}'s matching (`?` and `!`) and sort focus (`+`) operators:
  *
  * - `null` — undefined property value
  * - {@link Literal} — a primitive (`boolean`, `number`, `string`)
@@ -1139,7 +1023,7 @@ export type Option =
 /**
  * Sort order.
  *
- * Direction and precedence of a {@link Selection} sort order (`^`) criterion:
+ * Direction and precedence of a {@link Criteria} sort order (`^`) criterion:
  *
  * - `"asc"` — ascending, shorthand for `+1`
  * - `"desc"` — descending, shorthand for `-1`
@@ -1155,12 +1039,12 @@ export type Order =
 
 
 /**
- * Parsed {@link Selection} or {@link Projection} key.
+ * Parsed {@link Criteria} or {@link Projection} key.
  *
- * Structural representation of a {@link Projection} or {@link Selection} key, decomposing the encoded string form
+ * Structural representation of a {@link Projection} or {@link Criteria} key, decomposing the encoded string form
  * into its target, transform pipeline, and property path components. Projection and constraint probes share a single
- * shape — the two are easily disambiguated after parsing by checking whether `target` is an {@link Identifier} or
- * an {@link Operator} via {@link isIdentifier}.
+ * shape: a decoded probe is read as a binding or as a constraint according to whether {@link isIdentifier} accepts
+ * its `target`, which otherwise carries an {@link Operator}.
  *
  * @example
  *
@@ -1171,9 +1055,6 @@ export type Order =
  * // Constraint: ">=year:releaseDate"
  * { target: ">=", pipe: ["year"], path: ["releaseDate"] }
  * ```
- *
- * @see {@link encodeProbe} for the inverse mapping
- * @see {@link decodeProbe} for parsing a key string into a probe
  */
 export type Probe = {
 
@@ -1206,11 +1087,9 @@ export type Probe = {
 /**
  * Constraint operator symbols.
  *
- * Closed set of operator prefixes that distinguish a {@link Selection} constraint key from a plain
- * {@link Binding | binding} identifier. Each symbol corresponds to one of `Selection`'s template-literal index
- * signatures or to one of its scope/pagination literal slots.
- *
- * @see {@link Selection} for the per-operator value type and semantics
+ * Closed set of operator prefixes that distinguish a {@link Criteria} constraint key from a plain
+ * {@link Binding | binding} identifier: the comparison, search, matching, focus, and ordering symbols prefix an
+ * {@link Expression} naming the constrained value, while `@` and `#` stand alone as the pagination keys.
  */
 export type Operator =
 	| "<"
@@ -1237,19 +1116,18 @@ export type Operator =
  * ```
  *
  * > [!WARNING]
- * >
  * > The set of supported transforms is closed: only the names listed below are valid. Expressions and criteria
- * > referencing unknown transforms are rejected outright by `isExpression` and `isProbe`. Pipes that violate the
- * > structural composition rules (for example, aggregate after aggregate) are likewise rejected outright.
- * > Transforms must also be well-typed: a transform whose declared domain is met by no branch of its input type (for
+ * > referencing unknown transforms are rejected outright by {@link isExpression} and {@link isProbe}. Pipes that
+ * > violate the structural composition rules (for example, aggregate after aggregate) are likewise rejected outright.
+ * > Transforms MUST also be well-typed: a transform whose declared domain is met by no branch of its input type (for
  * > example, `abs` on a string) is rejected, while over a union-typed input the transform applies to its compatible
  * > branches and ignores the incompatible ones, whose values resolve to `undefined` for a scalar transform and drop
  * > from the input set for an aggregate.
  *
  * ## Type Mapping
  *
- * Transforms operate on JSON values but their semantics are defined in terms
- * of [XPath 2.0](https://www.w3.org/TR/xpath-functions/) / [XSD 1.0](https://www.w3.org/TR/xmlschema-2/) types.
+ * Transforms operate on JSON values but their semantics are defined in terms of
+ * {@link https://www.w3.org/TR/xpath-functions/ XPath 2.0} / {@link https://www.w3.org/TR/xmlschema-2/ XSD 1.0} types.
  * The domain and range columns in the table below use the following type shorthands:
  *
  * - **literal** — any comparable literal: `xsd:boolean`, **numeric**, `xsd:string`, or **temporal**; excludes IRI
@@ -1303,7 +1181,7 @@ export type Operator =
  *
  * ## Error Handling
  *
- * A transform must be well-typed: a transform whose declared domain is met by no branch of its input type is
+ * A transform MUST be well-typed: a transform whose declared domain is met by no branch of its input type is
  * rejected. Over a union-typed input, the transform applies to its compatible branches and treats each
  * incompatible-branch value like `undefined`: a scalar transform maps it to `undefined`, and an aggregate skips it
  * before computing the result. See [Transform Pipes](./index.md#582-transform-pipes) and
@@ -1345,19 +1223,17 @@ export type Transform =
  * Captures how a transform derives its output shape from the input path shape: its aggregation kind, the input
  * domain it accepts, and the output processing type it produces. The {@link Transforms} table assigns one signature
  * to each {@link Transform}, driving both input validation and the cardinality and type of the resulting pipe.
- *
- * @see {@link Transforms} for the per-transform signature assignments
  */
 export type TransformSignature = {
 
 	/**
 	 * The transform's aggregation kind.
 	 *
-	 * - `false` — a scalar transform; preserves `maxCount` from the path
-	 * - `"partial"` — an aggregate (`min`, `max`, `avg`) that yields `undefined` on the empty set; sets `maxCount`
-	 *   to `1` and leaves a non-empty pipe's `minCount` `undefined`
-	 * - `"total"` — an aggregate (`count`, `sum`) that always yields a value (`0` on the empty set); sets `maxCount`
-	 *   to `1` and pins a non-empty pipe's `minCount` to `1`
+	 * - `false` — a scalar transform, applied value by value: the pipe yields as many values as the path resolves
+	 * - `"partial"` — an aggregate (`min`, `max`, `avg`) summarising the input set into a single value, undefined
+	 *   over an empty set
+	 * - `"total"` — an aggregate (`count`, `sum`) summarising the input set into a single value, defined over an
+	 *   empty set too (`0`)
 	 */
 	readonly aggregate: false | "partial" | "total",
 
@@ -1388,124 +1264,6 @@ export type TransformSignature = {
 }
 
 
-//// Type Inference ////////////////////////////////////////////////////////////////////////////////////////////////////
-
-/**
- * Infers the {@link Resource} type fetched by a {@link Template}.
- *
- * Recursively rewrites a template-shaped type into the corresponding {@link Resource} shape, so
- * client code can declare strongly-typed result variables without restating the schema.
- * Dispatches the rewrite by structural shape:
- *
- * - **collection tuples** — widens `readonly [I, Selection?]` placeholders to homogeneous arrays
- *   `readonly I[]`, rewriting the element recursively and discarding the optional {@link Selection}
- * - **objects** — maps properties homomorphically, rewriting each key through {@link Name}
- *   (which drops {@link Selection} constraint and pagination keys and extracts
- *   {@link Binding} identifiers) and rewrites each value recursively
- * - **primitives** — passes {@link Literal} and {@link Reference} placeholders through unchanged
- *
- * Propagates `undefined` and other union members through TypeScript's conditional-type
- * distribution, preserving the nullability of undefined-able fields (both `undefined`-union
- * (`v: undefined | T`) and optional (`v?: T`) forms) without an explicit branch in the rewrite.
- *
- * @typeParam T The {@link Template}, {@link Projection}, or {@link Placeholders} value to
- *              rewrite, typically inferred from an inline template literal via `typeof`
- *
- * @example
- *
- * ```typescript
- * const template: Template = {
- *   id: "",
- *   name: "",
- *   price: 0,
- *   tags: [""],
- *   vendor: { id: "", name: "" }
- * };
- *
- * type ProductView = Instance<typeof template>;
- * // → {
- * //     readonly id: Reference;
- * //     readonly name: string;
- * //     readonly price: number;
- * //     readonly tags: readonly string[];
- * //     readonly vendor: { readonly id: Reference; readonly name: string };
- * //   }
- * ```
- *
- * @see {@link Name} for the per-key rewrite step
- */
-export type Instance<T> =
-	T extends readonly [infer I, Selection?] ? readonly Instance<I>[]   // collection tuple → array of element
-		: T extends object                                     // object
-			? [Index<T>] extends [never]                       //   numeric keys?
-				? Slots<T>                                     //     no → map fields
-				: Instance<T[Index<T>]>                        //     yes → unwrap branch union
-			: T;                                               // primitive
-
-/**
- * Extracts the numeric-literal keys of a union frame, in both string (`"0"`) and numeric (`0`) form.
- *
- * Declaration emit serialises numeric keys as bare numerics (`{ 0; 1 }`) rather than string
- * literals (`{ "0"; "1" }`), so both forms must be matched for the collapse to survive a
- * cross-package `.d.ts` round-trip. Wide `number` / `string` index signatures (for example
- * {@link Locales} maps) are excluded so they keep mapping through {@link Slots}.
- *
- * @typeParam T The object type whose numeric-literal keys to extract
- */
-export type Index<T> =
-	keyof T extends infer K ?                              // distribute over each key
-		K extends Branch ? K                          // string form (`"0"`)
-			: K extends number ? (number extends K ? never : K)  // numeric form (`0`), excluding wide `number`
-				: never
-		: never;
-
-/**
- * Projects a template-shaped object through {@link Instance}.
- *
- * Rewrites each property of `T` homomorphically: maps the key through {@link Name} (dropping
- * {@link Selection} constraint and pagination keys and extracting {@link Binding} identifiers)
- * and maps the value recursively through {@link Instance}. Shared by the plain-template branch
- * of `Instance` and the string-indexed fallback for {@link Locales} tag-range maps.
- *
- * @typeParam T The template-shaped object type to rewrite
- */
-export type Slots<T> = {
-
-	readonly [K in keyof T as Name<K>]: Instance<T[K]>
-
-};
-
-/**
- * Projects a {@link Instance} property key to its output name.
- *
- * Computes the property name an input key `K` maps to in the projected result shape:
- *
- * - **drops**    {@link Selection} constraint and pagination keys, collapsing them to `never`
- * - **extracts** the {@link Identifier} portion from computed {@link Binding} keys
- *                (`name=expression`) — the substring before the first `=`
- * - **passes**   plain {@link Identifier} keys through unchanged
- *
- * Drives {@link Instance}'s key rewriting in the object branch when projecting a template-shaped
- * object into its result shape.
- *
- * @typeParam K The input property key to rewrite
- *
- * @example
- *
- * ```typescript
- * type A = Name<"name">;                          // "name"          (plain identifier)
- * type B = Name<"vendorName=vendor.name">;        // "vendorName"    (path binding)
- * type C = Name<"releaseYear=year:releaseDate">;  // "releaseYear"   (transform binding)
- * type D = Name<"<price">;                        // never           (Selection constraint)
- * type E = Name<"@">;                             // never           (pagination key)
- * ```
- */
-export type Name<K> =
-	K extends keyof Selection ? never
-		: K extends Binding ? K extends `${infer I}=${string}` ? I : K
-			: K;
-
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
@@ -1533,13 +1291,11 @@ export type Name<K> =
  *
  * ```typescript
  * encodeTemplate(
- *   { id: "", name: "", vendor: { id: "https://example.com/vendors/acme", name: "" } },
+ *   { items: { name: {}, "?vendor": "https://example.com/vendors/acme" } },
  *   { base: "https://example.com/" }
  * );
- * // → '{"id":"","name":"","vendor":{"id":"/vendors/acme","name":""}}'
+ * // → '{"items":{"name":{},"?vendor":"/vendors/acme"}}'
  * ```
- *
- * @see {@link decodeTemplate}
  */
 export function encodeTemplate(template: Template, {
 
@@ -1595,13 +1351,11 @@ export function encodeTemplate(template: Template, {
  *
  * ```typescript
  * decodeTemplate(
- *   '{"id":"","name":"","vendor":{"id":"/vendors/acme","name":""}}',
+ *   '{"items":{"name":{},"?vendor":"/vendors/acme"}}',
  *   { base: "https://example.com/" }
  * );
- * // → { id: "", name: "", vendor: { id: "https://example.com/vendors/acme", name: "" } }
+ * // → { items: { name: {}, "?vendor": "https://example.com/vendors/acme" } }
  * ```
- *
- * @see {@link encodeTemplate}
  */
 export function decodeTemplate(encoded: string, {
 
@@ -1636,12 +1390,12 @@ export function decodeTemplate(encoded: string, {
 
 
 /**
- * Encodes a selection as a URL-safe string.
+ * Encodes criteria as a URL-safe string.
  *
- * Serialises a {@link Selection} into an
- * [`application/x-www-form-urlencoded`](https://url.spec.whatwg.org/#application/x-www-form-urlencoded) string,
+ * Serialises a {@link Criteria} into an
+ * {@link https://url.spec.whatwg.org/#application/x-www-form-urlencoded application/x-www-form-urlencoded} string,
  * recursively {@link internalize | internalising} absolute IRIs against the provided `base`; see
- * [Selection Serialisation](#selection-serialisation) for the wire format.
+ * [Criteria Serialisation](#criteria-serialisation) for the wire format.
  *
  * > [!NOTE]
  * > The encoder always produces canonical form:
@@ -1659,24 +1413,22 @@ export function decodeTemplate(encoded: string, {
  * > The codec treats the `@tag` suffix as an opaque key and assigns it no semantic meaning. Consumers are
  * > responsible for interpreting the resulting {@link Dictionary} using schema-based information.
  *
- * @param selection The selection to encode
+ * @param criteria The criteria to encode
  * @param options Encoding options
  * @param options.base Base IRI for internalising absolute IRIs
  *
- * @returns The encoded selection string with internalised IRIs
+ * @returns The encoded criteria string with internalised IRIs
  *
  * @throws {@link !TypeError TypeError} If `base` is not a hierarchical IRI
  *
  * @example
  *
  * ```typescript
- * encodeSelection({ "~name": "widget", ">=price": 50, "^price": 1, "#": 25 });
+ * encodeCriteria({ "~name": "widget", ">=price": 50, "^price": 1, "#": 25 });
  * // → '~name=%22widget%22&%3E%3Dprice=50&%5Eprice=1&%23=25'
  * ```
- *
- * @see {@link decodeSelection}
  */
-export function encodeSelection(selection: Selection, {
+export function encodeCriteria(criteria: Criteria, {
 
 	base = getNamespaceIRI(app)
 
@@ -1686,10 +1438,10 @@ export function encodeSelection(selection: Selection, {
 		throw new TypeError(`expected hierarchical base IRI <${base}>`);
 	}
 
-	return encodeFormQuery(internalizeIRIs(base, selection));
+	return encodeFormQuery(internalizeIRIs(base, criteria));
 
 
-	function encodeFormQuery(query: Selection): string {
+	function encodeFormQuery(query: Criteria): string {
 
 		return Object.entries(query)
 			.flatMap(([key, value]) => encodeFormEntry(key, value))
@@ -1733,7 +1485,7 @@ export function encodeSelection(selection: Selection, {
 	}
 
 
-	function internalizeIRIs(base: string, q: Selection): Selection {
+	function internalizeIRIs(base: string, q: Criteria): Criteria {
 		return JSON.parse(JSON.stringify(q), (_key, value) =>
 			isIRI(value, "absolute") ? internalize(base, value) : value
 		);
@@ -1742,12 +1494,12 @@ export function encodeSelection(selection: Selection, {
 }
 
 /**
- * Decodes a selection from a URL-safe string.
+ * Decodes criteria from a URL-safe string.
  *
  * Parses an
- * [`application/x-www-form-urlencoded`](https://url.spec.whatwg.org/#application/x-www-form-urlencoded) string into
- * a {@link Selection}, recursively {@link resolve | resolving} internal IRIs against the provided `base`. The decoded
- * selection is validated and deeply frozen unless `lenient` is `true`.
+ * {@link https://url.spec.whatwg.org/#application/x-www-form-urlencoded application/x-www-form-urlencoded} string into
+ * a {@link Criteria}, recursively {@link resolve | resolving} internal IRIs against the provided `base`. The decoded
+ * criteria are validated and deeply frozen unless `lenient` is `true`.
  *
  * > [!NOTE]
  * > The decoder accepts both canonical and shorthand forms:
@@ -1765,12 +1517,12 @@ export function encodeSelection(selection: Selection, {
  * > The codec treats the `@tag` suffix as an opaque key and assigns it no semantic meaning. Consumers are
  * > responsible for interpreting the resulting {@link Dictionary} using schema-based information.
  *
- * @param encoded The form-encoded {@link Selection} string
+ * @param encoded The form-encoded {@link Criteria} string
  * @param options Decoding options
  * @param options.base Base IRI for resolving internal IRIs
  * @param options.lenient Disables structural validation when `true`
  *
- * @returns The decoded deeply {@link immutable} selection with resolved IRIs
+ * @returns The decoded deeply {@link immutable} criteria with resolved IRIs
  *
  * @throws {@link !TypeError TypeError} If `base` is not a hierarchical IRI
  * @throws {@link !Error Error} If `encoded` is malformed or unparseable
@@ -1778,25 +1530,23 @@ export function encodeSelection(selection: Selection, {
  * @example
  *
  * ```typescript
- * decodeSelection("~name=widget&price>=50&^price=1&#=25");
+ * decodeCriteria("~name=widget&price>=50&^price=1&#=25");
  * // → { "~name": "widget", ">=price": 50, "^price": 1, "#": 25 }
  * ```
- *
- * @see {@link encodeSelection}
  */
-export function decodeSelection(encoded: string, {
+export function decodeCriteria(encoded: string, {
 
 	base = getNamespaceIRI(app),
 	lenient
 
-}: DecoderOpts = {}): Selection {
+}: DecoderOpts = {}): Criteria {
 
 	if ( base !== getNamespaceIRI(app) && !isIRI(base, "hierarchical") ) {
 		throw new TypeError(`expected hierarchical base IRI <${base}>`);
 	}
 
 
-	return immutable(decode(), lenient ? (_v): _v is Selection => true : isSelection, "malformed query");
+	return immutable(decode(), lenient ? (_v): _v is Criteria => true : isCriteria, "malformed query");
 
 
 	function decode() {
@@ -1811,7 +1561,7 @@ export function decodeSelection(encoded: string, {
 				// form format (application/x-www-form-urlencoded) parsed via Peggy grammar
 				// decode keys separately while preserving encoded values for the parser's value handling
 
-				return resolveIRIs(base, SelectionParser.parse(parseForm(encoded), { startRule: "Selection" }));
+				return resolveIRIs(base, CriteriaParser.parse(parseForm(encoded), { startRule: "Criteria" }));
 
 			}
 
@@ -1841,7 +1591,7 @@ export function decodeSelection(encoded: string, {
 	}
 
 
-	function resolveIRIs(base: string, parsed: Selection): Selection {
+	function resolveIRIs(base: string, parsed: Criteria): Criteria {
 		return JSON.parse(JSON.stringify(parsed), (_key, value) =>
 			isIRI(value, "internal") ? resolve(base, value) : value
 		);
@@ -1854,7 +1604,7 @@ export function decodeSelection(encoded: string, {
  * Encodes a probe as a key string.
  *
  * Serialises a parsed {@link Probe} back into its compact string representation suitable for use as a
- * {@link Projection} or {@link Selection} key.
+ * {@link Projection} or {@link Criteria} key.
  *
  * @param probe The probe to encode
  *
@@ -1866,8 +1616,6 @@ export function decodeSelection(encoded: string, {
  * encodeProbe({ target: ">=", pipe: ["year"], path: ["releaseDate"] });
  * // → '>=year:releaseDate'
  * ```
- *
- * @see {@link decodeProbe}
  */
 export function encodeProbe(probe: Probe): string {
 
@@ -1885,12 +1633,12 @@ export function encodeProbe(probe: Probe): string {
 }
 
 /**
- * Decodes a key string into a probe.
+ * Decodes a probe from a key string.
  *
  * Parses a key string into its structural {@link Probe} components, distinguishing projection keys
  * from constraint keys based on the presence of an {@link Operator} prefix.
  *
- * @param key The query key string to decode
+ * @param key The {@link Projection} or {@link Criteria} key to decode
  *
  * @returns The parsed deeply {@link immutable} probe
  *
@@ -1902,14 +1650,12 @@ export function encodeProbe(probe: Probe): string {
  * decodeProbe(">=year:releaseDate");
  * // → { target: ">=", pipe: ["year"], path: ["releaseDate"] }
  * ```
- *
- * @see {@link encodeProbe}
  */
 export function decodeProbe(key: string): Probe {
 
 	try {
 
-		const probe = SelectionParser.parse(key, { startRule: "Probe" });
+		const probe = CriteriaParser.parse(key, { startRule: "Probe" });
 
 		return immutable(probe, isProbe, "malformed probe");
 

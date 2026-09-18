@@ -15,9 +15,9 @@
  */
 
 /**
- * Selection Form-Encoded Format Grammar
+ * Criteria Form-Encoded Format Grammar
  *
- * @see template.ts#selection-serialisation
+ * @see model.ts#criteria-serialisation
  */
 
 {
@@ -194,9 +194,9 @@ Integer "integer"
   = n:$("-"? [0-9]+) { return parseInt(n, 10); }
 
 
-/// Selection //////////////////////////////////////////////////////////////////////////////////////////////////////////
+/// Criteria ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-Selection
+Criteria
   = pairs:PairList { return mergePairs(pairs); }
 
 PairList

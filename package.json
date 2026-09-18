@@ -29,8 +29,8 @@
   "sideEffects": false,
   "exports": {
     ".": "./dist/index.js",
-    "./resource": "./dist/resource.js",
-    "./template": "./dist/template.js"
+    "./state": "./dist/state.js",
+    "./model": "./dist/model.js"
   },
   "files": [
     "README.md",
@@ -44,7 +44,7 @@
     "clean": "rm -rf dist docs node_modules src/*.pegjs.*",
     "prime": "npm ci",
     "setup": "npm ci && sh package.sh",
-    "peggy": "npx peggy --dts --format es --allowed-start-rules '*' --output src/template.pegjs.js src/template.pegjs",
+    "peggy": "npx peggy --dts --format es --allowed-start-rules '*' --output src/model.pegjs.js src/model.pegjs",
     "build": "rm -rf dist docs && npm run peggy && tsc -p tsconfig.build.json && cp src/*.pegjs.* dist && npx typedoc",
     "check": "npx vitest --typecheck run",
     "proof": "npx typedoc && (npx typedoc --watch & npx five-server docs --open)"

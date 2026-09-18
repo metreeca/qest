@@ -18,37 +18,35 @@ import { describe, expect, it } from "vitest";
 import {
 	isAggregate,
 	isBinding,
-	isBranch,
+	isCriteria,
+	isCriterion,
+	isSelector,
 	isExpression,
-	isLocales,
-	isModel,
+	isLocale,
 	isOperator,
 	isOption,
 	isOptions,
 	isOrder,
 	isPlaceholder,
-	isPlaceholders,
 	isProbe,
 	isProjection,
 	isQuery,
-	isSelection,
-	isSelector,
 	isTemplate,
+	isAtomic,
 	isTransform,
-	isUnion,
-	isVacuous
-} from "./template.core.js";
+	isUnion
+} from "./model.core.js";
 import {
 	decodeProbe,
-	decodeSelection,
+	decodeCriteria,
 	decodeTemplate,
 	encodeProbe,
-	encodeSelection,
+	encodeCriteria,
 	encodeTemplate,
+	type Criteria,
 	type Probe,
-	type Selection,
 	type Template
-} from "./template.js";
+} from "./model.js";
 
 
 describe("guards", () => {
@@ -56,8 +54,8 @@ describe("guards", () => {
 	describe("isTemplate", () => {
 
 		it("should accept entry maps with identifier keys", () => {
-			expect(isTemplate({ id: "", name: "" })).toBe(true);
-			expect(isTemplate({ vendor: { id: "" } })).toBe(true);
+			expect(isTemplate({ id: {}, name: {} })).toBe(true);
+			expect(isTemplate({ vendor: { id: {} } })).toBe(true);
 		});
 
 		it("should accept empty entry maps", () => {
@@ -66,17 +64,40 @@ describe("guards", () => {
 
 		it("should accept undefined entry values", () => {
 			expect(isTemplate({ name: undefined })).toBe(true);
-			expect(isTemplate({ id: "", child: undefined })).toBe(true);
+			expect(isTemplate({ id: {}, child: undefined })).toBe(true);
 		});
 
-		it("should accept collection tuples carrying a selection", () => {
-			// a collection property is an `[element, Selection?]` tuple
-			expect(isTemplate({ items: [{ id: "" }, { "^id": "asc", "@": 0, "#": 10 }] })).toBe(true);
+		it("should accept entries carrying collection constraints", () => {
+			// constraints merge into the entry retrieving the collection they apply to
+			expect(isTemplate({ items: { id: {}, "^id": "asc", "@": 0, "#": 10 } })).toBe(true);
 		});
 
-		it("should reject bare selection-only entry values", () => {
-			// with Locales & Selection gone, a bare operator-keyed object is not a Placeholders value
-			expect(isTemplate({ vendor: { "^id": "asc" } })).toBe(false);
+		it("should accept constraint-only entries", () => {
+			// an entry with no retrieval keys retrieves the items themselves
+			expect(isTemplate({ items: { "#": 10 } })).toBe(true);
+		});
+
+		it("should accept locale entries", () => {
+			expect(isTemplate({ title: { "*": {} } })).toBe(true);
+			expect(isTemplate({ title: { en: {}, fr: {} } })).toBe(true);
+		});
+
+		it("should accept union entries", () => {
+			expect(isTemplate({ creator: { "0": { name: {} }, "1": { legalName: {} } } })).toBe(true);
+		});
+
+		it("should accept projection entries, with and without constraints", () => {
+			expect(isTemplate({ items: { "total=count:": {} } })).toBe(true);
+			expect(isTemplate({ items: { "total=count:": {}, "#": 10 } })).toBe(true);
+		});
+
+		it("should reject entries carrying malformed constraints", () => {
+			expect(isTemplate({ items: { "#": -1 } })).toBe(false);
+			expect(isTemplate({ items: { "^name": "ascending" } })).toBe(false);
+		});
+
+		it("should reject entries whose retrieval keys match no form", () => {
+			expect(isTemplate({ items: { "foo.bar": {} } })).toBe(false);
 		});
 
 		it("should reject literals", () => {
@@ -101,484 +122,7 @@ describe("guards", () => {
 		it("should reject arrays", () => {
 			expect(isTemplate([])).toBe(false);
 			expect(isTemplate([0])).toBe(false);
-			expect(isTemplate(["/a"])).toBe(false);
-		});
-
-	});
-
-
-	describe("isPlaceholders", () => {
-
-		it("should accept scalar placeholders", () => {
-			expect(isPlaceholders(true)).toBe(true);
-			expect(isPlaceholders(42)).toBe(true);
-			expect(isPlaceholders("")).toBe(true);
-			expect(isPlaceholders("/products/42")).toBe(true);
-			expect(isPlaceholders({ id: "", name: "" })).toBe(true);
-		});
-
-		it("should accept single-valued language maps", () => {
-			expect(isPlaceholders({ "*": "" })).toBe(true);
-			expect(isPlaceholders({ "en": "text" })).toBe(true);
-			expect(isPlaceholders({ "en": "hello", "fr": "bonjour" })).toBe(true);
-		});
-
-		it("should accept multi-valued language maps", () => {
-			expect(isPlaceholders({ "en": [""] })).toBe(true);
-			expect(isPlaceholders({ "en": ["hello"], "fr": ["bonjour"] })).toBe(true);
-		});
-
-		it("should reject language maps carrying selection constraints", () => {
-			// Locales no longer combines with Selection; an operator-keyed tag map is not a Locales
-			expect(isPlaceholders({ "en": "hello", "~": "widget" })).toBe(false);
-			expect(isPlaceholders({ "en": ["hello"], "@": 0, "#": 10 })).toBe(false);
-		});
-
-		it("should accept collection tuples", () => {
-			expect(isPlaceholders([""])).toBe(true);
-			expect(isPlaceholders([{ id: "", name: "" }])).toBe(true);
-		});
-
-		it("should reject multi-element arrays", () => {
-			expect(isPlaceholders([true, false])).toBe(false);
-			expect(isPlaceholders([1, 2, 3])).toBe(false);
-			expect(isPlaceholders(["a", "b"])).toBe(false);
-			expect(isPlaceholders(["/a", "/b"])).toBe(false);
-		});
-
-		it("should reject empty arrays", () => {
-			expect(isPlaceholders([])).toBe(false);
-		});
-
-		it("should accept singleton-tuple projection placeholders", () => {
-			expect(isPlaceholders([{ "total=count:": 0 }])).toBe(true);
-		});
-
-		it("should accept template-element-with-selection placeholders", () => {
-			expect(isPlaceholders([{ id: "", name: "" }, { "^name": "asc", "#": 10 }])).toBe(true);
-		});
-
-		it("should accept primitive-element-with-selection placeholders", () => {
-			expect(isPlaceholders(["", { "^id": "asc", "@": 0, "#": 10 }])).toBe(true);
-		});
-
-		it("should reject plain selection-only objects", () => {
-			// selection-only objects are no longer placeholders (Locales & Selection removed);
-			// Selection attaches inside collection tuples, not as a bare entry value
-			expect(isPlaceholders({ "^id": "asc" })).toBe(false);
-			expect(isPlaceholders({ "~name": "widget", "^name": "asc" })).toBe(false);
-		});
-
-		it("should accept single-valued indexed variants", () => {
-			expect(isPlaceholders({ "0": { id: "", name: "" } })).toBe(true);
-			expect(isPlaceholders({ "0": { id: "", name: "" }, "1": { id: "", legalName: "" } })).toBe(true);
-		});
-
-		it("should reject the standalone default form", () => {
-			// `{ "": ... }` is not a Placeholders value
-			expect(isPlaceholders({ "": "" })).toBe(false);
-			expect(isPlaceholders({ "": { id: "", name: "" } })).toBe(false);
-		});
-
-		it("should reject indexed variants with non-integer keys", () => {
-			expect(isPlaceholders({ "3.14": { id: "" } })).toBe(false);
-			expect(isPlaceholders({ "-5": { id: "" } })).toBe(false);
-			expect(isPlaceholders({ "1e10": { id: "" } })).toBe(false);
-			expect(isPlaceholders({ "01": { id: "" } })).toBe(false);
-		});
-
-		it("should reject indexed variants with mixed numeric and identifier keys", () => {
-			expect(isPlaceholders({ "0": { id: "" }, "foo": { id: "" } })).toBe(false);
-		});
-
-		it("should accept union-element-with-selection placeholders", () => {
-			expect(isPlaceholders([{ "0": { id: "", name: "" }, "1": { id: "" } }, { "^id": "asc" }])).toBe(true);
-		});
-
-		it("should reject mixed-type arrays", () => {
-			expect(isPlaceholders([1, "a"])).toBe(false);
-		});
-
-		it("should accept undefined", () => {
-			expect(isPlaceholders(undefined)).toBe(true);
-		});
-
-		it("should reject null", () => {
-			expect(isPlaceholders(null)).toBe(false);
-		});
-
-	});
-
-	describe("isPlaceholder", () => {
-
-		it("should accept boolean", () => {
-			expect(isPlaceholder(true)).toBe(true);
-			expect(isPlaceholder(false)).toBe(true);
-		});
-
-		it("should accept number", () => {
-			expect(isPlaceholder(0)).toBe(true);
-			expect(isPlaceholder(42)).toBe(true);
-		});
-
-		it("should accept string", () => {
-			expect(isPlaceholder("")).toBe(true);
-			expect(isPlaceholder("text")).toBe(true);
-		});
-
-		it("should accept reference", () => {
-			expect(isPlaceholder("/products/42")).toBe(true);
-			expect(isPlaceholder("https://example.com/products/42")).toBe(true);
-		});
-
-		it("should accept nested template", () => {
-			expect(isPlaceholder({ id: "", name: "" })).toBe(true);
-			expect(isPlaceholder({ vendor: { id: "" } })).toBe(true);
-		});
-
-		it("should reject null", () => {
-			expect(isPlaceholder(null)).toBe(false);
-		});
-
-		it("should reject undefined", () => {
-			expect(isPlaceholder(undefined)).toBe(false);
-		});
-
-		it("should reject arrays", () => {
-			expect(isPlaceholder([])).toBe(false);
-			expect(isPlaceholder(["a"])).toBe(false);
-		});
-
-	});
-
-
-	describe("isModel", () => {
-
-		it("should accept placeholders", () => {
-			expect(isModel("")).toBe(true);
-			expect(isModel(42)).toBe(true);
-			expect(isModel("/products/42")).toBe(true);
-			expect(isModel({ id: "", name: "" })).toBe(true);
-		});
-
-		it("should accept unions", () => {
-			expect(isModel({ "0": { id: "" } })).toBe(true);
-			expect(isModel({ "0": { id: "" }, "1": { id: "", legalName: "" } })).toBe(true);
-		});
-
-		it("should accept locales", () => {
-			expect(isModel({ "en": "hello" })).toBe(true);
-			expect(isModel({ "*": [""] })).toBe(true);
-		});
-
-		it("should reject collection queries", () => {
-			expect(isModel([""])).toBe(false);
-			expect(isModel([{ id: "", name: "" }, { "^name": "asc" }])).toBe(false);
-		});
-
-		it("should reject undefined", () => {
-			expect(isModel(undefined)).toBe(false);
-		});
-
-		it("should reject null", () => {
-			expect(isModel(null)).toBe(false);
-		});
-
-	});
-
-	describe("isQuery", () => {
-
-		it("should reject bare language maps (a Placeholders Locales arm, not a Query)", () => {
-			expect(isQuery({ "*": "" })).toBe(false);
-			expect(isQuery({ "en": "text" })).toBe(false);
-			expect(isQuery({ "en": [""] })).toBe(false);
-			expect(isQuery({ "en": ["hello"], "fr": ["bonjour"] })).toBe(false);
-		});
-
-		it("should accept primitive element tuples", () => {
-			expect(isQuery([""])).toBe(true);
-			expect(isQuery([0])).toBe(true);
-			expect(isQuery([true])).toBe(true);
-			expect(isQuery(["/products/42"])).toBe(true);
-		});
-
-		it("should accept template element tuples, optionally with a selection", () => {
-			expect(isQuery([{ id: "", name: "" }])).toBe(true);
-			expect(isQuery([{ id: "", name: "" }, { "^name": "asc", "#": 10 }])).toBe(true);
-		});
-
-		it("should accept a primitive element with a selection", () => {
-			expect(isQuery(["", { "^name": "asc", "#": 10 }])).toBe(true);
-		});
-
-		it("should accept union element tuples, optionally with a selection", () => {
-			expect(isQuery([{ "0": { id: "", name: "" }, "1": { id: "" } }])).toBe(true);
-			expect(isQuery([{ "0": { id: "", name: "" } }, { "^id": "asc" }])).toBe(true);
-		});
-
-		it("should accept projection element tuples, optionally with a selection", () => {
-			expect(isQuery([{ "total=count:": 0 }])).toBe(true);
-			expect(isQuery([{ "total=count:": 0 }, { "#": 10 }])).toBe(true);
-		});
-
-		it("should accept an empty (vacuous) element", () => {
-			expect(isQuery([{}])).toBe(true);
-			expect(isQuery([{}, { "^id": "asc" }])).toBe(true);
-		});
-
-		it("should reject scalar single-valued placeholders", () => {
-			expect(isQuery(true)).toBe(false);
-			expect(isQuery(42)).toBe(false);
-			expect(isQuery("")).toBe(false);
-			expect(isQuery("/products/42")).toBe(false);
-		});
-
-		it("should reject bare object entry values", () => {
-			// bare objects are single-valued Placeholders, not collections
-			expect(isQuery({ vendor: { id: "" } })).toBe(false);
-			expect(isQuery({ user_name: "" })).toBe(false);
-			expect(isQuery({ "0": { id: "", name: "" } })).toBe(false);
-			expect(isQuery({ "^id": "asc" })).toBe(false);
-		});
-
-		it("should reject an operator-keyed first element", () => {
-			// the leading element is a Placeholder/Union/Projection, never a bare Selection
-			expect(isQuery([{ "^id": "asc" }])).toBe(false);
-		});
-
-		it("should reject a non-selection second element", () => {
-			expect(isQuery([{}, { id: "" }])).toBe(false);
-			expect(isQuery([true, false])).toBe(false);
-		});
-
-		it("should reject empty arrays", () => {
-			expect(isQuery([])).toBe(false);
-		});
-
-		it("should reject arrays of three or more elements", () => {
-			expect(isQuery([{}, { "^id": "asc" }, {}])).toBe(false);
-			expect(isQuery(["a", "b", "c"])).toBe(false);
-		});
-
-		it("should reject null and undefined", () => {
-			expect(isQuery(null)).toBe(false);
-			expect(isQuery(undefined)).toBe(false);
-		});
-
-	});
-
-
-	describe("isLocales", () => {
-
-		describe("accepted and rejected locale models", () => {
-
-			it("should accept single-valued wildcard tag", () => {
-				expect(isLocales({ "*": "" })).toBe(true);
-				expect(isLocales({ "*": "text" })).toBe(true);
-			});
-
-			it("should accept multi-valued wildcard tag", () => {
-				expect(isLocales({ "*": [""] })).toBe(true);
-				expect(isLocales({ "*": ["text"] })).toBe(true);
-			});
-
-			it("should accept single-valued language tags", () => {
-				expect(isLocales({ "en": "hello" })).toBe(true);
-				expect(isLocales({ "fr": "bonjour" })).toBe(true);
-			});
-
-			it("should accept multi-valued language tags", () => {
-				expect(isLocales({ "en": ["hello"] })).toBe(true);
-				expect(isLocales({ "fr": ["bonjour"] })).toBe(true);
-			});
-
-			it("should accept multiple single-valued language tags", () => {
-				expect(isLocales({ "en": "hello", "fr": "bonjour" })).toBe(true);
-			});
-
-			it("should accept multiple multi-valued language tags", () => {
-				expect(isLocales({ "en": ["hello"], "fr": ["bonjour"] })).toBe(true);
-			});
-
-			it("should reject plain string shorthand", () => {
-				expect(isLocales("text")).toBe(false);
-				expect(isLocales("")).toBe(false);
-			});
-
-			it("should reject singleton string tuple shorthand", () => {
-				expect(isLocales(["text"])).toBe(false);
-				expect(isLocales([""])).toBe(false);
-			});
-
-			it("should reject multi-element string arrays", () => {
-				expect(isLocales(["hello", "hi"])).toBe(false);
-			});
-
-			it("should reject empty arrays", () => {
-				expect(isLocales([])).toBe(false);
-				expect(isLocales({ "en": [] })).toBe(false);
-			});
-
-		});
-
-		describe("invalid locale models", () => {
-
-			it("should reject null and undefined", () => {
-				expect(isLocales(null)).toBe(false);
-				expect(isLocales(undefined)).toBe(false);
-			});
-
-			it("should reject non-string primitives", () => {
-				expect(isLocales(true)).toBe(false);
-				expect(isLocales(42)).toBe(false);
-			});
-
-			it("should reject mixed scalar/array content", () => {
-				expect(isLocales({ "en": "hello", "fr": ["bonjour"] })).toBe(false);
-				expect(isLocales({ "en": ["hello"], "fr": "bonjour" })).toBe(false);
-			});
-
-			it("should reject invalid tag keys", () => {
-				expect(isLocales({ "invalid tag": "text" })).toBe(false);
-				expect(isLocales({ "invalid tag": ["text"] })).toBe(false);
-			});
-
-		});
-
-		describe("default form", () => {
-
-			it("should reject empty-key default form", () => {
-				expect(isLocales({ "": [""] })).toBe(false);
-				expect(isLocales({ "": ["text"] })).toBe(false);
-				expect(isLocales({ "": "text" })).toBe(false);
-			});
-
-			it("should reject empty-key default form carrying selection constraints", () => {
-				expect(isLocales({ "": [""], "~": "widget" })).toBe(false);
-				expect(isLocales({ "": ["hello"], "@": 0, "#": 25 })).toBe(false);
-			});
-
-		});
-
-		describe("selection attachment", () => {
-
-			it("should reject filter constraints alongside single-valued tag map", () => {
-				expect(isLocales({ en: "hello", "~": "widget" })).toBe(false);
-				expect(isLocales({ "*": "", "?": ["a", "b"] })).toBe(false);
-			});
-
-			it("should reject filter constraints alongside multi-valued tag map", () => {
-				expect(isLocales({ en: ["hello"], "~": "widget" })).toBe(false);
-				expect(isLocales({ "*": [""], "?": ["a"] })).toBe(false);
-			});
-
-			it("should reject ordering and pagination alongside tag map", () => {
-				expect(isLocales({ en: "hello", "^": "asc" })).toBe(false);
-				expect(isLocales({ en: ["hello"], "@": 0, "#": 25 })).toBe(false);
-			});
-
-			it("should reject operator-prefixed expression keys alongside tag map", () => {
-				expect(isLocales({ en: "hello", "<=length:": 100 })).toBe(false);
-				expect(isLocales({ en: ["hello"], ">length:": 0 })).toBe(false);
-			});
-
-			it("should reject selection-only map with no tag-range entries", () => {
-				expect(isLocales({ "^": "asc" })).toBe(false);
-				expect(isLocales({ "~": "widget", "@": 0, "#": 10 })).toBe(false);
-			});
-
-		});
-
-	});
-
-	describe("isUnion", () => {
-
-		it("should reject bare scalar placeholders", () => {
-			expect(isUnion(true)).toBe(false);
-			expect(isUnion(42)).toBe(false);
-			expect(isUnion("")).toBe(false);
-			expect(isUnion("/products/42")).toBe(false);
-		});
-
-		it("should reject plain template placeholders", () => {
-			expect(isUnion({ id: "", name: "" })).toBe(false);
-		});
-
-		it("should accept indexed form", () => {
-			expect(isUnion({ "0": { id: "", name: "" } })).toBe(true);
-			expect(isUnion({ "0": { id: "" }, "1": { id: "" } })).toBe(true);
-			expect(isUnion({ "0": "" })).toBe(true);
-			expect(isUnion({ "0": 42 })).toBe(true);
-		});
-
-		it("should accept a localised per-branch value", () => {
-			// localised text is an admitted union branch: a qualified-tag or array-form Locales that a
-			// Template/Placeholder would reject is now accepted through the Locales arm of the branch type
-			expect(isUnion({ "0": { "en-US": "x" } })).toBe(true);
-			expect(isUnion({ "0": { "en-US": ["x"] }, "1": { id: "" } })).toBe(true);
-			expect(isUnion({ "0": { en: [""] } })).toBe(true);
-			expect(isUnion({ "0": { "*": "" }, "1": "" })).toBe(true);
-		});
-
-		it("should reject indexed form with non-integer keys", () => {
-			expect(isUnion({ "3.14": { id: "" } })).toBe(false);
-			expect(isUnion({ "-5": { id: "" } })).toBe(false);
-			expect(isUnion({ "1e10": { id: "" } })).toBe(false);
-			expect(isUnion({ "01": { id: "" } })).toBe(false);
-		});
-
-		it("should reject indexed form with mixed keys", () => {
-			expect(isUnion({ "0": { id: "" }, "foo": { id: "" } })).toBe(false);
-		});
-
-		it("should reject null and undefined", () => {
-			expect(isUnion(null)).toBe(false);
-			expect(isUnion(undefined)).toBe(false);
-		});
-
-		it("should reject arrays", () => {
-			expect(isUnion([])).toBe(false);
-			expect(isUnion([{ id: "" }])).toBe(false);
-		});
-
-	});
-
-	describe("isBranch", () => {
-
-		it("should accept canonical non-negative integer strings", () => {
-			expect(isBranch("0")).toBe(true);
-			expect(isBranch("10")).toBe(true);
-			expect(isBranch("99")).toBe(true);
-		});
-
-		it("should reject leading zeros", () => {
-			expect(isBranch("00")).toBe(false);
-			expect(isBranch("01")).toBe(false);
-		});
-
-		it("should reject non-integer numeric forms", () => {
-			expect(isBranch("3.14")).toBe(false);
-			expect(isBranch("1e10")).toBe(false);
-		});
-
-		it("should reject negative and signed values", () => {
-			expect(isBranch("-5")).toBe(false);
-			expect(isBranch("+1")).toBe(false);
-		});
-
-		it("should reject surrounding whitespace", () => {
-			expect(isBranch(" 0")).toBe(false);
-			expect(isBranch("0 ")).toBe(false);
-		});
-
-		it("should reject the empty string", () => {
-			expect(isBranch("")).toBe(false);
-		});
-
-		it("should reject non-string values", () => {
-			expect(isBranch(0)).toBe(false);
-			expect(isBranch(null)).toBe(false);
-			expect(isBranch(undefined)).toBe(false);
+			expect(isTemplate([{ id: {} }])).toBe(false);
 		});
 
 	});
@@ -590,68 +134,46 @@ describe("guards", () => {
 			expect(isProjection({})).toBe(true);
 		});
 
-		it("should accept scalar placeholders", () => {
-			expect(isProjection({ "id=id": "", "name=name": "" })).toBe(true);
-			expect(isProjection({ "price=price": 0, "available=available": true })).toBe(true);
+		it("should accept binding keys", () => {
+			expect(isProjection({ "id=id": {}, "name=name": {} })).toBe(true);
+			expect(isProjection({ "total=sum:price": {} })).toBe(true);
+			expect(isProjection({ "vendorName=vendor.name": {} })).toBe(true);
 		});
 
 		it("should reject bare identifier keys", () => {
 			// bare keys form a Template, not a Projection (no binding shorthand)
-			expect(isProjection({ id: "", name: "" })).toBe(false);
-			expect(isProjection({ vendor: { id: "", name: "" } })).toBe(false);
+			expect(isProjection({ id: {}, name: {} })).toBe(false);
+			expect(isProjection({ vendor: { id: {}, name: {} } })).toBe(false);
 		});
 
-		it("should accept binding keys", () => {
-			expect(isProjection({ "total=sum:price": 0 })).toBe(true);
-			expect(isProjection({ "vendorName=vendor.name": "" })).toBe(true);
+		it("should accept nested template cells", () => {
+			expect(isProjection({ "vendorRow=vendor": { id: {}, name: {} } })).toBe(true);
 		});
 
-		it("should accept nested template values", () => {
-			expect(isProjection({ "vendorRow=vendor": { id: "", name: "" } })).toBe(true);
+		it("should accept union cells", () => {
+			expect(isProjection({ "creator=creator": { "0": { name: {} }, "1": { id: {} } } })).toBe(true);
 		});
 
-		it("should accept indexed variants values", () => {
-			expect(isProjection({ "creator=creator": { "0": { id: "", name: "" }, "1": { id: "" } } })).toBe(true);
+		it("should accept locale cells", () => {
+			expect(isProjection({ "label=title": { "*": {} } })).toBe(true);
+			expect(isProjection({ "label=title": { en: {}, fr: {} } })).toBe(true);
+			expect(isProjection({ "label=title": { "en-US": {} } })).toBe(true);
 		});
 
-		it("should reject empty-string-keyed cell values", () => {
-			// `{ "": ... }` is not a single-value projection cell
-			expect(isProjection({ "creator=creator": { "": "" } })).toBe(false);
-		});
-
-		it("should accept undefined entry values", () => {
+		it("should accept undefined cells", () => {
 			expect(isProjection({ "name=name": undefined })).toBe(true);
-			expect(isProjection({ "id=id": "", "total=count:": undefined })).toBe(true);
+			expect(isProjection({ "id=id": {}, "total=count:": undefined })).toBe(true);
 		});
 
-		it("should accept localised tag-range placeholders", () => {
-			expect(isProjection({ "label=title": { "*": "" } })).toBe(true);
-			expect(isProjection({ "label=title": { "en": "", "fr": "" } })).toBe(true);
-			expect(isProjection({ "label=title": { "en-US": "" } })).toBe(true);
-		});
-
-		it("should accept localised bindings alongside scalar bindings", () => {
-			expect(isProjection({
-				"id=id": "",
-				"label=title": { "*": "" },
-				"total=count:": 0
-			})).toBe(true);
-		});
-
-		it("should accept multi-valued localised placeholders", () => {
-			// projection cells admit the full Locales (single- or multi-valued)
-			expect(isProjection({ "label=title": { "*": [""] } })).toBe(true);
-			expect(isProjection({ "label=title": { "en-US": [""] } })).toBe(true);
+		it("should reject constraint keys", () => {
+			// constraints ride on the entry hosting the projection, never among its bindings
+			expect(isProjection({ "total=count:": {}, "#": 10 })).toBe(false);
 		});
 
 		it("should reject duplicate binding result names", () => {
 			// index.md §5.6: binding result names must be unique within a projection
-			expect(isProjection({ "count=count:": 0, "count=sum:price": 0 })).toBe(false);
-			expect(isProjection({ "x=a": "", "x=b": "" })).toBe(false);
-		});
-
-		it("should reject collection tuples", () => {
-			expect(isProjection({ "items=items": [{ id: "" }] })).toBe(false);
+			expect(isProjection({ "count=count:": {}, "count=sum:price": {} })).toBe(false);
+			expect(isProjection({ "x=a": {}, "x=b": {} })).toBe(false);
 		});
 
 		it("should reject null and undefined", () => {
@@ -666,69 +188,311 @@ describe("guards", () => {
 
 		it("should reject arrays", () => {
 			expect(isProjection([])).toBe(false);
-			expect(isProjection([{ id: "" }])).toBe(false);
+			expect(isProjection([{ "id=id": {} }])).toBe(false);
 		});
 
 	});
 
-	describe("isSelection", () => {
+
+	describe("isPlaceholder", () => {
+
+		it("should accept the atomic", () => {
+			expect(isPlaceholder({})).toBe(true);
+		});
+
+		it("should accept nested templates", () => {
+			expect(isPlaceholder({ id: {}, name: {} })).toBe(true);
+			expect(isPlaceholder({ vendor: { id: {} } })).toBe(true);
+		});
+
+		it("should accept locale maps", () => {
+			expect(isPlaceholder({ "*": {} })).toBe(true);
+			expect(isPlaceholder({ "en-US": {} })).toBe(true);
+		});
+
+		it("should reject literals and references", () => {
+			expect(isPlaceholder(true)).toBe(false);
+			expect(isPlaceholder(0)).toBe(false);
+			expect(isPlaceholder("")).toBe(false);
+			expect(isPlaceholder("/products/42")).toBe(false);
+		});
+
+		it("should reject null and undefined", () => {
+			expect(isPlaceholder(null)).toBe(false);
+			expect(isPlaceholder(undefined)).toBe(false);
+		});
+
+		it("should reject arrays", () => {
+			expect(isPlaceholder([])).toBe(false);
+			expect(isPlaceholder([{}])).toBe(false);
+		});
+
+	});
+
+	describe("isAtomic", () => {
+
+		it("should accept the empty object", () => {
+			expect(isAtomic({})).toBe(true);
+		});
+
+		it("should reject objects carrying entries", () => {
+			expect(isAtomic({ id: {} })).toBe(false);
+			expect(isAtomic({ "*": {} })).toBe(false);
+			expect(isAtomic({ "#": 10 })).toBe(false);
+		});
+
+		it("should reject literals and references", () => {
+			expect(isAtomic("")).toBe(false);
+			expect(isAtomic(0)).toBe(false);
+			expect(isAtomic(true)).toBe(false);
+			expect(isAtomic("/products/42")).toBe(false);
+		});
+
+		it("should reject null, undefined and arrays", () => {
+			expect(isAtomic(null)).toBe(false);
+			expect(isAtomic(undefined)).toBe(false);
+			expect(isAtomic([])).toBe(false);
+		});
+
+	});
+
+
+	describe("isLocale", () => {
+
+		it("should accept tag-range keys mapping to an atomic", () => {
+			expect(isLocale({ "*": {} })).toBe(true);
+			expect(isLocale({ en: {} })).toBe(true);
+			expect(isLocale({ en: {}, fr: {} })).toBe(true);
+			expect(isLocale({ "en-US": {} })).toBe(true);
+		});
+
+		it("should accept the empty map", () => {
+			expect(isLocale({})).toBe(true);
+		});
+
+		it("should accept undefined entries", () => {
+			expect(isLocale({ en: undefined })).toBe(true);
+		});
+
+		it("should reject extended language ranges", () => {
+			// RFC 4647 basic ranges only: leading, interior and trailing `*` subtags are invalid
+			expect(isLocale({ "en-*": {} })).toBe(false);
+			expect(isLocale({ "de-*-DE": {} })).toBe(false);
+			expect(isLocale({ "*-CH": {} })).toBe(false);
+		});
+
+		it("should reject invalid tag-range keys", () => {
+			expect(isLocale({ "invalid tag": {} })).toBe(false);
+			expect(isLocale({ "": {} })).toBe(false);
+		});
+
+		it("should reject entries carrying a request of their own", () => {
+			// the value slot is inert: every entry is an atomic
+			expect(isLocale({ en: { id: {} } })).toBe(false);
+			expect(isLocale({ en: "" })).toBe(false);
+			expect(isLocale({ en: [""] })).toBe(false);
+		});
+
+		it("should reject constraint keys", () => {
+			// a locale map is filtered by its own tag ranges and takes no constraints
+			expect(isLocale({ en: {}, "~": "widget" })).toBe(false);
+			expect(isLocale({ en: {}, "@": 0, "#": 25 })).toBe(false);
+		});
+
+		it("should reject literals and references", () => {
+			expect(isLocale("text")).toBe(false);
+			expect(isLocale(42)).toBe(false);
+			expect(isLocale(true)).toBe(false);
+		});
+
+		it("should reject null, undefined and arrays", () => {
+			expect(isLocale(null)).toBe(false);
+			expect(isLocale(undefined)).toBe(false);
+			expect(isLocale([])).toBe(false);
+			expect(isLocale([{}])).toBe(false);
+		});
+
+	});
+
+	describe("isUnion", () => {
+
+		it("should accept branch keys mapping to placeholders", () => {
+			expect(isUnion({ "0": {} })).toBe(true);
+			expect(isUnion({ "0": { id: {}, name: {} } })).toBe(true);
+			expect(isUnion({ "0": { name: {} }, "1": { legalName: {} } })).toBe(true);
+		});
+
+		it("should accept a locale branch", () => {
+			expect(isUnion({ "0": { "en-US": {} } })).toBe(true);
+			expect(isUnion({ "0": { "*": {} }, "1": {} })).toBe(true);
+		});
+
+		it("should accept the empty map", () => {
+			expect(isUnion({})).toBe(true);
+		});
+
+		it("should accept undefined branches", () => {
+			expect(isUnion({ "0": undefined })).toBe(true);
+		});
+
+		it("should reject non-canonical branch keys", () => {
+			expect(isUnion({ "3.14": {} })).toBe(false);
+			expect(isUnion({ "-5": {} })).toBe(false);
+			expect(isUnion({ "1e10": {} })).toBe(false);
+			expect(isUnion({ "01": {} })).toBe(false);
+			expect(isUnion({ "": {} })).toBe(false);
+		});
+
+		it("should reject branch keys mixed with identifier keys", () => {
+			expect(isUnion({ "0": {}, foo: {} })).toBe(false);
+		});
+
+		it("should reject a union stacked directly inside a branch", () => {
+			expect(isUnion({ "0": { "0": {} } })).toBe(false);
+		});
+
+		it("should reject literals and references", () => {
+			expect(isUnion(true)).toBe(false);
+			expect(isUnion(42)).toBe(false);
+			expect(isUnion("")).toBe(false);
+			expect(isUnion("/products/42")).toBe(false);
+		});
+
+		it("should reject null, undefined and arrays", () => {
+			expect(isUnion(null)).toBe(false);
+			expect(isUnion(undefined)).toBe(false);
+			expect(isUnion([])).toBe(false);
+			expect(isUnion([{}])).toBe(false);
+		});
+
+	});
+
+	describe("isQuery", () => {
+
+		it("should accept a node carrying retrieval keys alone", () => {
+			expect(isQuery({ id: {}, name: {} }, isTemplate)).toBe(true);
+			expect(isQuery({ "total=count:": {} }, isProjection)).toBe(true);
+		});
+
+		it("should accept a node carrying constraint keys alongside retrieval keys", () => {
+			expect(isQuery({ id: {}, "^id": "asc", "#": 10 }, isTemplate)).toBe(true);
+			expect(isQuery({ "total=count:": {}, "#": 10 }, isProjection)).toBe(true);
+		});
+
+		it("should accept a node carrying constraint keys alone", () => {
+			expect(isQuery({ "#": 10 }, isTemplate)).toBe(true);
+			expect(isQuery({}, isTemplate)).toBe(true);
+		});
+
+		it("should reject a node whose constraints are malformed", () => {
+			expect(isQuery({ id: {}, "#": -1 }, isTemplate)).toBe(false);
+			expect(isQuery({ id: {}, "^id": "ascending" }, isTemplate)).toBe(false);
+		});
+
+		it("should reject a node whose retrieval keys fail the datum guard", () => {
+			expect(isQuery({ "total=count:": {}, "#": 10 }, isTemplate)).toBe(false);
+			expect(isQuery({ id: {}, "#": 10 }, isProjection)).toBe(false);
+		});
+
+		it("should reject literals, references, null, undefined and arrays", () => {
+			expect(isQuery("", isTemplate)).toBe(false);
+			expect(isQuery(42, isTemplate)).toBe(false);
+			expect(isQuery("/products/42", isTemplate)).toBe(false);
+			expect(isQuery(null, isTemplate)).toBe(false);
+			expect(isQuery(undefined, isTemplate)).toBe(false);
+			expect(isQuery([], isTemplate)).toBe(false);
+		});
+
+	});
+
+	describe("isCriterion", () => {
+
+		it("should accept an entry matching its operator's value type", () => {
+			expect(isCriterion(50, ">=price")).toBe(true);
+			expect(isCriterion(150, "<price")).toBe(true);
+			expect(isCriterion("widget", "~name")).toBe(true);
+			expect(isCriterion(["a", "b"], "?category")).toBe(true);
+			expect(isCriterion(["featured"], "!tags")).toBe(true);
+			expect(isCriterion(["electronics"], "+category")).toBe(true);
+			expect(isCriterion("asc", "^price")).toBe(true);
+			expect(isCriterion(0, "@")).toBe(true);
+			expect(isCriterion(25, "#")).toBe(true);
+		});
+
+		it("should reject an entry whose value the operator does not accept", () => {
+			expect(isCriterion(null, ">=price")).toBe(false);
+			expect(isCriterion(42, "~name")).toBe(false);
+			expect(isCriterion("ascending", "^price")).toBe(false);
+			expect(isCriterion(-1, "@")).toBe(false);
+		});
+
+		it("should reject an entry whose key is not a criterion key", () => {
+			expect(isCriterion(50, "price")).toBe(false);
+			expect(isCriterion(50, "=price")).toBe(false);
+			expect(isCriterion(50, ">=foo-bar")).toBe(false);
+			expect(isCriterion(50, "@offset")).toBe(false);
+		});
+
+	});
+
+	describe("isCriteria", () => {
 
 		it("should accept empty object", () => {
-			expect(isSelection({})).toBe(true);
+			expect(isCriteria({})).toBe(true);
 		});
 
 		it("should accept comparison filters", () => {
-			expect(isSelection({ ">=price": 50 })).toBe(true);
-			expect(isSelection({ "<=price": 150 })).toBe(true);
-			expect(isSelection({ ">price": 50 })).toBe(true);
-			expect(isSelection({ "<price": 150 })).toBe(true);
-			expect(isSelection({ ">=date": "2024-01-01" })).toBe(true);
-			expect(isSelection({ ">=active": true })).toBe(true);
-			expect(isSelection({ "<active": false })).toBe(true);
+			expect(isCriteria({ ">=price": 50 })).toBe(true);
+			expect(isCriteria({ "<=price": 150 })).toBe(true);
+			expect(isCriteria({ ">price": 50 })).toBe(true);
+			expect(isCriteria({ "<price": 150 })).toBe(true);
+			expect(isCriteria({ ">=date": "2024-01-01" })).toBe(true);
+			expect(isCriteria({ ">=active": true })).toBe(true);
+			expect(isCriteria({ "<active": false })).toBe(true);
 		});
 
 		it("should reject non-literal comparison values", () => {
-			expect(isSelection({ ">=price": null })).toBe(false);
-			expect(isSelection({ "<price": [1, 2] })).toBe(false);
-			expect(isSelection({ "<=price": { nested: 1 } })).toBe(false);
+			expect(isCriteria({ ">=price": null })).toBe(false);
+			expect(isCriteria({ "<price": [1, 2] })).toBe(false);
+			expect(isCriteria({ "<=price": { nested: 1 } })).toBe(false);
 		});
 
 		it("should accept text search filter", () => {
-			expect(isSelection({ "~name": "widget" })).toBe(true);
+			expect(isCriteria({ "~name": "widget" })).toBe(true);
 		});
 
 		it("should accept matching filters", () => {
-			expect(isSelection({ "?category": ["a", "b"] })).toBe(true);
-			expect(isSelection({ "!tags": ["featured"] })).toBe(true);
+			expect(isCriteria({ "?category": ["a", "b"] })).toBe(true);
+			expect(isCriteria({ "!tags": ["featured"] })).toBe(true);
 		});
 
 		it("should accept ordering entries", () => {
-			expect(isSelection({ "+category": ["electronics"] })).toBe(true);
-			expect(isSelection({ "^price": 1 })).toBe(true);
-			expect(isSelection({ "^name": "asc" })).toBe(true);
-			expect(isSelection({ "^name": "desc" })).toBe(true);
+			expect(isCriteria({ "+category": ["electronics"] })).toBe(true);
+			expect(isCriteria({ "^price": 1 })).toBe(true);
+			expect(isCriteria({ "^name": "asc" })).toBe(true);
+			expect(isCriteria({ "^name": "desc" })).toBe(true);
 		});
 
 		it("should accept paging entries", () => {
-			expect(isSelection({ "@": 10 })).toBe(true);
-			expect(isSelection({ "#": 25 })).toBe(true);
+			expect(isCriteria({ "@": 10 })).toBe(true);
+			expect(isCriteria({ "#": 25 })).toBe(true);
 		});
 
 		it("should accept combined constraints", () => {
-			expect(isSelection({ ">=price": 50, "<=price": 150, "^price": 1, "@": 0, "#": 25 })).toBe(true);
+			expect(isCriteria({ ">=price": 50, "<=price": 150, "^price": 1, "@": 0, "#": 25 })).toBe(true);
 		});
 
 		it("should reject projection keys", () => {
-			expect(isSelection({ name: "" })).toBe(false);
-			expect(isSelection({ price: 0 })).toBe(false);
+			expect(isCriteria({ name: "" })).toBe(false);
+			expect(isCriteria({ price: 0 })).toBe(false);
 		});
 
 		it("should reject non-objects", () => {
-			expect(isSelection(null)).toBe(false);
-			expect(isSelection(undefined)).toBe(false);
-			expect(isSelection("string")).toBe(false);
-			expect(isSelection(42)).toBe(false);
-			expect(isSelection([])).toBe(false);
+			expect(isCriteria(null)).toBe(false);
+			expect(isCriteria(undefined)).toBe(false);
+			expect(isCriteria("string")).toBe(false);
+			expect(isCriteria(42)).toBe(false);
+			expect(isCriteria([])).toBe(false);
 		});
 
 	});
@@ -1179,10 +943,10 @@ describe("guards", () => {
 				expect(isSelector("^count:")).toBe(true);
 			});
 
-			it("should narrow the input type to SelectionKey", () => {
+			it("should narrow the input type to a Criteria key", () => {
 				const key: unknown = ">=price";
 				if ( isSelector(key) ) {
-					const narrowed: Selection[keyof Selection] extends never ? never : typeof key = key;
+					const narrowed: Criteria[keyof Criteria] extends never ? never : typeof key = key;
 					void narrowed;
 				}
 			});
@@ -1346,97 +1110,6 @@ describe("guards", () => {
 	});
 
 
-	describe("isVacuous", () => {
-
-		describe("vacuous values", () => {
-
-			it("should accept the absent marker", () => {
-				expect(isVacuous(undefined)).toBe(true);
-			});
-
-			it("should accept empty objects", () => {
-				expect(isVacuous({})).toBe(true);
-			});
-
-			it("should accept selection-only objects", () => {
-				expect(isVacuous({ "^name": "asc" })).toBe(true);
-				expect(isVacuous({ "<price": 100, "@": 0, "#": 10 })).toBe(true);
-			});
-
-			it("should accept singleton-tuple wrappers of vacuous values", () => {
-				expect(isVacuous([{}])).toBe(true);
-				expect(isVacuous([undefined])).toBe(true);
-				expect(isVacuous([{ "^name": "asc" }])).toBe(true);
-			});
-
-			it("should accept empty arrays", () => {
-				expect(isVacuous([])).toBe(true);
-			});
-
-			it("should accept multi-element arrays whose every element is vacuous", () => {
-				expect(isVacuous([{}, {}])).toBe(true);
-				expect(isVacuous([undefined, {}])).toBe(true);
-				expect(isVacuous([{ "^name": "asc" }, { name: {} }])).toBe(true);
-			});
-
-			it("should accept Templates whose every property is vacuous", () => {
-				expect(isVacuous({ name: {} })).toBe(true);
-				expect(isVacuous({ name: undefined, vendor: {} })).toBe(true);
-				expect(isVacuous({ vendor: { id: undefined } })).toBe(true);
-			});
-
-			it("should accept Unions whose every variant body is vacuous", () => {
-				expect(isVacuous({ "0": {}, "1": {} })).toBe(true);
-				expect(isVacuous({ "": {} })).toBe(true);
-			});
-
-			it("should accept Projections whose every binding is vacuous", () => {
-				expect(isVacuous({ "name=lower:label": undefined, vendor: {} })).toBe(true);
-			});
-
-			it("should accept mixed Selection plus transitively-vacuous bindings", () => {
-				expect(isVacuous({ "<price": 100, name: {} })).toBe(true);
-				expect(isVacuous({ "@": 0, "0": {}, "1": {} })).toBe(true);
-			});
-
-		});
-
-		describe("non-vacuous values", () => {
-
-			it("should reject primitive type markers", () => {
-				expect(isVacuous("")).toBe(false);
-				expect(isVacuous(0)).toBe(false);
-				expect(isVacuous(true)).toBe(false);
-				expect(isVacuous("text")).toBe(false);
-				expect(isVacuous(42)).toBe(false);
-			});
-
-			it("should reject objects carrying retrieval instructions", () => {
-				expect(isVacuous({ name: "" })).toBe(false);
-				expect(isVacuous({ "0": "" })).toBe(false);
-				expect(isVacuous({ "": "" })).toBe(false);
-				expect(isVacuous({ en: "text" })).toBe(false);
-			});
-
-			it("should reject singleton-tuple wrappers of non-vacuous values", () => {
-				expect(isVacuous([""])).toBe(false);
-				expect(isVacuous([{ name: "" }])).toBe(false);
-			});
-
-			it("should reject arrays containing any non-vacuous element", () => {
-				expect(isVacuous([{}, ""])).toBe(false);
-				expect(isVacuous([undefined, { name: "" }])).toBe(false);
-			});
-
-			it("should reject null", () => {
-				expect(isVacuous(null)).toBe(false);
-			});
-
-		});
-
-	});
-
-
 	describe("arbitrary JSON hardening", () => {
 
 		describe("isTemplate", () => {
@@ -1460,18 +1133,19 @@ describe("guards", () => {
 				expect(isTemplate(BigInt(1))).toBe(false);
 			});
 
-			it("should reject non-finite number placeholders", () => {
+			it("should reject non-object entry values", () => {
+				expect(isTemplate({ x: "" })).toBe(false);
+				expect(isTemplate({ x: 0 })).toBe(false);
+				expect(isTemplate({ x: true })).toBe(false);
+				expect(isTemplate({ x: null })).toBe(false);
 				expect(isTemplate({ x: Number.NaN })).toBe(false);
-				expect(isTemplate({ x: Number.POSITIVE_INFINITY })).toBe(false);
-				expect(isTemplate({ x: Number.NEGATIVE_INFINITY })).toBe(false);
 			});
 
 			it("should reject non-identifier keys", () => {
-				expect(isTemplate({ "foo-bar": "" })).toBe(false);
-				expect(isTemplate({ "foo.bar": "" })).toBe(false);
-				expect(isTemplate({ "@id": "" })).toBe(false);
-				expect(isTemplate({ "ns:prop": "" })).toBe(false);
-				expect(isTemplate({ "123": "" })).toBe(false);
+				expect(isTemplate({ "foo.bar": {} })).toBe(false);
+				expect(isTemplate({ "@id": {} })).toBe(false);
+				expect(isTemplate({ "ns:prop": {} })).toBe(false);
+				expect(isTemplate({ "123": {} })).toBe(false);
 			});
 
 			it("should reject non-plain objects nested as values", () => {
@@ -1480,18 +1154,17 @@ describe("guards", () => {
 			});
 
 			it("should reject deeply nested invalid structures", () => {
-				expect(isTemplate({ outer: { "foo.bar": "" } })).toBe(false);
+				expect(isTemplate({ outer: { "foo.bar": {} } })).toBe(false);
 				expect(isTemplate({ outer: { inner: new Date() } })).toBe(false);
-				expect(isTemplate({ xs: [{ "foo.bar": "" }] })).toBe(false);
 			});
 
 			it("should accept JSON.parse output of a valid template", () => {
 				const json = JSON.stringify({
-					id: "",
-					name: "",
-					price: 0,
-					vendor: { id: "", name: "" },
-					label: { en: "", de: "" }
+					id: {},
+					name: {},
+					vendor: { id: {}, name: {} },
+					label: { en: {}, de: {} },
+					items: { name: {}, "#": 10 }
 				});
 
 				expect(isTemplate(JSON.parse(json))).toBe(true);
@@ -1499,37 +1172,23 @@ describe("guards", () => {
 
 		});
 
-		describe("isPlaceholders", () => {
+		describe("isPlaceholder", () => {
 
 			it("should reject non-plain objects", () => {
-				expect(isPlaceholders(new Date())).toBe(false);
-				expect(isPlaceholders(new Map())).toBe(false);
-				expect(isPlaceholders(Object.create(null))).toBe(false);
-			});
-
-			it("should reject non-finite numbers", () => {
-				expect(isPlaceholders(Number.NaN)).toBe(false);
-				expect(isPlaceholders(Number.POSITIVE_INFINITY)).toBe(false);
+				expect(isPlaceholder(new Date())).toBe(false);
+				expect(isPlaceholder(new Map())).toBe(false);
+				expect(isPlaceholder(Object.create(null))).toBe(false);
 			});
 
 			it("should reject functions, symbols, bigints", () => {
-				expect(isPlaceholders(() => {})).toBe(false);
-				expect(isPlaceholders(Symbol("x"))).toBe(false);
-				expect(isPlaceholders(BigInt(1))).toBe(false);
+				expect(isPlaceholder(() => {})).toBe(false);
+				expect(isPlaceholder(Symbol("x"))).toBe(false);
+				expect(isPlaceholder(BigInt(1))).toBe(false);
 			});
 
-			it("should reject singleton tuples containing invalid elements", () => {
-				expect(isPlaceholders([null])).toBe(false);
-				expect(isPlaceholders([undefined])).toBe(false);
-				expect(isPlaceholders([new Date()])).toBe(false);
-				expect(isPlaceholders([() => {}])).toBe(false);
-				expect(isPlaceholders([Number.NaN])).toBe(false);
-			});
-
-			it("should enforce singleton-tuple length exactly 1", () => {
-				expect(isPlaceholders([])).toBe(false);
-				expect(isPlaceholders(["", ""])).toBe(false);
-				expect(isPlaceholders([{ id: "" }, { id: "" }])).toBe(false);
+			it("should reject non-finite numbers", () => {
+				expect(isPlaceholder(Number.NaN)).toBe(false);
+				expect(isPlaceholder(Number.POSITIVE_INFINITY)).toBe(false);
 			});
 
 		});
@@ -1547,52 +1206,47 @@ describe("guards", () => {
 				expect(isUnion(Number.POSITIVE_INFINITY)).toBe(false);
 			});
 
-			it("should reject indexed form mixed with identifier keys", () => {
-				expect(isUnion({ "0": "", id: "" })).toBe(false);
+			it("should reject non-canonical branch keys", () => {
+				expect(isUnion({ "00": {} })).toBe(false);
+				expect(isUnion({ "0.0": {} })).toBe(false);
+				expect(isUnion({ "+1": {} })).toBe(false);
+				expect(isUnion({ " 0": {} })).toBe(false);
+				expect(isUnion({ "0 ": {} })).toBe(false);
 			});
 
-			it("should reject non-canonical indexed keys", () => {
-				expect(isUnion({ "00": "" })).toBe(false);
-				expect(isUnion({ "0.0": "" })).toBe(false);
-				expect(isUnion({ "+1": "" })).toBe(false);
-				expect(isUnion({ " 0": "" })).toBe(false);
-				expect(isUnion({ "0 ": "" })).toBe(false);
+			it("should accept canonical branch keys", () => {
+				expect(isUnion({ "0": {} })).toBe(true);
+				expect(isUnion({ "10": {} })).toBe(true);
+				expect(isUnion({ "99": {} })).toBe(true);
 			});
 
-			it("should accept canonical indexed keys", () => {
-				expect(isUnion({ "0": "" })).toBe(true);
-				expect(isUnion({ "10": "" })).toBe(true);
-				expect(isUnion({ "99": "" })).toBe(true);
-			});
-
-			it("should reject indexed form with invalid placeholder values", () => {
+			it("should reject branches holding invalid placeholders", () => {
 				expect(isUnion({ "0": null })).toBe(false);
-				expect(isUnion({ "0": undefined })).toBe(false);
+				expect(isUnion({ "0": "" })).toBe(false);
 				expect(isUnion({ "0": new Date() })).toBe(false);
 				expect(isUnion({ "0": Number.NaN })).toBe(false);
 			});
 
 		});
 
-		describe("isLocales", () => {
+		describe("isLocale", () => {
 
 			it("should reject non-plain objects", () => {
-				expect(isLocales(new Date())).toBe(false);
-				expect(isLocales(new Map())).toBe(false);
-				expect(isLocales(Object.create(null))).toBe(false);
+				expect(isLocale(new Date())).toBe(false);
+				expect(isLocale(new Map())).toBe(false);
+				expect(isLocale(Object.create(null))).toBe(false);
 			});
 
 			it("should reject functions, symbols, bigints", () => {
-				expect(isLocales(() => {})).toBe(false);
-				expect(isLocales(Symbol("x"))).toBe(false);
-				expect(isLocales(BigInt(1))).toBe(false);
+				expect(isLocale(() => {})).toBe(false);
+				expect(isLocale(Symbol("x"))).toBe(false);
+				expect(isLocale(BigInt(1))).toBe(false);
 			});
 
-			it("should reject non-string values in language maps", () => {
-				expect(isLocales({ en: 42 })).toBe(false);
-				expect(isLocales({ en: null })).toBe(false);
-				expect(isLocales({ en: [42] })).toBe(false);
-				expect(isLocales({ en: [null] })).toBe(false);
+			it("should reject non-leaf values in tag-range maps", () => {
+				expect(isLocale({ en: 42 })).toBe(false);
+				expect(isLocale({ en: null })).toBe(false);
+				expect(isLocale({ en: new Date() })).toBe(false);
 			});
 
 		});
@@ -1606,104 +1260,100 @@ describe("guards", () => {
 			});
 
 			it("should reject invalid binding keys", () => {
-				expect(isProjection({ "=value": "" })).toBe(false);
-				expect(isProjection({ "123name=value": "" })).toBe(false);
-				expect(isProjection({ "name=.bad": "" })).toBe(false);
-				expect(isProjection({ "name=unknown:path": "" })).toBe(false);
+				expect(isProjection({ "=value": {} })).toBe(false);
+				expect(isProjection({ "123name=value": {} })).toBe(false);
+				expect(isProjection({ "name=.bad": {} })).toBe(false);
+				expect(isProjection({ "name=unknown:path": {} })).toBe(false);
 			});
 
-			it("should reject multi-element array values", () => {
-				expect(isProjection({ "items=items": ["a", "b"] })).toBe(false);
-				expect(isProjection({ "items=items": [1, 2, 3] })).toBe(false);
-			});
-
-			it("should reject non-finite number values", () => {
+			it("should reject non-object cell values", () => {
+				expect(isProjection({ "x=x": "" })).toBe(false);
 				expect(isProjection({ "x=x": Number.NaN })).toBe(false);
-				expect(isProjection({ "x=x": Number.POSITIVE_INFINITY })).toBe(false);
+				expect(isProjection({ "items=items": ["a", "b"] })).toBe(false);
 			});
 
 			it("should reject invalid nested values", () => {
 				expect(isProjection({ "item=item": new Date() })).toBe(false);
 				expect(isProjection({ "item=item": [] })).toBe(false);
-				expect(isProjection({ "item=item": [{ id: "" }] })).toBe(false);
+				expect(isProjection({ "item=item": [{ id: {} }] })).toBe(false);
 			});
 
 		});
 
-		describe("isSelection", () => {
+		describe("isCriteria", () => {
 
 			it("should reject non-plain objects", () => {
-				expect(isSelection(new Date())).toBe(false);
-				expect(isSelection(new Map())).toBe(false);
-				expect(isSelection(Object.create(null))).toBe(false);
+				expect(isCriteria(new Date())).toBe(false);
+				expect(isCriteria(new Map())).toBe(false);
+				expect(isCriteria(Object.create(null))).toBe(false);
 			});
 
 			it("should reject unknown operator prefixes", () => {
-				expect(isSelection({ "=price": 50 })).toBe(false);
-				expect(isSelection({ "&price": 50 })).toBe(false);
-				expect(isSelection({ "%price": 50 })).toBe(false);
+				expect(isCriteria({ "=price": 50 })).toBe(false);
+				expect(isCriteria({ "&price": 50 })).toBe(false);
+				expect(isCriteria({ "%price": 50 })).toBe(false);
 			});
 
 			it("should reject non-literal comparison values", () => {
-				expect(isSelection({ ">=price": null })).toBe(false);
-				expect(isSelection({ ">=price": undefined })).toBe(false);
-				expect(isSelection({ ">=price": new Date() })).toBe(false);
-				expect(isSelection({ ">=price": Number.NaN })).toBe(false);
+				expect(isCriteria({ ">=price": null })).toBe(false);
+				expect(isCriteria({ ">=price": undefined })).toBe(false);
+				expect(isCriteria({ ">=price": new Date() })).toBe(false);
+				expect(isCriteria({ ">=price": Number.NaN })).toBe(false);
 			});
 
 			it("should reject non-string text search values", () => {
-				expect(isSelection({ "~name": 42 })).toBe(false);
-				expect(isSelection({ "~name": null })).toBe(false);
-				expect(isSelection({ "~name": ["widget"] })).toBe(false);
+				expect(isCriteria({ "~name": 42 })).toBe(false);
+				expect(isCriteria({ "~name": null })).toBe(false);
+				expect(isCriteria({ "~name": ["widget"] })).toBe(false);
 			});
 
 			it("should reject invalid options in matching filters", () => {
-				expect(isSelection({ "?cat": undefined })).toBe(false);
-				expect(isSelection({ "?cat": [new Date()] })).toBe(false);
-				expect(isSelection({ "!tags": [() => {}] })).toBe(false);
+				expect(isCriteria({ "?cat": undefined })).toBe(false);
+				expect(isCriteria({ "?cat": [new Date()] })).toBe(false);
+				expect(isCriteria({ "!tags": [() => {}] })).toBe(false);
 			});
 
 			it("should reject invalid sort priority values", () => {
-				expect(isSelection({ "^price": null })).toBe(false);
-				expect(isSelection({ "^price": "ascending" })).toBe(false);
-				expect(isSelection({ "^price": Number.NaN })).toBe(false);
-				expect(isSelection({ "^price": true })).toBe(false);
+				expect(isCriteria({ "^price": null })).toBe(false);
+				expect(isCriteria({ "^price": "ascending" })).toBe(false);
+				expect(isCriteria({ "^price": Number.NaN })).toBe(false);
+				expect(isCriteria({ "^price": true })).toBe(false);
 			});
 
 			it("should reject non-numeric paging values", () => {
-				expect(isSelection({ "@": "10" })).toBe(false);
-				expect(isSelection({ "#": null })).toBe(false);
-				expect(isSelection({ "@": Number.NaN })).toBe(false);
-				expect(isSelection({ "#": Number.POSITIVE_INFINITY })).toBe(false);
+				expect(isCriteria({ "@": "10" })).toBe(false);
+				expect(isCriteria({ "#": null })).toBe(false);
+				expect(isCriteria({ "@": Number.NaN })).toBe(false);
+				expect(isCriteria({ "#": Number.POSITIVE_INFINITY })).toBe(false);
 			});
 
 			it("should reject negative and non-integer paging values", () => {
 				// index.md §5.7.6 / ABNF `offset` = `limit` = 1*DIGIT: non-negative integers only
-				expect(isSelection({ "@": -1 })).toBe(false);
-				expect(isSelection({ "@": 1.5 })).toBe(false);
-				expect(isSelection({ "#": -5 })).toBe(false);
-				expect(isSelection({ "#": 2.5 })).toBe(false);
+				expect(isCriteria({ "@": -1 })).toBe(false);
+				expect(isCriteria({ "@": 1.5 })).toBe(false);
+				expect(isCriteria({ "#": -5 })).toBe(false);
+				expect(isCriteria({ "#": 2.5 })).toBe(false);
 			});
 
 			it("should reject malformed expression parts after operator prefix", () => {
-				expect(isSelection({ "<foo-bar": 1 })).toBe(false);
-				expect(isSelection({ ">=foo.123": 1 })).toBe(false);
-				expect(isSelection({ "~foo..bar": "x" })).toBe(false);
-				expect(isSelection({ "?.name": ["a"] })).toBe(false);
-				expect(isSelection({ "!unknownTransform:name": ["a"] })).toBe(false);
-				expect(isSelection({ "+name.": ["a"] })).toBe(false);
-				expect(isSelection({ "^foo-bar": "asc" })).toBe(false);
+				expect(isCriteria({ "<foo-bar": 1 })).toBe(false);
+				expect(isCriteria({ ">=foo.123": 1 })).toBe(false);
+				expect(isCriteria({ "~foo..bar": "x" })).toBe(false);
+				expect(isCriteria({ "?.name": ["a"] })).toBe(false);
+				expect(isCriteria({ "!unknownTransform:name": ["a"] })).toBe(false);
+				expect(isCriteria({ "+name.": ["a"] })).toBe(false);
+				expect(isCriteria({ "^foo-bar": "asc" })).toBe(false);
 			});
 
 			it("should accept well-formed expression parts", () => {
-				expect(isSelection({ "<price": 50 })).toBe(true);
-				expect(isSelection({ ">=vendor.price": 50 })).toBe(true);
-				expect(isSelection({ "~name": "widget" })).toBe(true);
-				expect(isSelection({ "?category": ["a"] })).toBe(true);
-				expect(isSelection({ "!round:avg:scores": [1] })).toBe(true);
-				expect(isSelection({ "^year:releaseDate": "desc" })).toBe(true);
-				expect(isSelection({ "<": 0 })).toBe(true);
-				expect(isSelection({ "<count:": 10 })).toBe(true);
+				expect(isCriteria({ "<price": 50 })).toBe(true);
+				expect(isCriteria({ ">=vendor.price": 50 })).toBe(true);
+				expect(isCriteria({ "~name": "widget" })).toBe(true);
+				expect(isCriteria({ "?category": ["a"] })).toBe(true);
+				expect(isCriteria({ "!round:avg:scores": [1] })).toBe(true);
+				expect(isCriteria({ "^year:releaseDate": "desc" })).toBe(true);
+				expect(isCriteria({ "<": 0 })).toBe(true);
+				expect(isCriteria({ "<count:": 10 })).toBe(true);
 			});
 
 		});
@@ -1866,46 +1516,26 @@ describe("guards", () => {
 
 	describe("subtle edge cases", () => {
 
-		describe("placeholder/tuple asymmetry", () => {
+		describe("form overlap", () => {
 
-			it("should accept locale-shaped object as scalar Placeholders", () => {
-				// Locales is allowed as a scalar Placeholders branch
-				expect(isPlaceholders({ en: "hello", fr: "bonjour" })).toBe(true);
-				expect(isPlaceholders({ "*": [""] })).toBe(true);
-			});
-
-			it("should reject locale-shaped object wrapped in singleton tuple", () => {
-				// the Query element is a Placeholder/Union/Projection, never a Locales.
-				// A locale-only shape like { "en-GB": "" } doesn't match Template (key "en-GB"
-				// is not an identifier — hyphens forbidden), nor Union nor Projection.
-				expect(isPlaceholders([{ "en-GB": "" }])).toBe(false);
-				expect(isPlaceholders([{ "de-CH": "text" }])).toBe(false);
-			});
-
-			it("should accept tuple wrapping a template whose keys happen to be language tags", () => {
-				// {en: ""} is simultaneously a valid Locales AND a valid nested Template,
-				// and the Template interpretation lets it through the [Placeholder] tuple branch
-				expect(isPlaceholders([{ en: "" }])).toBe(true);
-			});
-
-		});
-
-		describe("isUnion (Union) form disjointness", () => {
-
-			it("should reject mixing default, indexed and identifier keys in the same object", () => {
-				expect(isUnion({ "": "", "0": "", id: "" })).toBe(false);
-				expect(isUnion({ "0": "", id: "" })).toBe(false);
-				expect(isUnion({ "": "", id: "" })).toBe(false);
-			});
-
-			it("should accept an empty object as a vacuous union form", () => {
-				// {} passes the union-entry predicate vacuously (no entries to reject)
+			it("should accept the atomic under every form", () => {
+				// `{}` is simultaneously a Atomic, an empty Template, an empty Locale and an
+				// empty Union: the forms are told apart by the model, not by the notation
+				expect(isAtomic({})).toBe(true);
+				expect(isTemplate({})).toBe(true);
+				expect(isLocale({})).toBe(true);
 				expect(isUnion({})).toBe(true);
 			});
 
-			it("should reject identifier-keyed objects (a plain Template is not a Union)", () => {
-				expect(isUnion({ $price: "" })).toBe(false);
-				expect(isUnion({ _internal: "" })).toBe(false);
+			it("should accept an identifier-keyed map as both template and locale", () => {
+				// `en` is at once a valid property identifier and a valid basic language range
+				expect(isTemplate({ en: {} })).toBe(true);
+				expect(isLocale({ en: {} })).toBe(true);
+			});
+
+			it("should reject identifier-keyed objects as unions", () => {
+				expect(isUnion({ $price: {} })).toBe(false);
+				expect(isUnion({ _internal: {} })).toBe(false);
 			});
 
 		});
@@ -1962,50 +1592,50 @@ describe("guards", () => {
 
 		});
 
-		describe("isSelection expression validation edge cases", () => {
+		describe("isCriteria expression validation edge cases", () => {
 
 			it("should accept operator-only keys with empty expression (root/aggregate)", () => {
-				expect(isSelection({ "<": 0 })).toBe(true);
-				expect(isSelection({ ">=": 0 })).toBe(true);
-				expect(isSelection({ "~": "" })).toBe(true);
-				expect(isSelection({ "?": [1] })).toBe(true);
+				expect(isCriteria({ "<": 0 })).toBe(true);
+				expect(isCriteria({ ">=": 0 })).toBe(true);
+				expect(isCriteria({ "~": "" })).toBe(true);
+				expect(isCriteria({ "?": [1] })).toBe(true);
 			});
 
 			it("should reject `<==` (empty op tail followed by invalid expression)", () => {
 				// "<==" starts with "<=" → slice(2)="=" → not an identifier → invalid expression
-				expect(isSelection({ "<==": 1 })).toBe(false);
+				expect(isCriteria({ "<==": 1 })).toBe(false);
 			});
 
 			it("should accept aggregate transforms in filter keys", () => {
-				expect(isSelection({ ">=count:": 10 })).toBe(true);
-				expect(isSelection({ "<avg:price": 100 })).toBe(true);
+				expect(isCriteria({ ">=count:": 10 })).toBe(true);
+				expect(isCriteria({ "<avg:price": 100 })).toBe(true);
 			});
 
 			it("should reject unknown transforms in filter keys", () => {
-				expect(isSelection({ ">=unknown:price": 10 })).toBe(false);
-				expect(isSelection({ "^frobnicate:name": "asc" })).toBe(false);
+				expect(isCriteria({ ">=unknown:price": 10 })).toBe(false);
+				expect(isCriteria({ "^frobnicate:name": "asc" })).toBe(false);
 			});
 
 			it("should reject dotted path with empty segments", () => {
-				expect(isSelection({ ">=a..b": 1 })).toBe(false);
-				expect(isSelection({ ">=.a": 1 })).toBe(false);
-				expect(isSelection({ ">=a.": 1 })).toBe(false);
+				expect(isCriteria({ ">=a..b": 1 })).toBe(false);
+				expect(isCriteria({ ">=.a": 1 })).toBe(false);
+				expect(isCriteria({ ">=a.": 1 })).toBe(false);
 			});
 
 			it("should reject focus ordering with invalid expression", () => {
-				expect(isSelection({ "+foo-bar": ["a"] })).toBe(false);
+				expect(isCriteria({ "+foo-bar": ["a"] })).toBe(false);
 			});
 
 			it("should reject sort priority as boolean or bigint", () => {
-				expect(isSelection({ "^price": true })).toBe(false);
-				expect(isSelection({ "^price": BigInt(1) })).toBe(false);
+				expect(isCriteria({ "^price": true })).toBe(false);
+				expect(isCriteria({ "^price": BigInt(1) })).toBe(false);
 			});
 
 			it("should accept signed integer sort priorities and reject fractional ones", () => {
 				// index.md §5.7.5 / CDDL `order => "asc" / "desc" / int`: priorities are signed integers
-				expect(isSelection({ "^price": -1 })).toBe(true);
-				expect(isSelection({ "^price": 0 })).toBe(true);
-				expect(isSelection({ "^price": 2.5 })).toBe(false);
+				expect(isCriteria({ "^price": -1 })).toBe(true);
+				expect(isCriteria({ "^price": 0 })).toBe(true);
+				expect(isCriteria({ "^price": 2.5 })).toBe(false);
 			});
 
 		});
@@ -2038,23 +1668,17 @@ describe("guards", () => {
 
 		});
 
-		describe("isLocales edge cases", () => {
+		describe("isLocale edge cases", () => {
 
 			it("should reject empty-string-keyed entries", () => {
-				expect(isLocales({ "": "text" })).toBe(false);
-				expect(isLocales({ "": [""] })).toBe(false);
+				expect(isLocale({ "": {} })).toBe(false);
 			});
 
 			it("should reject extended language ranges", () => {
 				// RFC 4647 basic ranges only: trailing, interior, and leading `*` subtags are invalid
-				expect(isLocales({ "en-*": "" })).toBe(false);
-				expect(isLocales({ "de-*-DE": "" })).toBe(false);
-				expect(isLocales({ "*-CH": "" })).toBe(false);
-			});
-
-			it("should reject singleton-tuple strictness violations in map values", () => {
-				expect(isLocales({ en: ["a", "b"] })).toBe(false);
-				expect(isLocales({ en: [] })).toBe(false);
+				expect(isLocale({ "en-*": {} })).toBe(false);
+				expect(isLocale({ "de-*-DE": {} })).toBe(false);
+				expect(isLocale({ "*-CH": {} })).toBe(false);
 			});
 
 		});
@@ -2064,23 +1688,23 @@ describe("guards", () => {
 			it("should accept plain objects with prototype-relevant key names", () => {
 				// These are valid ECMAScript identifiers and must be accepted as ordinary keys;
 				// isObject uses Object.entries/Object.keys which iterate own enumerable properties
-				expect(isTemplate({ constructor: "" })).toBe(true);
-				expect(isTemplate({ hasOwnProperty: "" })).toBe(true);
-				expect(isTemplate({ toString: "" })).toBe(true);
+				expect(isTemplate({ constructor: {} })).toBe(true);
+				expect(isTemplate({ hasOwnProperty: {} })).toBe(true);
+				expect(isTemplate({ toString: {} })).toBe(true);
 			});
 
 			it("should accept JSON-parsed objects whose only property is __proto__", () => {
 				// JSON.parse(`{"__proto__": {...}}`) creates __proto__ as own property, not
 				// prototype. "__proto__" starts with underscores so it IS a valid identifier.
 				// Intent: guards should handle it uniformly as any other identifier key.
-				const parsed = JSON.parse("{\"__proto__\": \"value\"}");
+				const parsed = JSON.parse("{\"__proto__\": {}}");
 
 				expect(isTemplate(parsed)).toBe(true);
 			});
 
 			it("should reject objects with non-plain prototype even if keys look valid", () => {
-				const weird = Object.create({ id: "" });
-				weird.name = "";
+				const weird = Object.create({ id: {} });
+				weird.name = {};
 
 				expect(isTemplate(weird)).toBe(false);
 			});
@@ -2089,22 +1713,28 @@ describe("guards", () => {
 
 		describe("nested recursion boundaries", () => {
 
-			it("should reject a template whose nested placeholder is an invalid variants form", () => {
-				expect(isTemplate({ outer: { "": "", "0": "" } })).toBe(false);
+			it("should reject a template whose nested entry matches no retrieval form", () => {
+				expect(isTemplate({ outer: { "foo.bar": {}, "0": {} } })).toBe(false);
 			});
 
-			it("should reject a selection entry whose filter value contains a non-plain object", () => {
-				expect(isSelection({ "?category": [new Date()] })).toBe(false);
+			it("should reject a criteria entry whose filter value contains a non-plain object", () => {
+				expect(isCriteria({ "?category": [new Date()] })).toBe(false);
 			});
 
-			it("should reject deeply nested resource inside selection options", () => {
-				expect(isSelection({ "?vendor": [{ "foo.bar": "x" }] })).toBe(false);
+			it("should reject deeply nested resource inside criteria options", () => {
+				expect(isCriteria({ "?vendor": [{ "foo.bar": "x" }] })).toBe(false);
 			});
 
 			it("should accept deeply nested valid templates", () => {
-				const deep = { a: { b: { c: { d: { e: { f: "" } } } } } };
+				const deep = { a: { b: { c: { d: { e: { f: {} } } } } } };
 
 				expect(isTemplate(deep)).toBe(true);
+			});
+
+			it("should accept constraints at every nesting level", () => {
+				const nested = { items: { vendor: { products: { "#": 5 } }, "#": 10 } };
+
+				expect(isTemplate(nested)).toBe(true);
 			});
 
 		});
@@ -2113,6 +1743,7 @@ describe("guards", () => {
 
 });
 
+
 describe("codecs", () => {
 
 	describe("encodeTemplate()", () => {
@@ -2120,16 +1751,16 @@ describe("codecs", () => {
 		describe("base option", () => {
 
 			it("should reject relative IRI base", () => {
-				const template: Template = { id: "/products/42" };
+				const template: Template = { items: { "?vendor": "/vendors/acme" } };
 
 				expect(() => encodeTemplate(template, { base: "/relative/path" })).toThrow(TypeError);
 			});
 
 			it("should internalize absolute IRI to root-relative", () => {
-				const template: Template = { id: "https://example.com/products/42" };
+				const template: Template = { items: { "?vendor": "https://example.com/vendors/acme" } };
 
 				expect(encodeTemplate(template, { base: "https://example.com/" }))
-					.toBe(JSON.stringify({ id: "/products/42" }));
+					.toBe(JSON.stringify({ items: { "?vendor": "/vendors/acme" } }));
 			});
 
 		});
@@ -2137,27 +1768,27 @@ describe("codecs", () => {
 		describe("format option", () => {
 
 			it("should default to json encoding", () => {
-				const template: Template = { id: "" };
+				const template: Template = { id: {} };
 
-				expect(encodeTemplate(template)).toBe("{\"id\":\"\"}");
+				expect(encodeTemplate(template)).toBe("{\"id\":{}}");
 			});
 
 			it("should produce plain JSON when format is json", () => {
-				const template: Template = { id: "" };
+				const template: Template = { id: {} };
 
-				expect(encodeTemplate(template, { format: "json" })).toBe("{\"id\":\"\"}");
+				expect(encodeTemplate(template, { format: "json" })).toBe("{\"id\":{}}");
 			});
 
 			it("should produce URL-encoded JSON when format is url", () => {
-				const template: Template = { id: "" };
+				const template: Template = { id: {} };
 
-				expect(encodeTemplate(template, { format: "url" })).toBe("%7B%22id%22%3A%22%22%7D");
+				expect(encodeTemplate(template, { format: "url" })).toBe("%7B%22id%22%3A%7B%7D%7D");
 			});
 
 			it("should produce URL-safe base64-encoded JSON when format is base64", () => {
-				const template: Template = { id: "" };
+				const template: Template = { id: {} };
 
-				expect(encodeTemplate(template, { format: "base64" })).toBe("eyJpZCI6IiJ9");
+				expect(encodeTemplate(template, { format: "base64" })).toBe("eyJpZCI6e319");
 			});
 
 			it("should strip base64 padding when format is base64", () => {
@@ -2167,22 +1798,22 @@ describe("codecs", () => {
 		});
 
 		it("should use app base when base option is omitted", () => {
-			const template: Template = { id: "app:/products/42" };
+			const template: Template = { items: { "?vendor": "app:/vendors/acme" } };
 
 			expect(encodeTemplate(template))
-				.toBe(JSON.stringify({ id: "/products/42" }));
+				.toBe(JSON.stringify({ items: { "?vendor": "/vendors/acme" } }));
 		});
 
 		it("should encode empty template", () => {
 			expect(encodeTemplate({})).toBe(JSON.stringify({}));
 		});
 
-		it("should encode template with primitive values", () => {
+		it("should encode template with value leaves", () => {
 			const template: Template = {
-				id: "",
-				name: "",
-				price: 0,
-				available: true
+				id: {},
+				name: {},
+				price: {},
+				available: {}
 			};
 
 			expect(encodeTemplate(template)).toBe(JSON.stringify(template));
@@ -2190,17 +1821,17 @@ describe("codecs", () => {
 
 		it("should encode template with nested template", () => {
 			const template: Template = {
-				id: "",
-				vendor: { id: "", name: "" }
+				id: {},
+				vendor: { id: {}, name: {} }
 			};
 
 			expect(encodeTemplate(template)).toBe(JSON.stringify(template));
 		});
 
-		it("should encode template with array values", () => {
+		it("should encode template with constrained collection entries", () => {
 			const template: Template = {
-				id: "",
-				tags: [""]
+				id: {},
+				items: { name: {}, "^name": "asc", "#": 10 }
 			};
 
 			expect(encodeTemplate(template)).toBe(JSON.stringify(template));
@@ -2208,8 +1839,8 @@ describe("codecs", () => {
 
 		it("should encode template with locale values", () => {
 			const template: Template = {
-				id: "",
-				name: { en: "", fr: "" }
+				id: {},
+				name: { en: {}, fr: {} }
 			};
 
 			expect(encodeTemplate(template)).toBe(JSON.stringify(template));
@@ -2217,28 +1848,28 @@ describe("codecs", () => {
 
 		it("should omit undefined-valued properties", () => {
 			const template: Template = {
-				id: "",
+				id: {},
 				name: undefined,
-				price: 0
+				price: {}
 			};
 
-			expect(encodeTemplate(template)).toBe(JSON.stringify({ id: "", price: 0 }));
+			expect(encodeTemplate(template)).toBe(JSON.stringify({ id: {}, price: {} }));
 		});
 
 		it("should indent output when indent is true", () => {
-			expect(encodeTemplate({ id: "" }, { indent: true })).toBe("{\n  \"id\": \"\"\n}");
+			expect(encodeTemplate({ id: {} }, { indent: true })).toBe("{\n  \"id\": {}\n}");
 		});
 
 		it("should indent output by the given number of spaces", () => {
-			expect(encodeTemplate({ id: "" }, { indent: 4 })).toBe("{\n    \"id\": \"\"\n}");
+			expect(encodeTemplate({ id: {} }, { indent: 4 })).toBe("{\n    \"id\": {}\n}");
 		});
 
 		it("should produce compact output when indent is false", () => {
-			expect(encodeTemplate({ id: "" }, { indent: false })).toBe("{\"id\":\"\"}");
+			expect(encodeTemplate({ id: {} }, { indent: false })).toBe("{\"id\":{}}");
 		});
 
 		it("should produce compact output when indent is zero", () => {
-			expect(encodeTemplate({ id: "" }, { indent: 0 })).toBe("{\"id\":\"\"}");
+			expect(encodeTemplate({ id: {} }, { indent: 0 })).toBe("{\"id\":{}}");
 		});
 
 	});
@@ -2248,16 +1879,16 @@ describe("codecs", () => {
 		describe("base option", () => {
 
 			it("should reject relative IRI base", () => {
-				const json = JSON.stringify({ id: "/products/42" });
+				const json = JSON.stringify({ items: { "?vendor": "/vendors/acme" } });
 
 				expect(() => decodeTemplate(json, { base: "/relative/path" })).toThrow(TypeError);
 			});
 
 			it("should resolve root-relative IRI to absolute", () => {
-				const json = JSON.stringify({ id: "/products/42" });
+				const json = JSON.stringify({ items: { "?vendor": "/vendors/acme" } });
 
 				expect(decodeTemplate(json, { base: "https://example.com/" }))
-					.toEqual({ id: "https://example.com/products/42" });
+					.toEqual({ items: { "?vendor": "https://example.com/vendors/acme" } });
 			});
 
 		});
@@ -2265,15 +1896,15 @@ describe("codecs", () => {
 		describe("format auto-detection", () => {
 
 			it("should decode plain JSON input", () => {
-				expect(decodeTemplate("{\"id\":\"\"}")).toEqual({ id: "" });
+				expect(decodeTemplate("{\"id\":{}}")).toEqual({ id: {} });
 			});
 
 			it("should decode URL-encoded JSON input", () => {
-				expect(decodeTemplate("%7B%22id%22%3A%22%22%7D")).toEqual({ id: "" });
+				expect(decodeTemplate("%7B%22id%22%3A%7B%7D%7D")).toEqual({ id: {} });
 			});
 
 			it("should decode URL-safe base64-encoded JSON input", () => {
-				expect(decodeTemplate("eyJpZCI6IiJ9")).toEqual({ id: "" });
+				expect(decodeTemplate("eyJpZCI6e319")).toEqual({ id: {} });
 			});
 
 			it("should decode unpadded base64url input", () => {
@@ -2281,7 +1912,7 @@ describe("codecs", () => {
 			});
 
 			it("should roundtrip a template through each transport format", () => {
-				const template: Template = { id: "", name: "", vendor: { id: "", name: "" } };
+				const template: Template = { id: {}, name: {}, vendor: { id: {}, name: {} } };
 
 				expect(decodeTemplate(encodeTemplate(template, { format: "json" }))).toEqual(template);
 				expect(decodeTemplate(encodeTemplate(template, { format: "url" }))).toEqual(template);
@@ -2291,56 +1922,55 @@ describe("codecs", () => {
 		});
 
 		it("should use app base when base option is omitted", () => {
-			const json = JSON.stringify({ id: "/products/42" });
+			const json = JSON.stringify({ items: { "?vendor": "/vendors/acme" } });
 
 			expect(decodeTemplate(json))
-				.toEqual({ id: "app:/products/42" });
+				.toEqual({ items: { "?vendor": "app:/vendors/acme" } });
 		});
 
 		it("should decode empty template", () => {
 			expect(decodeTemplate(JSON.stringify({}))).toEqual({});
 		});
 
-		it("should decode template with primitive values", () => {
+		it("should decode template with value leaves", () => {
 			const json = JSON.stringify({
-				id: "",
-				name: "",
-				price: 0,
-				available: true
+				id: {},
+				name: {},
+				price: {},
+				available: {}
 			});
 
 			expect(decodeTemplate(json)).toEqual({
-				id: "",
-				name: "",
-				price: 0,
-				available: true
+				id: {},
+				name: {},
+				price: {},
+				available: {}
 			});
 		});
 
 		it("should decode template with nested template", () => {
 			const json = JSON.stringify({
-				id: "",
+				id: {},
 				vendor: {
-					id: "/vendors/acme",
-					name: ""
+					id: {},
+					name: {}
 				}
 			});
 
 			expect(decodeTemplate(json)).toEqual({
-				id: "",
+				id: {},
 				vendor: {
-					id: "app:/vendors/acme",
-					name: ""
+					id: {},
+					name: {}
 				}
 			});
 		});
 
 		it("should roundtrip with encodeTemplate", () => {
 			const template: Template = {
-				id: "",
-				name: "",
-				price: 0,
-				vendor: { id: "app:/vendors/acme", name: "" }
+				id: {},
+				name: {},
+				items: { name: {}, "?vendor": "app:/vendors/acme", "#": 10 }
 			};
 
 			expect(decodeTemplate(encodeTemplate(template))).toEqual(template);
@@ -2364,10 +1994,10 @@ describe("codecs", () => {
 
 			it("should skip structural validation when lenient", () => {
 				// a non-template value parses cleanly but fails validation; lenient lets it through
-				const json = JSON.stringify({ "foo.bar": "" });
+				const json = JSON.stringify({ "foo.bar": {} });
 
 				expect(() => decodeTemplate(json, { lenient: true })).not.toThrow();
-				expect(decodeTemplate(json, { lenient: true })).toEqual({ "foo.bar": "" });
+				expect(decodeTemplate(json, { lenient: true })).toEqual({ "foo.bar": {} });
 			});
 
 			it("should still throw on syntax errors when lenient", () => {
@@ -2379,20 +2009,20 @@ describe("codecs", () => {
 	});
 
 
-	describe("encodeSelection()", () => {
+	describe("encodeCriteria()", () => {
 
 		describe("base option", () => {
 
 			it("should reject relative IRI base", () => {
 				const query = { id: "/products/42" };
 
-				expect(() => encodeSelection(query, { base: "/relative/path" })).toThrow(TypeError);
+				expect(() => encodeCriteria(query, { base: "/relative/path" })).toThrow(TypeError);
 			});
 
 			it("should internalize absolute IRI to root-relative", () => {
-				const selection = { "?vendor": "https://example.com/vendors/acme" } as Selection;
+				const criteria = { "?vendor": "https://example.com/vendors/acme" } as Criteria;
 
-				const encoded = encodeSelection(selection, { base: "https://example.com/" });
+				const encoded = encodeCriteria(criteria, { base: "https://example.com/" });
 
 				expect(encoded).toBe("%3Fvendor=%22%2Fvendors%2Facme%22");
 			});
@@ -2400,8 +2030,8 @@ describe("codecs", () => {
 		});
 
 		it("should use app base when base option is omitted", () => {
-			const selection = { "?vendor": "app:/vendors/acme" } as Selection;
-			const encoded = encodeSelection(selection);
+			const criteria = { "?vendor": "app:/vendors/acme" } as Criteria;
+			const encoded = encodeCriteria(criteria);
 
 			expect(encoded).toBe("%3Fvendor=%22%2Fvendors%2Facme%22");
 		});
@@ -2411,23 +2041,23 @@ describe("codecs", () => {
 			describe("basic constraints", () => {
 
 				it("should encode empty query", () => {
-					const query = {} as Selection;
-					const encoded = encodeSelection(query);
+					const query = {} as Criteria;
+					const encoded = encodeCriteria(query);
 
 					expect(encoded).toBe("");
 				});
 
 				it("should encode single constraint", () => {
-					const query = { "?name": "widget" } as Selection;
-					const encoded = encodeSelection(query);
+					const query = { "?name": "widget" } as Criteria;
+					const encoded = encodeCriteria(query);
 
 					// ?name="widget"
 					expect(encoded).toBe("%3Fname=%22widget%22");
 				});
 
 				it("should encode multiple constraints", () => {
-					const query = { "?name": "widget", ">=price": 100 } as Selection;
-					const encoded = encodeSelection(query);
+					const query = { "?name": "widget", ">=price": 100 } as Criteria;
+					const encoded = encodeCriteria(query);
 
 					// ?name="widget"&>=price=100
 					expect(encoded).toBe("%3Fname=%22widget%22&%3E%3Dprice=100");
@@ -2443,7 +2073,7 @@ describe("codecs", () => {
 					["greater than", { ">price": 50 }, "%3Eprice=50"],
 					["greater than or equal", { ">=price": 50 }, "%3E%3Dprice=50"]
 				] as const)("should encode %s", (_, query, encoded) => {
-					expect(encodeSelection(query as Selection)).toBe(encoded);
+					expect(encodeCriteria(query as Criteria)).toBe(encoded);
 				});
 
 			});
@@ -2451,16 +2081,16 @@ describe("codecs", () => {
 			describe("search operator", () => {
 
 				it("should encode prefix word search", () => {
-					const query = { "~name": "widget" } as Selection;
-					const encoded = encodeSelection(query);
+					const query = { "~name": "widget" } as Criteria;
+					const encoded = encodeCriteria(query);
 
 					// ~name="widget"  (~ not encoded - unreserved in RFC 3986)
 					expect(encoded).toBe("~name=%22widget%22");
 				});
 
 				it("should encode search with spaces", () => {
-					const query = { "~name": "red widget" } as Selection;
-					const encoded = encodeSelection(query);
+					const query = { "~name": "red widget" } as Criteria;
+					const encoded = encodeCriteria(query);
 
 					// ~name="red widget"
 					expect(encoded).toBe("~name=%22red%20widget%22");
@@ -2471,24 +2101,24 @@ describe("codecs", () => {
 			describe("disjunctive matching", () => {
 
 				it("should encode single value", () => {
-					const query = { "?category": "electronics" } as Selection;
-					const encoded = encodeSelection(query);
+					const query = { "?category": "electronics" } as Criteria;
+					const encoded = encodeCriteria(query);
 
 					// ?category="electronics"
 					expect(encoded).toBe("%3Fcategory=%22electronics%22");
 				});
 
 				it("should encode multiple values as repeated parameters", () => {
-					const query = { "?category": ["electronics", "home"] } as unknown as Selection;
-					const encoded = encodeSelection(query);
+					const query = { "?category": ["electronics", "home"] } as unknown as Criteria;
+					const encoded = encodeCriteria(query);
 
 					// ?category="electronics"&?category="home"
 					expect(encoded).toBe("%3Fcategory=%22electronics%22&%3Fcategory=%22home%22");
 				});
 
 				it("should encode null option for undefined matching", () => {
-					const query = { "?vendor": null } as unknown as Selection;
-					const encoded = encodeSelection(query);
+					const query = { "?vendor": null } as unknown as Criteria;
+					const encoded = encodeCriteria(query);
 
 					// ?vendor=null
 					expect(encoded).toBe("%3Fvendor=null");
@@ -2499,8 +2129,8 @@ describe("codecs", () => {
 			describe("conjunctive matching", () => {
 
 				it("should encode all-match constraint", () => {
-					const query = { "!tags": ["featured", "sale"] } as unknown as Selection;
-					const encoded = encodeSelection(query);
+					const query = { "!tags": ["featured", "sale"] } as unknown as Criteria;
+					const encoded = encodeCriteria(query);
 
 					// !tags="featured"&!tags="sale"  (! not encoded - unreserved in RFC 3986)
 					expect(encoded).toBe("!tags=%22featured%22&!tags=%22sale%22");
@@ -2511,16 +2141,16 @@ describe("codecs", () => {
 			describe("focus operator", () => {
 
 				it("should encode single focus value", () => {
-					const query = { "+category": "electronics" } as Selection;
-					const encoded = encodeSelection(query);
+					const query = { "+category": "electronics" } as Criteria;
+					const encoded = encodeCriteria(query);
 
 					// +category="electronics"  (+ encoded to %2B — reserved sub-delim)
 					expect(encoded).toBe("%2Bcategory=%22electronics%22");
 				});
 
 				it("should encode multiple focus values", () => {
-					const query = { "+category": ["electronics", "home"] } as unknown as Selection;
-					const encoded = encodeSelection(query);
+					const query = { "+category": ["electronics", "home"] } as unknown as Criteria;
+					const encoded = encodeCriteria(query);
 
 					// +category="electronics"&+category="home"
 					expect(encoded).toBe("%2Bcategory=%22electronics%22&%2Bcategory=%22home%22");
@@ -2535,7 +2165,7 @@ describe("codecs", () => {
 					["descending sort", { "^price": -1 }, "%5Eprice=-1"],
 					["multiple sort priorities", { "^price": 1, "^name": -2 }, "%5Eprice=1&%5Ename=-2"]
 				] as const)("should encode %s", (_, query, encoded) => {
-					expect(encodeSelection(query as Selection)).toBe(encoded);
+					expect(encodeCriteria(query as Criteria)).toBe(encoded);
 				});
 
 			});
@@ -2547,7 +2177,7 @@ describe("codecs", () => {
 					["limit", { "#": 25 }, "%23=25"],
 					["offset and limit together", { "@": 0, "#": 25 }, "%40=0&%23=25"]
 				] as const)("should encode %s", (_, query, encoded) => {
-					expect(encodeSelection(query as Selection)).toBe(encoded);
+					expect(encodeCriteria(query as Criteria)).toBe(encoded);
 				});
 
 			});
@@ -2555,8 +2185,8 @@ describe("codecs", () => {
 			describe("expression paths", () => {
 
 				it("should encode dotted property paths", () => {
-					const query = { ">=vendor.rating": 4 } as Selection;
-					const encoded = encodeSelection(query);
+					const query = { ">=vendor.rating": 4 } as Criteria;
+					const encoded = encodeCriteria(query);
 
 					// >=vendor.rating=4
 					expect(encoded).toBe("%3E%3Dvendor.rating=4");
@@ -2567,32 +2197,32 @@ describe("codecs", () => {
 			describe("expression transforms", () => {
 
 				it("should encode constraint with single transform", () => {
-					const query = { ">=year:releaseDate": 2020 } as Selection;
-					const encoded = encodeSelection(query);
+					const query = { ">=year:releaseDate": 2020 } as Criteria;
+					const encoded = encodeCriteria(query);
 
 					// >=year:releaseDate=2020
 					expect(encoded).toBe("%3E%3Dyear%3AreleaseDate=2020");
 				});
 
 				it("should encode constraint with transform pipeline", () => {
-					const query = { ">=round:avg:items.price": 100 } as Selection;
-					const encoded = encodeSelection(query);
+					const query = { ">=round:avg:items.price": 100 } as Criteria;
+					const encoded = encodeCriteria(query);
 
 					// >=round:avg:items.price=100
 					expect(encoded).toBe("%3E%3Dround%3Aavg%3Aitems.price=100");
 				});
 
 				it("should encode disjunction with transform", () => {
-					const query: Selection = { "?month:releaseDate": [1, 6, 12] };
-					const encoded = encodeSelection(query);
+					const query: Criteria = { "?month:releaseDate": [1, 6, 12] };
+					const encoded = encodeCriteria(query);
 
 					// ?month:releaseDate=1&?month:releaseDate=6&?month:releaseDate=12
 					expect(encoded).toBe("%3Fmonth%3AreleaseDate=1&%3Fmonth%3AreleaseDate=6&%3Fmonth%3AreleaseDate=12");
 				});
 
 				it("should encode ordering with transform", () => {
-					const query = { "^year:releaseDate": 1 } as Selection;
-					const encoded = encodeSelection(query);
+					const query = { "^year:releaseDate": 1 } as Criteria;
+					const encoded = encodeCriteria(query);
 
 					// ^year:releaseDate=1
 					expect(encoded).toBe("%5Eyear%3AreleaseDate=1");
@@ -2606,7 +2236,7 @@ describe("codecs", () => {
 					["true value", { "?available": true }, "%3Favailable=true"],
 					["false value", { "?available": false }, "%3Favailable=false"]
 				] as const)("should encode %s", (_, query, encoded) => {
-					expect(encodeSelection(query as Selection)).toBe(encoded);
+					expect(encodeCriteria(query as Criteria)).toBe(encoded);
 				});
 
 			});
@@ -2621,7 +2251,7 @@ describe("codecs", () => {
 					// scientific notation: + encoded as %2B to avoid space interpretation
 					["scientific notation", { ">=count": 1.5e21 }, "%3E%3Dcount=1.5e%2B21"]
 				] as const)("should encode %s", (_, query, encoded) => {
-					expect(encodeSelection(query as Selection)).toBe(encoded);
+					expect(encodeCriteria(query as Criteria)).toBe(encoded);
 				});
 
 			});
@@ -2629,88 +2259,88 @@ describe("codecs", () => {
 			describe("string values", () => {
 
 				it("should encode empty string", () => {
-					const query = { "~name": "" } as Selection;
-					const encoded = encodeSelection(query);
+					const query = { "~name": "" } as Criteria;
+					const encoded = encodeCriteria(query);
 
 					// ~name=""
 					expect(encoded).toBe("~name=%22%22");
 				});
 
 				it("should encode simple string", () => {
-					const query = { "~name": "widget" } as Selection;
-					const encoded = encodeSelection(query);
+					const query = { "~name": "widget" } as Criteria;
+					const encoded = encodeCriteria(query);
 
 					// ~name="widget"
 					expect(encoded).toBe("~name=%22widget%22");
 				});
 
 				it("should encode string with spaces", () => {
-					const query = { "~name": "my widget" } as Selection;
-					const encoded = encodeSelection(query);
+					const query = { "~name": "my widget" } as Criteria;
+					const encoded = encodeCriteria(query);
 
 					// ~name="my widget"
 					expect(encoded).toBe("~name=%22my%20widget%22");
 				});
 
 				it("should encode string with quotes", () => {
-					const query = { "~name": "say \"hello\"" } as Selection;
-					const encoded = encodeSelection(query);
+					const query = { "~name": "say \"hello\"" } as Criteria;
+					const encoded = encodeCriteria(query);
 
 					// ~name="say \"hello\""  (inner quotes escaped as \")
 					expect(encoded).toBe("~name=%22say%20%5C%22hello%5C%22%22");
 				});
 
 				it("should encode unicode characters", () => {
-					const query = { "~name": "café" } as Selection;
-					const encoded = encodeSelection(query);
+					const query = { "~name": "café" } as Criteria;
+					const encoded = encodeCriteria(query);
 
 					// ~name="café"  (é encoded as UTF-8 bytes %C3%A9)
 					expect(encoded).toBe("~name=%22caf%C3%A9%22");
 				});
 
 				it("should encode newlines", () => {
-					const query = { "~description": "line1\nline2" } as Selection;
-					const encoded = encodeSelection(query);
+					const query = { "~description": "line1\nline2" } as Criteria;
+					const encoded = encodeCriteria(query);
 
 					// ~description="line1\nline2"
 					expect(encoded).toBe("~description=%22line1%0Aline2%22");
 				});
 
 				it("should encode tabs", () => {
-					const query = { "~description": "col1\tcol2" } as Selection;
-					const encoded = encodeSelection(query);
+					const query = { "~description": "col1\tcol2" } as Criteria;
+					const encoded = encodeCriteria(query);
 
 					// ~description="col1\tcol2"
 					expect(encoded).toBe("~description=%22col1%09col2%22");
 				});
 
 				it("should encode ampersand", () => {
-					const query = { "~name": "foo&bar" } as Selection;
-					const encoded = encodeSelection(query);
+					const query = { "~name": "foo&bar" } as Criteria;
+					const encoded = encodeCriteria(query);
 
 					// ~name="foo&bar"  (& encoded to avoid parameter separator)
 					expect(encoded).toBe("~name=%22foo%26bar%22");
 				});
 
 				it("should encode equals sign", () => {
-					const query = { "~name": "a=b" } as Selection;
-					const encoded = encodeSelection(query);
+					const query = { "~name": "a=b" } as Criteria;
+					const encoded = encodeCriteria(query);
 
 					// ~name="a=b"  (= encoded to avoid key/value separator)
 					expect(encoded).toBe("~name=%22a%3Db%22");
 				});
 
 				it("should encode plus sign", () => {
-					const query = { "~name": "a+b" } as Selection;
-					const encoded = encodeSelection(query);
+					const query = { "~name": "a+b" } as Criteria;
+					const encoded = encodeCriteria(query);
 
 					// ~name="a+b"  (+ encoded to avoid space interpretation)
 					expect(encoded).toBe("~name=%22a%2Bb%22");
 				});
 
 				it("should encode percent sign", () => {
-					const query = { "~name": "100%" } as Selection;
-					const encoded = encodeSelection(query);
+					const query = { "~name": "100%" } as Criteria;
+					const encoded = encodeCriteria(query);
 
 					// ~name="100%"  (% encoded to avoid escape sequence)
 					expect(encoded).toBe("~name=%22100%25%22");
@@ -2721,24 +2351,24 @@ describe("codecs", () => {
 			describe("localized content", () => {
 
 				it("should encode single tagged string", () => {
-					const query = { "?name": { "en": "Widget" } } as Selection;
-					const encoded = encodeSelection(query);
+					const query = { "?name": { "en": "Widget" } } as Criteria;
+					const encoded = encodeCriteria(query);
 
 					// ?name="Widget"@en
 					expect(encoded).toBe("%3Fname=%22Widget%22%40en");
 				});
 
 				it("should encode multiple tagged strings", () => {
-					const query = { "?name": { "en": "Widget", "fr": "Gadget" } } as Selection;
-					const encoded = encodeSelection(query);
+					const query = { "?name": { "en": "Widget", "fr": "Gadget" } } as Criteria;
+					const encoded = encodeCriteria(query);
 
 					// ?name="Widget"@en&?name="Gadget"@fr
 					expect(encoded).toBe("%3Fname=%22Widget%22%40en&%3Fname=%22Gadget%22%40fr");
 				});
 
 				it("should encode localised text map with multi-value tags", () => {
-					const query: Selection = { "?name": { "en": ["Widget", "Gadget"], "fr": ["Bidule"] } };
-					const encoded = encodeSelection(query);
+					const query: Criteria = { "?name": { "en": ["Widget", "Gadget"], "fr": ["Bidule"] } };
+					const encoded = encodeCriteria(query);
 
 					// ?name="Widget"@en&?name="Gadget"@en&?name="Bidule"@fr
 					expect(encoded).toBe("%3Fname=%22Widget%22%40en&%3Fname=%22Gadget%22%40en&%3Fname=%22Bidule%22%40fr");
@@ -2749,35 +2379,35 @@ describe("codecs", () => {
 			describe("localised text map roundtrip", () => {
 
 				it("should reconstruct single-tag single-valued map as multi-valued", () => {
-					const query = { "?name": { "en": "Widget" } } as Selection;
-					const encoded = encodeSelection(query);
-					const decoded = decodeSelection(encoded);
+					const query = { "?name": { "en": "Widget" } } as Criteria;
+					const encoded = encodeCriteria(query);
+					const decoded = decodeCriteria(encoded);
 
 					// the single-valued form normalises to multi-valued (form mode is lossy for cardinality)
 					expect(decoded).toEqual({ "?name": { "en": ["Widget"] } });
 				});
 
 				it("should reconstruct multi-tag single-valued map as multi-valued", () => {
-					const query = { "?name": { "en": "Widget", "fr": "Gadget" } } as Selection;
-					const encoded = encodeSelection(query);
-					const decoded = decodeSelection(encoded);
+					const query = { "?name": { "en": "Widget", "fr": "Gadget" } } as Criteria;
+					const encoded = encodeCriteria(query);
+					const decoded = decodeCriteria(encoded);
 
 					// the single-valued form normalises to multi-valued (form mode is lossy for cardinality)
 					expect(decoded).toEqual({ "?name": { "en": ["Widget"], "fr": ["Gadget"] } });
 				});
 
 				it("should roundtrip single-element multi-valued map", () => {
-					const query = { "?name": { "en": ["Widget"] } } as Selection;
-					const encoded = encodeSelection(query);
-					const decoded = decodeSelection(encoded);
+					const query = { "?name": { "en": ["Widget"] } } as Criteria;
+					const encoded = encodeCriteria(query);
+					const decoded = decodeCriteria(encoded);
 
 					expect(decoded).toEqual(query);
 				});
 
 				it("should roundtrip multi-value multi-valued map", () => {
-					const query: Selection = { "?name": { "en": ["Widget", "Gadget"], "fr": ["Bidule"] } };
-					const encoded = encodeSelection(query);
-					const decoded = decodeSelection(encoded);
+					const query: Criteria = { "?name": { "en": ["Widget", "Gadget"], "fr": ["Bidule"] } };
+					const encoded = encodeCriteria(query);
+					const decoded = decodeCriteria(encoded);
 
 					expect(decoded).toEqual(query);
 				});
@@ -2788,22 +2418,22 @@ describe("codecs", () => {
 
 	});
 
-	describe("decodeSelection()", () => {
+	describe("decodeCriteria()", () => {
 
 		describe("base option", () => {
 
 			it("should reject relative IRI base", () => {
 				const encoded = "id=%22%2Fproducts%2F42%22";
 
-				expect(() => decodeSelection(encoded, { base: "/relative/path" })).toThrow(TypeError);
+				expect(() => decodeCriteria(encoded, { base: "/relative/path" })).toThrow(TypeError);
 			});
 
 			it("should resolve root-relative IRI to absolute", () => {
 				const encoded = "id=%22%2Fproducts%2F42%22";
 
-				const decoded = decodeSelection(encoded, { base: "https://example.com/" });
+				const decoded = decodeCriteria(encoded, { base: "https://example.com/" });
 
-				expect(decoded).toEqual({ "?id": "https://example.com/products/42" } as Selection);
+				expect(decoded).toEqual({ "?id": "https://example.com/products/42" } as Criteria);
 			});
 
 		});
@@ -2811,8 +2441,8 @@ describe("codecs", () => {
 		it("should use app base when base option is omitted", () => {
 			const encoded = "%3Fvendor=%22%2Fvendors%2Facme%22";
 
-			expect(decodeSelection(encoded))
-				.toEqual({ "?vendor": "app:/vendors/acme" } as Selection);
+			expect(decodeCriteria(encoded))
+				.toEqual({ "?vendor": "app:/vendors/acme" } as Criteria);
 		});
 
 		describe("form format decoding", () => {
@@ -2825,13 +2455,13 @@ describe("codecs", () => {
 			describe("basic parameters", () => {
 
 				it("should decode single parameter", () => {
-					const decoded = decodeSelection("name=test");
+					const decoded = decodeCriteria("name=test");
 
 					expect(decoded).toHaveProperty("?name");
 				});
 
 				it("should decode multiple parameters", () => {
-					const decoded = decodeSelection("name=test&price=100");
+					const decoded = decodeCriteria("name=test&price=100");
 
 					expect(decoded).toHaveProperty("?name");
 					expect(decoded).toHaveProperty("?price");
@@ -2850,14 +2480,14 @@ describe("codecs", () => {
 					[">= (unencoded)", "price>=50", ">=price", 50],
 					[">= (prefix)", "%3E%3Dprice=50", ">=price", 50]
 				] as const)("should decode %s", (_, input, key, value) => {
-					expect(decodeSelection(input)).toHaveProperty(key, value);
+					expect(decodeCriteria(input)).toHaveProperty(key, value);
 				});
 
 				it.each([
 					["< postfix", "price<100"],
 					["> postfix", "price>50"]
 				] as const)("should reject strict-comparison postfix (%s)", (_, input) => {
-					expect(() => decodeSelection(input)).toThrow(Error);
+					expect(() => decodeCriteria(input)).toThrow(Error);
 				});
 
 			});
@@ -2870,7 +2500,7 @@ describe("codecs", () => {
 					["spaces (%20)", "%7Ename=red%20widget", "red widget"],
 					["plus as space", "%7Ename=red+widget", "red widget"]
 				] as const)("should decode search (%s)", (_, input, value) => {
-					expect(decodeSelection(input)).toHaveProperty("~name", value);
+					expect(decodeCriteria(input)).toHaveProperty("~name", value);
 				});
 
 			});
@@ -2878,34 +2508,34 @@ describe("codecs", () => {
 			describe("disjunctive matching", () => {
 
 				it("should decode a single value", () => {
-					const decoded = decodeSelection("category=electronics") as Record<string, unknown>;
+					const decoded = decodeCriteria("category=electronics") as Record<string, unknown>;
 
 					expect(decoded["?category"]).toBe("electronics");
 				});
 
 				it("should decode a bare wildcard as an empty option set", () => {
 					// `expr=*` selects all (empty option set); the `?` operator is implied
-					expect(decodeSelection("category=*")).toEqual({ "?category": [] });
+					expect(decodeCriteria("category=*")).toEqual({ "?category": [] });
 				});
 
 				it("should let a real value override a sibling wildcard", () => {
-					expect(decodeSelection("category=home&category=*")).toEqual({ "?category": "home" });
+					expect(decodeCriteria("category=home&category=*")).toEqual({ "?category": "home" });
 				});
 
 				it("should decode repeated parameters as array", () => {
-					const decoded = decodeSelection("category=electronics&category=home") as Record<string, unknown>;
+					const decoded = decodeCriteria("category=electronics&category=home") as Record<string, unknown>;
 
 					expect(decoded["?category"]).toEqual(["electronics", "home"]);
 				});
 
 				it("should decode explicit prefix operator", () => {
-					const decoded = decodeSelection("%3Fcategory=electronics");
+					const decoded = decodeCriteria("%3Fcategory=electronics");
 
 					expect(decoded).toHaveProperty("?category");
 				});
 
 				it("should decode null for undefined matching", () => {
-					const decoded = decodeSelection("%3Fvendor=null") as Record<string, unknown>;
+					const decoded = decodeCriteria("%3Fvendor=null") as Record<string, unknown>;
 
 					expect(decoded["?vendor"]).toBe(null);
 				});
@@ -2918,7 +2548,7 @@ describe("codecs", () => {
 					["encoded", "%21tags=featured&%21tags=sale"],
 					["unencoded", "!tags=featured&!tags=sale"]
 				])("should decode all-match constraint (%s)", (_, input) => {
-					const decoded = decodeSelection(input) as Record<string, unknown>;
+					const decoded = decodeCriteria(input) as Record<string, unknown>;
 
 					expect(decoded["!tags"]).toEqual(["featured", "sale"]);
 				});
@@ -2927,7 +2557,7 @@ describe("codecs", () => {
 					["encoded", "%21tags=premium"],
 					["unencoded", "!tags=premium"]
 				])("should decode explicit prefix operator (%s)", (_, input) => {
-					expect(decodeSelection(input)).toHaveProperty("!tags");
+					expect(decodeCriteria(input)).toHaveProperty("!tags");
 				});
 
 			});
@@ -2935,7 +2565,7 @@ describe("codecs", () => {
 			describe("repeated labels", () => {
 
 				it("should collect repeated option-set operators", () => {
-					const decoded = decodeSelection("%2Bcategory=a&%2Bcategory=b") as Record<string, unknown>;
+					const decoded = decodeCriteria("%2Bcategory=a&%2Bcategory=b") as Record<string, unknown>;
 
 					expect(decoded["+category"]).toEqual(["a", "b"]);
 				});
@@ -2946,7 +2576,7 @@ describe("codecs", () => {
 					["sort", "%5Eprice=asc&%5Eprice=desc"],
 					["pagination", "@=0&@=10"]
 				] as const)("should reject a repeated single-valued operator (%s)", (_, input) => {
-					expect(() => decodeSelection(input)).toThrow(Error);
+					expect(() => decodeCriteria(input)).toThrow(Error);
 				});
 
 			});
@@ -2957,12 +2587,12 @@ describe("codecs", () => {
 					["encoded", "%2Bcategory=featured"],
 					["unencoded", "+category=featured"]
 				])("should decode focus constraint with single value (%s)", (_, input) => {
-					expect(decodeSelection(input)).toHaveProperty("+category");
+					expect(decodeCriteria(input)).toHaveProperty("+category");
 				});
 
 				it("should decode focus constraint with multiple values", () => {
 					// +category=featured&+category=popular
-					const decoded = decodeSelection("%2Bcategory=featured&%2Bcategory=popular") as Record<string, unknown>;
+					const decoded = decodeCriteria("%2Bcategory=featured&%2Bcategory=popular") as Record<string, unknown>;
 
 					expect(decoded["+category"]).toEqual(["featured", "popular"]);
 				});
@@ -2981,7 +2611,7 @@ describe("codecs", () => {
 					["negative priority (encoded)", "%5Eprice=-2", "^price", -2],
 					["negative priority (unencoded)", "^price=-2", "^price", -2]
 				] as const)("should decode %s", (_, input, key, value) => {
-					expect(decodeSelection(input)).toHaveProperty(key, value);
+					expect(decodeCriteria(input)).toHaveProperty(key, value);
 				});
 
 			});
@@ -2998,7 +2628,7 @@ describe("codecs", () => {
 					["upper-case asc", "^price=ASC"],
 					["mixed-case desc", "^price=Desc"]
 				] as const)("should reject %s even when lenient", (_, input) => {
-					expect(() => decodeSelection(input, { lenient: true })).toThrow(Error);
+					expect(() => decodeCriteria(input, { lenient: true })).toThrow(Error);
 				});
 
 			});
@@ -3013,7 +2643,7 @@ describe("codecs", () => {
 					["zero offset", "%40=0", "@", 0],
 					["zero offset (unencoded)", "@=0", "@", 0]
 				] as const)("should decode %s", (_, input, key, value) => {
-					expect(decodeSelection(input)).toHaveProperty(key, value);
+					expect(decodeCriteria(input)).toHaveProperty(key, value);
 				});
 
 			});
@@ -3021,174 +2651,174 @@ describe("codecs", () => {
 			describe("value parsing", () => {
 
 				it("should parse numeric strings as numbers", () => {
-					const decoded = decodeSelection("%3E%3Dprice=100") as Record<string, unknown>;
+					const decoded = decodeCriteria("%3E%3Dprice=100") as Record<string, unknown>;
 
 					expect(decoded[">=price"]).toBe(100);
 				});
 
 				it("should parse decimal numbers", () => {
-					const decoded = decodeSelection("%3E%3Dprice=99.99") as Record<string, unknown>;
+					const decoded = decodeCriteria("%3E%3Dprice=99.99") as Record<string, unknown>;
 
 					expect(decoded[">=price"]).toBe(99.99);
 				});
 
 				it("should parse negative numbers", () => {
-					const decoded = decodeSelection("%5Eprice=-1") as Record<string, unknown>;
+					const decoded = decodeCriteria("%5Eprice=-1") as Record<string, unknown>;
 
 					expect(decoded["^price"]).toBe(-1);
 				});
 
 				it("should parse boolean true", () => {
-					const decoded = decodeSelection("available=true") as Record<string, unknown>;
+					const decoded = decodeCriteria("available=true") as Record<string, unknown>;
 
 					expect(decoded["?available"]).toBe(true);
 				});
 
 				it("should parse boolean false", () => {
-					const decoded = decodeSelection("available=false") as Record<string, unknown>;
+					const decoded = decodeCriteria("available=false") as Record<string, unknown>;
 
 					expect(decoded["?available"]).toBe(false);
 				});
 
 				it("should preserve non-numeric strings", () => {
-					const decoded = decodeSelection("%7Ename=widget") as Record<string, unknown>;
+					const decoded = decodeCriteria("%7Ename=widget") as Record<string, unknown>;
 
 					expect(decoded["~name"]).toBe("widget");
 				});
 
 				it("should decode percent-encoded special characters", () => {
-					const decoded = decodeSelection("%7Ename=foo%26bar") as Record<string, unknown>;
+					const decoded = decodeCriteria("%7Ename=foo%26bar") as Record<string, unknown>;
 
 					expect(decoded["~name"]).toBe("foo&bar");
 				});
 
 				it("should decode percent-encoded unicode", () => {
-					const decoded = decodeSelection("%7Ename=caf%C3%A9") as Record<string, unknown>;
+					const decoded = decodeCriteria("%7Ename=caf%C3%A9") as Record<string, unknown>;
 
 					expect(decoded["~name"]).toBe("café");
 				});
 
 				it("should decode empty value", () => {
-					const decoded = decodeSelection("~name=") as Record<string, unknown>;
+					const decoded = decodeCriteria("~name=") as Record<string, unknown>;
 
 					expect(decoded["~name"]).toBe("");
 				});
 
 				it("should decode equals in value", () => {
 					// ~name=a=b (= in value must be encoded)
-					const decoded = decodeSelection("~name=a%3Db") as Record<string, unknown>;
+					const decoded = decodeCriteria("~name=a%3Db") as Record<string, unknown>;
 
 					expect(decoded["~name"]).toBe("a=b");
 				});
 
 				it("should parse null", () => {
-					const decoded = decodeSelection("value=null") as Record<string, unknown>;
+					const decoded = decodeCriteria("value=null") as Record<string, unknown>;
 
 					expect(decoded["?value"]).toBe(null);
 				});
 
 				it("should parse scientific notation", () => {
-					const decoded = decodeSelection("value=1e10") as Record<string, unknown>;
+					const decoded = decodeCriteria("value=1e10") as Record<string, unknown>;
 
 					expect(decoded["?value"]).toBe(1e10);
 				});
 
 				it("should parse negative exponent", () => {
-					const decoded = decodeSelection("value=1.5e-10") as Record<string, unknown>;
+					const decoded = decodeCriteria("value=1.5e-10") as Record<string, unknown>;
 
 					expect(decoded["?value"]).toBe(1.5e-10);
 				});
 
 				it("should parse quoted string preserving type", () => {
 					// "123" should remain string, not convert to number
-					const decoded = decodeSelection("value=%22123%22") as Record<string, unknown>;
+					const decoded = decodeCriteria("value=%22123%22") as Record<string, unknown>;
 
 					expect(decoded["?value"]).toBe("123");
 				});
 
 				it("should parse quoted null as string", () => {
-					const decoded = decodeSelection("value=%22null%22") as Record<string, unknown>;
+					const decoded = decodeCriteria("value=%22null%22") as Record<string, unknown>;
 
 					expect(decoded["?value"]).toBe("null");
 				});
 
 				it("should decode JSON escape sequences", () => {
 					// "a\nb" encoded
-					const decoded = decodeSelection("value=%22a%5Cnb%22") as Record<string, unknown>;
+					const decoded = decodeCriteria("value=%22a%5Cnb%22") as Record<string, unknown>;
 
 					expect(decoded["?value"]).toBe("a\nb");
 				});
 
 				it("should decode escaped quotes in strings", () => {
 					// "a\"b" encoded
-					const decoded = decodeSelection("value=%22a%5C%22b%22") as Record<string, unknown>;
+					const decoded = decodeCriteria("value=%22a%5C%22b%22") as Record<string, unknown>;
 
 					expect(decoded["?value"]).toBe("a\"b");
 				});
 
 				it("should decode unicode escapes", () => {
 					// "\u0041" = "A"
-					const decoded = decodeSelection("value=%22%5Cu0041%22") as Record<string, unknown>;
+					const decoded = decodeCriteria("value=%22%5Cu0041%22") as Record<string, unknown>;
 
 					expect(decoded["?value"]).toBe("A");
 				});
 
 				it("should reject a non-literal comparison value", () => {
 					// <price=null, >=price="x"@en: comparisons take a literal only
-					expect(() => decodeSelection("%3Cprice=null")).toThrow(Error);
-					expect(() => decodeSelection("%3E%3Dprice=%22x%22%40en")).toThrow(Error);
+					expect(() => decodeCriteria("%3Cprice=null")).toThrow(Error);
+					expect(() => decodeCriteria("%3E%3Dprice=%22x%22%40en")).toThrow(Error);
 				});
 
 				it("should reject a non-string search value", () => {
 					// ~name=123, ~name=null: search takes a string only
-					expect(() => decodeSelection("%7Ename=123")).toThrow(Error);
-					expect(() => decodeSelection("%7Ename=null")).toThrow(Error);
+					expect(() => decodeCriteria("%7Ename=123")).toThrow(Error);
+					expect(() => decodeCriteria("%7Ename=null")).toThrow(Error);
 				});
 
 				it("should decode localized string", () => {
 					// "Hello"@en → always reconstructed as a multi-valued map (Options are multi-valued)
-					const decoded = decodeSelection("label=%22Hello%22%40en") as Record<string, unknown>;
+					const decoded = decodeCriteria("label=%22Hello%22%40en") as Record<string, unknown>;
 
 					expect(decoded["?label"]).toEqual({ "en": ["Hello"] });
 				});
 
 				it("should decode localized string with region", () => {
 					// "Colour"@en-GB → always reconstructed as a multi-valued map (Options are multi-valued)
-					const decoded = decodeSelection("label=%22Colour%22%40en-GB") as Record<string, unknown>;
+					const decoded = decodeCriteria("label=%22Colour%22%40en-GB") as Record<string, unknown>;
 
 					expect(decoded["?label"]).toEqual({ "en-GB": ["Colour"] });
 				});
 
 				it("should keep a non-tag @suffix as part of the plain string", () => {
 					// index.md §5 `tagged = string "@" tag`, `tag = BCP 47`: a non-tag suffix does not split off
-					const decoded = decodeSelection("%3Fnote=a%40_foo") as Record<string, unknown>;
+					const decoded = decodeCriteria("%3Fnote=a%40_foo") as Record<string, unknown>;
 
 					expect(decoded["?note"]).toBe("a@_foo");
 				});
 
 				it("should decode multiple tagged values into a localised text map", () => {
 					// ?name="Widget"@en&?name="Gadget"@fr → always a multi-valued map
-					const decoded = decodeSelection("%3Fname=%22Widget%22%40en&%3Fname=%22Gadget%22%40fr") as Record<string, unknown>;
+					const decoded = decodeCriteria("%3Fname=%22Widget%22%40en&%3Fname=%22Gadget%22%40fr") as Record<string, unknown>;
 
 					expect(decoded["?name"]).toEqual({ "en": ["Widget"], "fr": ["Gadget"] });
 				});
 
 				it("should decode multiple values per tag into a localised text map", () => {
 					// ?name="Widget"@en&?name="Gadget"@en&?name="Bidule"@fr
-					const decoded = decodeSelection("%3Fname=%22Widget%22%40en&%3Fname=%22Gadget%22%40en&%3Fname=%22Bidule%22%40fr") as Record<string, unknown>;
+					const decoded = decodeCriteria("%3Fname=%22Widget%22%40en&%3Fname=%22Gadget%22%40en&%3Fname=%22Bidule%22%40fr") as Record<string, unknown>;
 
 					expect(decoded["?name"]).toEqual({ "en": ["Widget", "Gadget"], "fr": ["Bidule"] });
 				});
 
 				it("should reject stacked language tags", () => {
 					// "foo"@en@fr: a value carries at most one tag
-					expect(() => decodeSelection("%3Fname=%22foo%22%40en%40fr")).toThrow(Error);
+					expect(() => decodeCriteria("%3Fname=%22foo%22%40en%40fr")).toThrow(Error);
 				});
 
 				it("should reject a language tag on a non-string", () => {
 					// 123@en, true@en: only strings are localised
-					expect(() => decodeSelection("%3Fn=123%40en")).toThrow(Error);
-					expect(() => decodeSelection("%3Fflag=true%40en")).toThrow(Error);
+					expect(() => decodeCriteria("%3Fn=123%40en")).toThrow(Error);
+					expect(() => decodeCriteria("%3Fflag=true%40en")).toThrow(Error);
 				});
 
 				it.each([
@@ -3196,7 +2826,7 @@ describe("codecs", () => {
 					["tagged then plain", "%3Fname=%22x%22%40en&%3Fname=plain"]
 				])("should reject mixing plain options and tagged values in a set (%s)", (_, input) => {
 					// a set is uniformly plain options or uniformly tagged (option / localised disjunction)
-					expect(() => decodeSelection(input)).toThrow(Error);
+					expect(() => decodeCriteria(input)).toThrow(Error);
 				});
 
 			});
@@ -3205,14 +2835,14 @@ describe("codecs", () => {
 
 				it("should decode unencoded dots in paths", () => {
 					// >=vendor.rating=4 (dot unreserved, no encoding needed)
-					const decoded = decodeSelection("%3E%3Dvendor.rating=4");
+					const decoded = decodeCriteria("%3E%3Dvendor.rating=4");
 
 					expect(decoded).toHaveProperty(">=vendor.rating", 4);
 				});
 
 				it("should decode percent-encoded dots in paths", () => {
 					// >=vendor.rating=4 (dot encoded as %2E)
-					const decoded = decodeSelection("%3E%3Dvendor%2Erating=4");
+					const decoded = decodeCriteria("%3E%3Dvendor%2Erating=4");
 
 					expect(decoded).toHaveProperty(">=vendor.rating", 4);
 				});
@@ -3223,35 +2853,35 @@ describe("codecs", () => {
 
 				it("should decode identifier with unicode letter (Greek)", () => {
 					// πrice=100 (Greek pi as first character)
-					const decoded = decodeSelection("%CF%80rice=100");
+					const decoded = decodeCriteria("%CF%80rice=100");
 
 					expect(decoded).toHaveProperty("?πrice", 100);
 				});
 
 				it("should decode identifier with unicode letter (Cyrillic)", () => {
 					// цена=100 (Russian "price")
-					const decoded = decodeSelection("%D1%86%D0%B5%D0%BD%D0%B0=100");
+					const decoded = decodeCriteria("%D1%86%D0%B5%D0%BD%D0%B0=100");
 
 					expect(decoded).toHaveProperty("?цена", 100);
 				});
 
 				it("should decode identifier with unicode letter (CJK)", () => {
 					// 价格=100 (Chinese "price")
-					const decoded = decodeSelection("%E4%BB%B7%E6%A0%BC=100");
+					const decoded = decodeCriteria("%E4%BB%B7%E6%A0%BC=100");
 
 					expect(decoded).toHaveProperty("?价格", 100);
 				});
 
 				it("should decode identifier with unicode continuation characters", () => {
 					// na\u0301me=test (combining acute accent in identifier)
-					const decoded = decodeSelection("na%CC%81me=test");
+					const decoded = decodeCriteria("na%CC%81me=test");
 
 					expect(decoded).toHaveProperty("?na\u0301me", "test");
 				});
 
 				it("should decode path with unicode identifiers", () => {
 					// >=производитель.рейтинг=4 (Russian vendor.rating)
-					const decoded = decodeSelection("%3E%3D%D0%BF%D1%80%D0%BE%D0%B8%D0%B7%D0%B2%D0%BE%D0%B4%D0%B8%D1%82%D0%B5%D0%BB%D1%8C.%D1%80%D0%B5%D0%B9%D1%82%D0%B8%D0%BD%D0%B3=4");
+					const decoded = decodeCriteria("%3E%3D%D0%BF%D1%80%D0%BE%D0%B8%D0%B7%D0%B2%D0%BE%D0%B4%D0%B8%D1%82%D0%B5%D0%BB%D1%8C.%D1%80%D0%B5%D0%B9%D1%82%D0%B8%D0%BD%D0%B3=4");
 
 					expect(decoded).toHaveProperty(">=производитель.рейтинг", 4);
 				});
@@ -3262,28 +2892,28 @@ describe("codecs", () => {
 
 				it("should decode constraint with single transform", () => {
 					// >=year:releaseDate=2020
-					const decoded = decodeSelection("%3E%3Dyear%3AreleaseDate=2020");
+					const decoded = decodeCriteria("%3E%3Dyear%3AreleaseDate=2020");
 
 					expect(decoded).toHaveProperty(">=year:releaseDate", 2020);
 				});
 
 				it("should decode constraint with transform pipeline", () => {
 					// >=round:avg:items.price=100
-					const decoded = decodeSelection("%3E%3Dround%3Aavg%3Aitems.price=100");
+					const decoded = decodeCriteria("%3E%3Dround%3Aavg%3Aitems.price=100");
 
 					expect(decoded).toHaveProperty(">=round:avg:items.price", 100);
 				});
 
 				it("should decode disjunction with transform", () => {
 					// ?month:releaseDate=1&?month:releaseDate=6&?month:releaseDate=12
-					const decoded = decodeSelection("%3Fmonth%3AreleaseDate=1&%3Fmonth%3AreleaseDate=6&%3Fmonth%3AreleaseDate=12") as Record<string, unknown>;
+					const decoded = decodeCriteria("%3Fmonth%3AreleaseDate=1&%3Fmonth%3AreleaseDate=6&%3Fmonth%3AreleaseDate=12") as Record<string, unknown>;
 
 					expect(decoded["?month:releaseDate"]).toEqual([1, 6, 12]);
 				});
 
 				it("should decode ordering with transform", () => {
 					// ^year:releaseDate=1
-					const decoded = decodeSelection("%5Eyear%3AreleaseDate=1");
+					const decoded = decodeCriteria("%5Eyear%3AreleaseDate=1");
 
 					expect(decoded).toHaveProperty("^year:releaseDate", 1);
 				});
@@ -3294,29 +2924,29 @@ describe("codecs", () => {
 				// The decoder is lenient with common URL parsing quirks
 
 				it("should handle empty string", () => {
-					const decoded = decodeSelection("");
+					const decoded = decodeCriteria("");
 
 					expect(decoded).toEqual({});
 				});
 
 				it("should reject a parameter without a value", () => {
-					expect(() => decodeSelection("name")).toThrow(Error);
+					expect(() => decodeCriteria("name")).toThrow(Error);
 				});
 
 				it("should handle leading ampersand", () => {
-					const decoded = decodeSelection("&name=test");
+					const decoded = decodeCriteria("&name=test");
 
 					expect(decoded).toHaveProperty("?name");
 				});
 
 				it("should handle trailing ampersand", () => {
-					const decoded = decodeSelection("name=test&");
+					const decoded = decodeCriteria("name=test&");
 
 					expect(decoded).toHaveProperty("?name");
 				});
 
 				it("should handle multiple ampersands", () => {
-					const decoded = decodeSelection("name=test&&price=100");
+					const decoded = decodeCriteria("name=test&&price=100");
 
 					expect(decoded).toHaveProperty("?name");
 					expect(decoded).toHaveProperty("?price");
@@ -3328,7 +2958,7 @@ describe("codecs", () => {
 
 				it("should decode complex query with multiple operators", () => {
 					// status=active&status=pending&~name=corp&price>=100&price<=1000&^date=desc&@=0&#=25
-					const decoded = decodeSelection(
+					const decoded = decodeCriteria(
 						"status=active&status=pending&~name=corp&price%3E%3D100&price%3C%3D1000&%5Edate=desc&%40=0&%23=25"
 					) as Record<string, unknown>;
 
@@ -3348,7 +2978,7 @@ describe("codecs", () => {
 		describe("roundtrip encoding/decoding", () => {
 
 			// Using Record<string, unknown>[] since template literal index signatures prevent satisfies
-			const selections: Record<string, unknown>[] = [
+			const cases: Record<string, unknown>[] = [
 				{},
 				{ ">=price": 50, "<=price": 150 },
 				{ "~name": "widget" },
@@ -3357,13 +2987,13 @@ describe("codecs", () => {
 				{ "@": 0, "#": 25 }
 			];
 
-			it.each(selections.map((s, i) => [i, s] as const))(
-				"should roundtrip selection %i",
-				(_, selection) => {
-					const encoded = encodeSelection(selection as Selection);
-					const decoded = decodeSelection(encoded);
+			it.each(cases.map((c, i) => [i, c] as const))(
+				"should roundtrip criteria %i",
+				(_, criteria) => {
+					const encoded = encodeCriteria(criteria as Criteria);
+					const decoded = decodeCriteria(encoded);
 
-					expect(decoded).toEqual(selection);
+					expect(decoded).toEqual(criteria);
 				}
 			);
 
@@ -3375,11 +3005,11 @@ describe("codecs", () => {
 				// <price=true parses cleanly but fails validation (< requires number or string)
 				const encoded = "%3Cprice=true";
 
-				expect(() => decodeSelection(encoded, { lenient: true })).not.toThrow();
+				expect(() => decodeCriteria(encoded, { lenient: true })).not.toThrow();
 			});
 
 			it("should still throw on syntax errors when lenient", () => {
-				expect(() => decodeSelection("%7Binvalid", { lenient: true })).toThrow(Error);
+				expect(() => decodeCriteria("%7Binvalid", { lenient: true })).toThrow(Error);
 			});
 
 		});
@@ -3387,19 +3017,19 @@ describe("codecs", () => {
 		describe("error handling", () => {
 
 			it("should handle malformed input gracefully", () => {
-				expect(() => decodeSelection("%7Binvalid")).toThrow(Error);
+				expect(() => decodeCriteria("%7Binvalid")).toThrow(Error);
 			});
 
 			it("should handle truncated percent-encoding", () => {
-				expect(() => decodeSelection("%")).toThrow(Error);
+				expect(() => decodeCriteria("%")).toThrow(Error);
 			});
 
 			it("should handle invalid percent-encoding sequence", () => {
-				expect(() => decodeSelection("%ZZ")).toThrow(Error);
+				expect(() => decodeCriteria("%ZZ")).toThrow(Error);
 			});
 
 			it("should handle incomplete percent-encoding", () => {
-				expect(() => decodeSelection("%2")).toThrow(Error);
+				expect(() => decodeCriteria("%2")).toThrow(Error);
 			});
 
 		});

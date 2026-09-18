@@ -9,7 +9,7 @@ non-portable ways:
 
 - **Client-Driven**: clients specify what they need, retrieving complex envelopes in a single call
 - **Queryable**: advanced filtering and aggregation, supporting faceted search and analytics
-- **Localised content**: full support for internationalised content with language-tagged dictionaries
+- **Localised Content**: full support for internationalised content with language-tagged dictionaries
 
 Developers seek these features in frameworks like GraphQL; **@metreeca/qest** brings them to REST/JSON, achieving:
 
@@ -53,17 +53,17 @@ npm install @metreeca/qest
 >
 > This section introduces essential concepts; for complete coverage, see the API reference:
 >
-> | Module                      | Description                      |
-> |-----------------------------|----------------------------------|
-> | [@metreeca/qest][]          | Shared options and defaults      |
-> | [@metreeca/qest/resource][] | Resource state representation    |
-> | [@metreeca/qest/template][] | Client-driven resource retrieval |
+> | Module                   | Description                      |
+> |--------------------------|----------------------------------|
+> | [@metreeca/qest][]       | Shared options and defaults      |
+> | [@metreeca/qest/state][] | Resource state representation    |
+> | [@metreeca/qest/model][] | Client-driven resource retrieval |
 
 [@metreeca/qest]: https://metreeca.github.io/qest/modules/index.html
 
-[@metreeca/qest/resource]: https://metreeca.github.io/qest/modules/resource.html
+[@metreeca/qest/state]: https://metreeca.github.io/qest/modules/state.html
 
-[@metreeca/qest/template]: https://metreeca.github.io/qest/modules/template.html
+[@metreeca/qest/model]: https://metreeca.github.io/qest/modules/model.html
 
 **@metreeca/qest** types define payload semantics and formats for standard REST operations:
 
@@ -76,14 +76,20 @@ npm install @metreeca/qest
 | PUT    | [Resource][] | Complete resource state update   |
 | DELETE | none         | Resource deletion                |
 
-[Resource]: https://metreeca.github.io/qest/types/resource.Resource.html
+[Resource]: https://metreeca.github.io/qest/types/state.Resource.html
 
-[Template]: https://metreeca.github.io/qest/types/template.Template.html
+[Template]: https://metreeca.github.io/qest/types/model.Template.html
+
+[Criteria]: https://metreeca.github.io/qest/types/model.Criteria.html
+
+[Projection]: https://metreeca.github.io/qest/types/model.Projection.html
+
+[Dictionary]: https://metreeca.github.io/qest/types/state.Dictionary.html
 
 ## Resources
 
-A [**Resource**](https://metreeca.github.io/qest/types/resource.Resource.html) is a property map describing the state of
-a resource, with optional links to other resources:
+A [**Resource**][Resource] is a property map describing the state of a resource, with optional links to other
+resources:
 
 ```http request
 GET https://data.example.com/products/123
@@ -136,23 +142,23 @@ fills this gap, supporting precise control over responses while remaining fully 
 > Client-driven retrieval is fully optional. Servers may provide defaults, typically derived from the underlying data
 > model, preserving standard REST/JSON behaviour while enabling advanced capabilities when needed.
 
-**Resources** — A [**Template**](https://metreeca.github.io/qest/types/template.Template.html) specifies which
-properties to retrieve from a single resource and how deeply to expand linked resources.
+**Resources** — A [**Template**][Template] specifies which properties to retrieve from a single resource and how
+deeply to expand linked resources.
 
 ```http request
 GET https://data.example.com/products/123?<template>
 ```
 
-where `<template>` is the URL-encoded JSON [**Template**](https://metreeca.github.io/qest/types/template.Template.html):
+where `<template>` is the URL-encoded JSON [**Template**][Template]:
 
 ```js
 ({
-    id: "",
-    name: "",
-    price: 0,
+    id: {},
+    name: {},
+    price: {},
     vendor: {
-        id: "",
-        name: "",
+        id: {},
+        name: {},
     },
 });
 ```
@@ -171,42 +177,36 @@ The response includes only the requested properties, with the linked `vendor` ex
 }
 ```
 
-**Collections** — A [**Query**](https://metreeca.github.io/qest/types/template.Query.html) is to a resource collection
-what a [**Template**](https://metreeca.github.io/qest/types/template.Template.html) is to a single resource: the
-collection-shaped retrieval template. It pairs a per-item element with a
-[**Selection**](https://metreeca.github.io/qest/types/template.Selection.html) for filtering, sorting, and pagination.
-The per-item element is a nested
-[**Template**](https://metreeca.github.io/qest/types/template.Template.html), or a
-[**Projection**](https://metreeca.github.io/qest/types/template.Projection.html) for computed aggregates (faceted search
+**Collections** — A collection is reached through the resource that owns it, and constrained there: the entry naming
+it carries the [**Criteria**][Criteria] for filtering, sorting, and pagination alongside the per-item keys. Those
+keys are a nested [**Template**][Template], or a [**Projection**][Projection] for computed aggregates (faceted search
 and analytics).
 
 ```http request
 GET https://data.example.com/products/?<template>
 ```
 
-where `<template>` is the URL-encoded JSON [**Template**](https://metreeca.github.io/qest/types/template.Template.html)
-hosting a [**Query**](https://metreeca.github.io/qest/types/template.Query.html) under the collection property, a tuple
-pairing the per-item element with an optional collection-wide selection:
+where `<template>` is the URL-encoded JSON [**Template**][Template] whose `items` entry retrieves the collection and
+constrains it:
 
 ```js
 ({
-    items: [
-        {
-            id: "",
-            name: "",
-            price: 0,
-            vendor: {
-                id: "",
-                name: "",
-            },
+    items: {
+
+        id: {},
+        name: {},
+        price: {},
+        vendor: {
+            id: {},
+            name: {},
         },
-        {
-            ">=price": 50,                // filter: price ≥ 50
-            "<=price": 150,               // filter: price ≤ 150
-            "^price": "asc",              // sort: by price ascending
-            "#": 25,                      // limit: 25 results
-        },
-    ],
+
+        ">=price": 50,                // filter: price ≥ 50
+        "<=price": 150,               // filter: price ≤ 150
+        "^price": "asc",              // sort: by price ascending
+        "#": 25,                      // limit: 25 results
+
+    },
 });
 ```
 
@@ -252,8 +252,8 @@ A single call returns exactly what the client requested:
 }
 ```
 
-**Analytics** — A [**Projection**](https://metreeca.github.io/qest/types/template.Projection.html) replaces the nested
-template with computed property bindings, enabling faceted search and analytics in a single call.
+**Analytics** — A [**Projection**][Projection] replaces the nested template with computed property bindings, enabling
+faceted search and analytics in a single call.
 
 ```http request
 GET https://data.example.com/products/?<template>
@@ -263,11 +263,11 @@ where `<template>` groups products by category, counting each group and sorting 
 
 ```js
 ({
-    items: [{
-        "category": "",                  // grouping column (non-aggregate)
-        "count=count:": 0,               // count per group
-        "^count": "desc",                // sort groups by count descending
-    }],
+    items: {
+        "category=category": {},         // grouping column (non-aggregate)
+        "count=count:": {},              // count per group
+        "^count:": "desc",               // sort groups by count descending
+    },
 });
 ```
 
@@ -317,15 +317,15 @@ Resource properties can hold localised text in a dictionary: a language map asso
 }
 ```
 
-A [`Dictionary`](https://metreeca.github.io/qest/types/resource.Dictionary.html) supports both single-valued and
-multi-valued forms per language. Within a single dictionary, all values must be uniformly scalar or uniformly array, in
-the form the property declares: a state carrying the other form under any tag is rejected as malformed.
-Language-neutral values are tagged with the [`und`](https://iso639-3.sil.org/code/und) (Undetermined) language tag:
+A [**Dictionary**][Dictionary] supports both single-valued and multi-valued forms per language. Within a single
+dictionary, all values must be uniformly scalar or uniformly array, in the form the property declares: a state carrying
+the other form under any tag is rejected as malformed. Language-neutral values are tagged with the
+[`und`](https://iso639-3.sil.org/code/und) (Undetermined) language tag:
 
 ```js
 ({
     name: { und: "Widget" },
-    tags: { und: ["compact", "durable"] }
+    tags: { und: ["compact", "durable"] },
 });
 ```
 
@@ -334,10 +334,10 @@ value (the entries for the tags the binding's pattern matches) rather than fanni
 
 ```js
 ({
-    items: [{
-        id: "",
-        "label=title": { "*": "" }          // all matching tags, as one Dictionary
-    }]
+    items: {
+        "id=id": {},
+        "label=title": { "*": {} },         // all matching tags, as one Dictionary
+    },
 });
 ```
 
@@ -366,7 +366,7 @@ This controlled subset is specified by:
   ([terms](https://www.w3.org/TR/json-ld11/#terms)), enabling dot notation access;
   [JSON-LD keywords](https://www.w3.org/TR/json-ld11/#keywords) (`@id`, `@type`, etc.) and
   [blank node identifiers](https://www.w3.org/TR/json-ld11/#identifying-blank-nodes) are not allowed and must be mapped
-  to identifiers via an application-provided [`@context`](https://www.w3.org/TR/json-ld11/#the-context) (for instance,
+  to identifiers via an application-provided [`@context`](https://www.w3.org/TR/json-ld11/#the-context) (for example,
   `"id": "@id"`); `@context` must also map property names to IRIs for semantic interoperability
 - native JSON primitives (`boolean`, `number`, `string`) as values;
   [typed literals](https://www.w3.org/TR/json-ld11/#typed-values) with arbitrary datatypes are not allowed and must be
