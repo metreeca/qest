@@ -272,7 +272,7 @@
 import { Identifier, isArray, isObject, type Optional } from "@metreeca/core";
 import { Tag } from "@metreeca/core/language";
 import { app, getNamespaceIRI, internalize, IRI, isIRI, resolve } from "@metreeca/core/resource";
-import { immutable } from "@metreeca/core/structures";
+import { immutable } from "@metreeca/core/values";
 import { type DecoderOpts, type EncoderOpts } from "./index.js";
 import { isResource } from "./state.core.js";
 

@@ -444,7 +444,7 @@ import { error, Identifier, isArray, isIdentifier, isObject, isString, key, type
 import { decodeBase64, encodeBase64 } from "@metreeca/core/base64";
 import { TagRange } from "@metreeca/core/language";
 import { app, getNamespaceIRI, internalize, isIRI, resolve } from "@metreeca/core/resource";
-import { immutable } from "@metreeca/core/structures";
+import { immutable } from "@metreeca/core/values";
 import { type DecoderOpts, type EncoderOpts } from "./index.js";
 import { isCriteria, isProbe, isTemplate } from "./model.core.js";
 import * as CriteriaParser from "./model.pegjs.js";

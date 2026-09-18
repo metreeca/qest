@@ -35,6 +35,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Parameterise `Union` by the form admitted per branch and admit `Locale` branches uniformly
 - Withdraw the elision rule: `{}` is an `Atomic` rather than an omission, and every writable document denotes a
   request
+- Realign to the renamed `@metreeca/core` values module, raising the minimum supported version: `immutable` is imported
+  from `@metreeca/core/values` in place of `@metreeca/core/structures`
 
 ### Removed
 

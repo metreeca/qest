@@ -37,7 +37,7 @@ import {
 	isUnion as isVariants, type Optional
 } from "@metreeca/core";
 import { isTagRange } from "@metreeca/core/language";
-import { immutable } from "@metreeca/core/structures";
+import { immutable } from "@metreeca/core/values";
 import type {
 	Aggregate,
 	Atomic,
