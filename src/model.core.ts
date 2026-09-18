@@ -36,6 +36,7 @@ import {
 } from "@metreeca/core";
 import { isTagRange } from "@metreeca/core/language";
 import type {
+	Atomic,
 	Binding,
 	Criteria,
 	Expression,
@@ -49,7 +50,6 @@ import type {
 	Projection,
 	Query,
 	Template,
-	Atomic,
 	Transform,
 	Union
 } from "./model.js";
@@ -108,17 +108,13 @@ const Transforms: ReadonlySet<string> = new Set([
 export function isTemplate(value: unknown): value is Template {
 
 	return isObject(value, (entry, field) =>
-		isIdentifier(field) && (entry === undefined || isQuery(entry, isRetrieval))
+		isIdentifier(field) && isOptional(entry, node => isQuery(node, value=> isVariants(value, [
+				isPlaceholder,
+				isUnion,
+				isProjection
+			])))
 	);
 
-
-	function isRetrieval(value: unknown): value is Placeholder | Union<Placeholder> | Projection {
-		return isVariants(value, [
-			isPlaceholder,
-			isUnion,
-			isProjection
-		]);
-	}
 
 }
 
@@ -136,7 +132,7 @@ export function isTemplate(value: unknown): value is Template {
 export function isProjection(value: unknown): value is Projection {
 
 	return isObject(value, (cell, field) =>
-		isBinding(field) && (cell === undefined || isVariants(cell, [isPlaceholder, isUnion]))
+		isBinding(field) && isOptional(cell, placeholder => isVariants(placeholder, [isPlaceholder, isUnion]))
 	) && unique(Object.keys(value).map(binding =>
 		binding.slice(0, binding.indexOf("="))
 	));
@@ -173,7 +169,7 @@ export function isPlaceholder(value: unknown): value is Placeholder {
  * @returns True if `value` is a plain object carrying no entries; false otherwise
  */
 export function isAtomic(value: unknown): value is Atomic {
-	return isObject(value) && Object.keys(value).length === 0;
+	return isObject(value, {});
 }
 
 /**
@@ -422,8 +418,8 @@ export function isOrder(value: unknown): value is Order {
 export function isProbe(value: unknown): value is Probe {
 	return isObject(value, {
 		target: v => isIdentifier(v) || isOperator(v),
-		pipe: (v: unknown) => isArray(v, isTransform),
-		path: (v: unknown) => isArray(v, isIdentifier)
+		pipe: v => isArray(v, isTransform),
+		path: v => isArray(v, isIdentifier)
 	});
 }
 

@@ -25,10 +25,10 @@
 import {
 	type Identifier,
 	isArray,
-	isBoolean,
 	isIdentifier,
-	isNumber,
 	isObject,
+	isOptional,
+	isScalar,
 	isString,
 	isUnion
 } from "@metreeca/core";
@@ -59,11 +59,11 @@ export function isResource(value: unknown): value is Resource {
  * an array of {@link Value} elements; false otherwise
  */
 export function isValues(value: unknown): value is Values {
-	return value === undefined || isUnion(value, [
+	return isOptional(value, values => isUnion(values, [
 		isValue,
 		isDictionary,
 		v => isArray(v, isValue)
-	]);
+	]));
 }
 
 /**
@@ -104,9 +104,7 @@ export function isDictionary(value: unknown): value is Dictionary {
  * @returns True if `value` is a `boolean`, a `number`, or a `string`; false otherwise
  */
 export function isLiteral(value: unknown): value is Literal {
-	return isBoolean(value)
-		|| isNumber(value)
-		|| isString(value);
+	return isScalar(value);
 }
 
 /**
