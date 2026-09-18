@@ -14,6 +14,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Add `Query<T>` type and `isQuery` guard for a retrieval node carrying its collection's constraints alongside its
   retrieval keys
 - Add the `isCriterion` guard, holding a single `Criteria` entry to its operator's contract
+- Add the `Slot` and `Cell` types and their `isSlot`/`isCell` guards, naming the value models of a `Template` entry, a
+  cell or a projection, and of a `Projection` binding, a placeholder or a union of placeholders
+- Add the `Aggregate` type, naming the transforms that summarise a set of values into a single result, and narrow the
+  `isAggregate` guard to it
 
 ### Changed
 

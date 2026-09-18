@@ -18,6 +18,7 @@ import { describe, expect, it } from "vitest";
 import {
 	isAggregate,
 	isBinding,
+	isCell,
 	isCriteria,
 	isCriterion,
 	isSelector,
@@ -31,6 +32,7 @@ import {
 	isProbe,
 	isProjection,
 	isQuery,
+	isSlot,
 	isTemplate,
 	isAtomic,
 	isTransform,
@@ -189,6 +191,97 @@ describe("guards", () => {
 		it("should reject arrays", () => {
 			expect(isProjection([])).toBe(false);
 			expect(isProjection([{ "id=id": {} }])).toBe(false);
+		});
+
+	});
+
+
+	describe("isSlot", () => {
+
+		it("should accept placeholders", async () => {
+			expect(isSlot({})).toBe(true);
+			expect(isSlot({ id: {}, name: {} })).toBe(true);
+			expect(isSlot({ "*": {} })).toBe(true);
+		});
+
+		it("should accept unions of placeholders", async () => {
+			expect(isSlot({ "0": { name: {} }, "1": { id: {} } })).toBe(true);
+		});
+
+		it("should accept projections", async () => {
+			expect(isSlot({ "total=count:": {} })).toBe(true);
+			expect(isSlot({ "vendor=vendor": { name: {} } })).toBe(true);
+		});
+
+		it("should accept undefined branches and cells", async () => {
+			expect(isSlot({ "0": { name: {} }, "1": undefined })).toBe(true);
+			expect(isSlot({ "total=count:": undefined })).toBe(true);
+		});
+
+		it("should reject constraint keys", async () => {
+			// constraints are merged into the entry hosting the slot, never carried by the slot itself
+			expect(isSlot({ name: {}, "#": 25 })).toBe(false);
+			expect(isSlot({ "total=count:": {}, ">=price": 50 })).toBe(false);
+		});
+
+		it("should reject projections with duplicate result names", async () => {
+			expect(isSlot({ "x=a": {}, "x=b": {} })).toBe(false);
+		});
+
+		it("should reject null and undefined", async () => {
+			expect(isSlot(null)).toBe(false);
+			expect(isSlot(undefined)).toBe(false);
+		});
+
+		it("should reject primitives", async () => {
+			expect(isSlot("string")).toBe(false);
+			expect(isSlot(42)).toBe(false);
+		});
+
+		it("should reject arrays", async () => {
+			expect(isSlot([])).toBe(false);
+			expect(isSlot([{ name: {} }])).toBe(false);
+		});
+
+	});
+
+
+	describe("isCell", () => {
+
+		it("should accept placeholders", async () => {
+			expect(isCell({})).toBe(true);
+			expect(isCell({ id: {}, name: {} })).toBe(true);
+			expect(isCell({ "*": {} })).toBe(true);
+		});
+
+		it("should accept unions of placeholders", async () => {
+			expect(isCell({ "0": { name: {} }, "1": { id: {} } })).toBe(true);
+			expect(isCell({ "0": { name: {} }, "1": undefined })).toBe(true);
+		});
+
+		it("should reject projections", async () => {
+			// a cell holds one value, so it never carries bindings of its own
+			expect(isCell({ "total=count:": {} })).toBe(false);
+			expect(isCell({ "vendor=vendor": { name: {} } })).toBe(false);
+		});
+
+		it("should reject constraint keys", async () => {
+			expect(isCell({ name: {}, "#": 25 })).toBe(false);
+		});
+
+		it("should reject null and undefined", async () => {
+			expect(isCell(null)).toBe(false);
+			expect(isCell(undefined)).toBe(false);
+		});
+
+		it("should reject primitives", async () => {
+			expect(isCell("string")).toBe(false);
+			expect(isCell(42)).toBe(false);
+		});
+
+		it("should reject arrays", async () => {
+			expect(isCell([])).toBe(false);
+			expect(isCell([{ name: {} }])).toBe(false);
 		});
 
 	});

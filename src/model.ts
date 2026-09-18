@@ -30,6 +30,8 @@
  *
  * - {@link Template} — Resource retrieval template
  * - {@link Projection} — Collection property projection
+ * - {@link Slot} — Template value model
+ * - {@link Cell} — Projection value model
  * - {@link Placeholder} — Property value template
  * - {@link Atomic} — Atomic value template
  * - {@link Locale} — Localised text map template (structured language-tagged value)
@@ -46,6 +48,7 @@
  * - {@link Operator} — Constraint operator symbols
  * - {@link Order} — Sort order direction and precedence
  * - {@link Transform} — Value transforms for computed {@link Expression | expressions}
+ * - {@link Aggregate} — Aggregate transform
  * - {@link TransformSignature} — Static typing profile of a {@link Transform}
  * - {@link Transforms} — Signature table covering every {@link Transform}
  *
@@ -53,6 +56,8 @@
  *
  * - {@link isTemplate} — checks if a value is a {@link Template}
  * - {@link isProjection} — checks if a value is a {@link Projection}
+ * - {@link isSlot} — checks if a value is a {@link Slot}
+ * - {@link isCell} — checks if a value is a {@link Cell}
  * - {@link isPlaceholder} — checks if a value is a {@link Placeholder}
  * - {@link isAtomic} — checks if a value is an {@link Atomic}
  * - {@link isLocale} — checks if a value is a {@link Locale}
@@ -69,7 +74,7 @@
  * - {@link isProbe} — checks if a value is a {@link Probe}
  * - {@link isOperator} — checks if a value is an {@link Operator}
  * - {@link isTransform} — checks if a value is a {@link Transform}
- * - {@link isAggregate} — checks if a value is an aggregate {@link Transform}
+ * - {@link isAggregate} — checks if a value is an {@link Aggregate}
  *
  * **Accessors**
  *
@@ -441,59 +446,24 @@ import { TagRange } from "@metreeca/core/language";
 import { app, getNamespaceIRI, internalize, isIRI, resolve } from "@metreeca/core/resource";
 import { immutable } from "@metreeca/core/structures";
 import { type DecoderOpts, type EncoderOpts } from "./index.js";
-import { Dictionary, type Literal, type Reference, Resource } from "./state.js";
-import { isProbe, isCriteria, isTemplate } from "./model.core.js";
+import { isCriteria, isProbe, isTemplate } from "./model.core.js";
 import * as CriteriaParser from "./model.pegjs.js";
+import { Dictionary, type Literal, type Reference, Resource } from "./state.js";
 
 export * from "./model.core.js";
 
 
-/**
- * Transform signature table.
- *
- * Maps each {@link Transform} to its {@link TransformSignature}, the single source of truth for how a transform
- * validates its input and shapes its output. Processors consult this table to check type compatibility, rejecting a
- * transform whose declared domain is met by no branch of its input type and guarding the incompatible branches of a
- * union-typed input otherwise, and to derive the aggregation kind, cardinality, and processing type of the resulting
- * pipe.
- */
-export const Transforms: Record<Transform, TransformSignature> = immutable({
-
-	count: { aggregate: "total", accepts: "any", returns: "integer" },
-	min: { aggregate: "partial", accepts: "literal", returns: "same" },
-	max: { aggregate: "partial", accepts: "literal", returns: "same" },
-	sum: { aggregate: "total", accepts: "numeric", returns: "same" },
-	avg: { aggregate: "partial", accepts: "numeric", returns: "decimal" },
-
-	abs: { aggregate: false, accepts: "numeric", returns: "same" },
-	floor: { aggregate: false, accepts: "numeric", returns: "same" },
-	ceil: { aggregate: false, accepts: "numeric", returns: "same" },
-	round: { aggregate: false, accepts: "numeric", returns: "same" },
-
-	lower: { aggregate: false, accepts: "string", returns: "same" },
-	upper: { aggregate: false, accepts: "string", returns: "same" },
-	length: { aggregate: false, accepts: "string", returns: "integer" },
-
-	year: { aggregate: false, accepts: "temporal", returns: "integer" },
-	month: { aggregate: false, accepts: "temporal", returns: "integer" },
-	day: { aggregate: false, accepts: "temporal", returns: "integer" },
-	hours: { aggregate: false, accepts: "temporal", returns: "integer" },
-	minutes: { aggregate: false, accepts: "temporal", returns: "integer" },
-	seconds: { aggregate: false, accepts: "temporal", returns: "decimal" }
-
-});
-
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 /**
  * Resource retrieval template.
  *
  * Requests a shaped view of a {@link Resource}: each {@link Identifier} key names a property to retrieve, and its
- * value says how far to go, from the property's own value to an arbitrarily deep expansion of the resources it links
- * to. A property left out of the map is left out of the response, so a client pays for exactly what it asks for. A
- * field may also be set to `undefined`, the absent marker for an entry elided at construction time, keeping a
- * conditionally assembled template assignable to `Template`.
+ * {@link Slot} value says how far to go, from the property's own value to an arbitrarily deep expansion of the
+ * resources it links to. A property left out of the map is left out of the response, so a client pays for exactly what
+ * it asks for. A field may also be set to `undefined`, the absent marker for an entry elided at construction time,
+ * keeping a conditionally assembled template assignable to `Template`.
  *
  * Where the named property is multi-valued, the same entry doubles as the collection request: it carries the
  * {@link Criteria} keys that filter, sort, and paginate that collection alongside the per-item keys, so one entry
@@ -516,11 +486,7 @@ export const Transforms: Record<Transform, TransformSignature> = immutable({
  */
 export type Template = {
 
-	readonly [field: Identifier]: Optional<Query<
-		| Placeholder
-		| Union<Placeholder>
-		| Projection
-	>>
+	readonly [field: Identifier]: Optional<Query<Slot>>
 
 }
 
@@ -541,10 +507,9 @@ export type Template = {
  * };
  * ```
  *
- * Each binding yields one cell per row, holding a single value, so a cell takes the single-value forms alone: a
- * {@link Placeholder} or a {@link Union} of placeholders, never a nested `Projection`. A projection stands as the
- * entry of the {@link Template} field naming the collection, carrying that collection's {@link Criteria} alongside
- * its bindings.
+ * Each binding yields one {@link Cell} per row, holding a single value, so a binding never nests a `Projection`. A
+ * projection stands as the entry of the {@link Template} field naming the collection, carrying that collection's
+ * {@link Criteria} alongside its bindings.
  *
  * > [!IMPORTANT]
  * > Result names (the {@link Identifier} portion before `=`) MUST be unique within a projection: duplicates collide
@@ -561,12 +526,40 @@ export type Template = {
  */
 export type Projection = {
 
-	readonly [field: Binding]: Optional<
-		| Placeholder
-		| Union<Placeholder>
-	>
+	readonly [field: Binding]: Optional<Cell>
 
 }
+
+
+/**
+ * Template value model.
+ *
+ * The value a {@link Template} entry takes, whatever the property its field names:
+ *
+ * - {@link Cell} — the property's own values, each one shaped
+ * - {@link Projection} — the collection the property names, as rows of computed values
+ *
+ * The {@link Criteria} constraining a collection are merged in at the entry through {@link Query} rather than carried
+ * here.
+ */
+export type Slot =
+	| Cell
+	| Projection
+
+/**
+ * Projection value model.
+ *
+ * The value a {@link Projection} binding takes:
+ *
+ * - {@link Placeholder} — one shape, whatever the value turns out to be
+ * - {@link Union} — one shape per type, chosen branch by branch
+ *
+ * The same forms stand as the non-projection half of a {@link Slot}. Cardinality sits on the side: a binding yields
+ * one value per row and a template entry one per property value, so neither nests a `Projection`.
+ */
+export type Cell =
+	| Placeholder
+	| Union<Placeholder>
 
 
 /**
@@ -1172,12 +1165,12 @@ export type Operator =
  *
  * ## Aggregate Semantics
  *
- * Aggregates use bag semantics: every contributing value counts toward the result with no implicit deduplication. The
- * expression path determines the input — `count:` (empty path) counts the input rows, while a non-empty path (for
- * example, `sum:price`) ranges over the values resolved by the path for each input row, with multi-valued path
- * fan-outs contributing every resolved value individually. Distinct-value aggregates are obtained through grouping (see
- * the [Aggregate Grouping](#aggregate-grouping) section) by projecting the value of interest as a non-aggregate
- * binding.
+ * {@link Aggregate | Aggregates} use bag semantics: every contributing value counts toward the result with no implicit
+ * deduplication. The expression path determines the input — `count:` (empty path) counts the input rows, while a
+ * non-empty path (for example, `sum:price`) ranges over the values resolved by the path for each input row, with
+ * multi-valued path fan-outs contributing every resolved value individually. Distinct-value aggregates are obtained
+ * through grouping (see the [Aggregate Grouping](#aggregate-grouping) section) by projecting the value of interest as
+ * a non-aggregate binding.
  *
  * ## Error Handling
  *
@@ -1195,11 +1188,7 @@ export type Operator =
  */
 export type Transform =
 
-	| "count"
-	| "min"
-	| "max"
-	| "sum"
-	| "avg"
+	| Aggregate
 
 	| "abs"
 	| "floor"
@@ -1216,6 +1205,22 @@ export type Transform =
 	| "hours"
 	| "minutes"
 	| "seconds"
+
+/**
+ * Aggregate transform.
+ *
+ * The {@link Transform | transforms} that summarise a set of values into a single result, as opposed to the scalar
+ * transforms, which are applied value by value and propagate the cardinality of their input. An expression carries at
+ * most one of them, and its presence puts the enclosing collection under grouped semantics; see {@link Criteria} for
+ * how constraints partition across the grouping.
+ */
+export type Aggregate =
+
+	| "count"
+	| "min"
+	| "max"
+	| "sum"
+	| "avg"
 
 /**
  * Static typing profile of a {@link Transform}.

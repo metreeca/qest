@@ -15,9 +15,11 @@
  */
 
 /**
- * Type guards for retrieval model types.
+ * Retrieval model validation.
  *
- * Runtime validators for the retrieval model types declared in the `model` module, re-exported through it.
+ * Accepts or rejects values against the retrieval model types declared in the `model` module, and supplies the
+ * transform signatures and sort-order accessors a processor needs to act on a validated request. Everything declared
+ * here is re-exported through `model`, which is the module consumers import.
  *
  * @module
  */
@@ -32,12 +34,15 @@ import {
 	isObject,
 	isOptional,
 	isString,
-	isUnion as isVariants
+	isUnion as isVariants, type Optional
 } from "@metreeca/core";
 import { isTagRange } from "@metreeca/core/language";
+import { immutable } from "@metreeca/core/structures";
 import type {
+	Aggregate,
 	Atomic,
 	Binding,
+	Cell,
 	Criteria,
 	Expression,
 	Locale,
@@ -49,8 +54,10 @@ import type {
 	Probe,
 	Projection,
 	Query,
+	Slot,
 	Template,
 	Transform,
+	TransformSignature,
 	Union
 } from "./model.js";
 import { isDictionary, isLiteral, isReference } from "./state.core.js";
@@ -62,6 +69,12 @@ import type { Dictionary, Literal, Reference } from "./state.js";
  */
 const BranchPattern = /^(0|[1-9]\d*)$/;
 
+/**
+ * Matches a prefixed {@link Criteria} constraint key: an {@link Operator} symbol followed by its target
+ * {@link Expression}. The two-character comparisons come first, so `<=` and `>=` win over `<` and `>`.
+ */
+const SelectorPattern = /^(<=|>=|[<>~?!+^])(.*)$/;
+
 
 /**
  * Recognised {@link Order} sort directions.
@@ -71,28 +84,68 @@ const Orders: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Recognised {@link Operator} constraint symbols.
+ * Value contracts per {@link Operator}.
+ *
+ * States the constraint operator alphabet and the value each operator accepts in one place, so classifying a key and
+ * validating its entry read from the same table.
  */
-const Operators: ReadonlySet<string> = new Set([
-	"<", ">", "<=", ">=", "~", "?", "!", "+", "^", "@", "#"
-]);
+const Operators: Readonly<Record<Operator, (value: unknown) => boolean>> = {
+
+	"<": isLiteral,
+	">": isLiteral,
+	"<=": isLiteral,
+	">=": isLiteral,
+
+	"~": isString,
+
+	"?": isOptions,
+	"!": isOptions,
+	"+": isOptions,
+
+	"^": isOrder,
+
+	"@": isIndex,
+	"#": isIndex
+
+};
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
- * Recognised aggregate {@link Transform} names.
+ * Transform signature table.
+ *
+ * Maps each {@link Transform} to its {@link TransformSignature}, the single source of truth for how a transform
+ * validates its input and shapes its output. Processors consult this table to check type compatibility, rejecting a
+ * transform whose declared domain is met by no branch of its input type and guarding the incompatible branches of a
+ * union-typed input otherwise, and to derive the aggregation kind, cardinality, and processing type of the resulting
+ * pipe.
  */
-const Aggregates: ReadonlySet<string> = new Set([
-	"count", "min", "max", "sum", "avg"
-]);
+export const Transforms: Record<Transform, TransformSignature> = immutable({
 
-/**
- * Recognised {@link Transform} names.
- */
-const Transforms: ReadonlySet<string> = new Set([
-	...Aggregates,
-	"abs", "floor", "ceil", "round",
-	"lower", "upper", "length",
-	"year", "month", "day", "hours", "minutes", "seconds"
-]);
+	count: { aggregate: "total", accepts: "any", returns: "integer" },
+	min: { aggregate: "partial", accepts: "literal", returns: "same" },
+	max: { aggregate: "partial", accepts: "literal", returns: "same" },
+	sum: { aggregate: "total", accepts: "numeric", returns: "same" },
+	avg: { aggregate: "partial", accepts: "numeric", returns: "decimal" },
+
+	abs: { aggregate: false, accepts: "numeric", returns: "same" },
+	floor: { aggregate: false, accepts: "numeric", returns: "same" },
+	ceil: { aggregate: false, accepts: "numeric", returns: "same" },
+	round: { aggregate: false, accepts: "numeric", returns: "same" },
+
+	lower: { aggregate: false, accepts: "string", returns: "same" },
+	upper: { aggregate: false, accepts: "string", returns: "same" },
+	length: { aggregate: false, accepts: "string", returns: "integer" },
+
+	year: { aggregate: false, accepts: "temporal", returns: "integer" },
+	month: { aggregate: false, accepts: "temporal", returns: "integer" },
+	day: { aggregate: false, accepts: "temporal", returns: "integer" },
+	hours: { aggregate: false, accepts: "temporal", returns: "integer" },
+	minutes: { aggregate: false, accepts: "temporal", returns: "integer" },
+	seconds: { aggregate: false, accepts: "temporal", returns: "decimal" }
+
+});
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -103,16 +156,13 @@ const Transforms: ReadonlySet<string> = new Set([
  * @param value The value to check
  *
  * @returns True if `value` is a plain object whose keys are all {@link Identifier | identifiers} and whose entries
- * are all valid retrieval nodes, constraints included, or the absent marker `undefined`; false otherwise
+ * are all valid {@link Slot | slots}, {@link Criteria} constraints included, or the absent marker `undefined`; false
+ * otherwise
  */
 export function isTemplate(value: unknown): value is Template {
 
 	return isObject(value, (entry, field) =>
-		isIdentifier(field) && isOptional(entry, node => isQuery(node, value=> isVariants(value, [
-				isPlaceholder,
-				isUnion,
-				isProjection
-			])))
+		isIdentifier(field) && isOptional(entry, node => isQuery(node, isSlot))
 	);
 
 
@@ -127,21 +177,51 @@ export function isTemplate(value: unknown): value is Template {
  * @param value The value to check
  *
  * @returns True if `value` is a plain object whose keys are all {@link Binding | bindings} with unique result names
- * and whose cells are all valid single-value placeholders or the absent marker `undefined`; false otherwise
+ * and whose entries are all valid {@link Cell | cells} or the absent marker `undefined`; false otherwise
  */
 export function isProjection(value: unknown): value is Projection {
 
 	return isObject(value, (cell, field) =>
-		isBinding(field) && isOptional(cell, placeholder => isVariants(placeholder, [isPlaceholder, isUnion]))
-	) && unique(Object.keys(value).map(binding =>
-		binding.slice(0, binding.indexOf("="))
-	));
+		isBinding(field) && isOptional(cell, isCell)
+	) && unique(Object.keys(value).flatMap(field => binding(field)?.name ?? []));
 
 
 	function unique(names: readonly string[]): boolean {
 		return new Set(names).size === names.length;
 	}
 
+}
+
+
+/**
+ * Checks if a value is a {@link Slot}.
+ *
+ * Constraint keys are not admitted: they are merged into the entry hosting the slot, so an entry carrying both is
+ * validated through {@link isQuery} instead.
+ *
+ * @param value The value to check
+ *
+ * @returns True if `value` is a valid {@link Cell} or {@link Projection}; false otherwise
+ */
+export function isSlot(value: unknown): value is Slot {
+	return isVariants(value, [
+		isCell,
+		isProjection
+	]);
+}
+
+/**
+ * Checks if a value is a {@link Cell}.
+ *
+ * @param value The value to check
+ *
+ * @returns True if `value` is a valid {@link Placeholder} or a {@link Union} of placeholders; false otherwise
+ */
+export function isCell(value: unknown): value is Cell {
+	return isVariants(value, [
+		isPlaceholder,
+		isUnion
+	]);
 }
 
 
@@ -255,35 +335,9 @@ export function isCriteria(value: unknown): value is Criteria {
  */
 export function isCriterion(value: unknown, key: string): boolean {
 
-	if ( key.startsWith("<=") || key.startsWith(">=") ) {
+	const symbol = operator(key);
 
-		return isExpression(key.slice(2)) && isLiteral(value);
-
-	} else if ( key.startsWith("<") || key.startsWith(">") ) {
-
-		return isExpression(key.slice(1)) && isLiteral(value);
-
-	} else if ( key.startsWith("~") ) {
-
-		return isExpression(key.slice(1)) && isString(value);
-
-	} else if ( key.startsWith("?") || key.startsWith("!") || key.startsWith("+") ) {
-
-		return isExpression(key.slice(1)) && isOptions(value);
-
-	} else if ( key.startsWith("^") ) {
-
-		return isExpression(key.slice(1)) && isOrder(value);
-
-	} else if ( key === "@" || key === "#" ) {
-
-		return isNumber(value) && Number.isInteger(value) && value >= 0;
-
-	} else {
-
-		return false;
-
-	}
+	return symbol !== undefined && Operators[symbol](value);
 
 }
 
@@ -299,29 +353,7 @@ export function isCriterion(value: unknown, key: string): boolean {
  * `~`, `?`, `!`, `+`, `^`) followed by a valid {@link Expression}, or exactly `"@"` or `"#"`; false otherwise
  */
 export function isSelector(value: unknown): value is keyof Criteria {
-
-	if ( !isString(value) ) {
-
-		return false;
-
-	} else if ( value === "@" || value === "#" ) {
-
-		return true;
-
-	} else if ( /^[<>]=/.test(value) ) {
-
-		return isExpression(value.slice(2));
-
-	} else if ( /^[<>~?!+^]/.test(value) ) {
-
-		return isExpression(value.slice(1));
-
-	} else {
-
-		return false;
-
-	}
-
+	return isString(value) && operator(value) !== undefined;
 }
 
 
@@ -333,9 +365,11 @@ export function isSelector(value: unknown): value is keyof Criteria {
  * @returns True if `value` is a string matching the `identifier=expression` syntax; false otherwise
  */
 export function isBinding(value: unknown): value is Binding {
-	return isString(value) && value.includes("=")
-		&& isIdentifier(value.slice(0, value.indexOf("=")))
-		&& isExpression(value.slice(value.indexOf("=")+1));
+
+	const halves = isString(value) ? binding(value) : undefined;
+
+	return halves !== undefined && isIdentifier(halves.name) && isExpression(halves.expression);
+
 }
 
 /**
@@ -432,7 +466,7 @@ export function isProbe(value: unknown): value is Probe {
  * `+`, `^`, `@`, `#`); false otherwise
  */
 export function isOperator(value: unknown): value is Operator {
-	return isString(value) && Operators.has(value);
+	return isString(value) && Object.hasOwn(Operators, value);
 }
 
 /**
@@ -444,21 +478,21 @@ export function isOperator(value: unknown): value is Operator {
  * false otherwise
  */
 export function isTransform(value: unknown): value is Transform {
-	return isString(value) && Transforms.has(value);
+	return isString(value) && Object.hasOwn(Transforms, value);
 }
 
 /**
- * Checks if a value is an aggregate {@link Transform}.
+ * Checks if a value is an {@link Aggregate}.
  *
- * Aggregates summarise a set of values into a single result; non-aggregate transforms operate on individual values
- * and propagate the cardinality of their input.
+ * Aggregates summarise a set of values into a single result; scalar transforms operate on individual values and
+ * propagate the cardinality of their input.
  *
  * @param value The value to check
  *
  * @returns True if `value` is an aggregate transform name (`count`, `min`, `max`, `sum`, `avg`); false otherwise
  */
-export function isAggregate(value: unknown): value is "count" | "min" | "max" | "sum" | "avg" {
-	return isString(value) && Aggregates.has(value);
+export function isAggregate(value: unknown): value is Aggregate {
+	return isTransform(value) && Transforms[value].aggregate !== false;
 }
 
 
@@ -490,4 +524,55 @@ export function getOrderPrecedence(order: Order): number {
  */
 export function getOrderDirection(order: Order): number {
 	return order === "asc" ? 1 : order === "desc" ? -1 : Math.sign(order);
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * Checks if a value is a non-negative integer, as the `"@"` and `"#"` pagination constraints take.
+ *
+ * @param value The value to check
+ *
+ * @returns True if `value` is an integer greater than or equal to zero; false otherwise
+ */
+function isIndex(value: unknown): value is number {
+	return isNumber(value) && Number.isInteger(value) && value >= 0;
+}
+
+
+/**
+ * Resolves the {@link Operator} a {@link Criteria} constraint key is built on.
+ *
+ * @param key The key to resolve
+ *
+ * @returns The operator `key` applies, or `undefined` unless `key` is a well-formed constraint key
+ */
+function operator(key: string):  Optional<Operator> {
+
+	const [ , symbol = "", expression = "" ] = SelectorPattern.exec(key) ?? [];
+
+	return key === "@" || key === "#" ? key
+		: isOperator(symbol) && isExpression(expression) ? symbol
+			: undefined;
+
+}
+
+/**
+ * Splits a {@link Binding} into its result name and its {@link Expression}.
+ *
+ * @param value The binding to split
+ *
+ * @returns The two halves of `value`, or `undefined` unless it carries the `=` separator
+ */
+function binding(value: string): Optional<{ readonly name: string, readonly expression: string }> {
+
+	const separator = value.indexOf("=");
+
+	return separator < 0 ? undefined : {
+		name: value.slice(0, separator),
+		expression: value.slice(separator+1)
+	};
+
 }
