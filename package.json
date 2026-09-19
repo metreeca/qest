@@ -47,13 +47,13 @@
     "peggy": "npx peggy --dts --format es --allowed-start-rules '*' --output src/model.pegjs.js src/model.pegjs",
     "build": "rm -rf dist docs && npm run peggy && tsc -p tsconfig.build.json && cp src/*.pegjs.* dist && npx typedoc",
     "check": "npx vitest --typecheck run",
-    "proof": "npx typedoc && (npx typedoc --watch & npx five-server docs --open)"
+    "proof": "npx typedoc && (npx typedoc --watch & npx wds --root-dir docs --watch --open)"
   },
   "dependencies": {
     "@metreeca/core": "^0.10.0"
   },
   "devDependencies": {
-    "five-server": "^0.4.5",
+    "@web/dev-server": "^1.0.0",
     "peggy": "^4.1.3",
     "typedoc": "^0.28.14",
     "typescript": "^5.9.3",
