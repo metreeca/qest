@@ -245,7 +245,7 @@ The following terms are used throughout this document:
   (Section 4.2) resolves to `undefined`
 - **retrieval model**: the JSON structure a retrieval request carries, stating what to retrieve from the target
   resource and how to constrain the collections it reaches (Section 5)
-- **template**: a JSON object specifying which properties to retrieve from a resource
+- **template**: a non-empty JSON object specifying which properties to retrieve from a resource
 - **placeholder**: a template entry standing in for a property value, stating how far to retrieve it rather than
   carrying retrieved data. Every placeholder is a JSON object and carries no value of its own: a template (Section 5.1)
   expands a linked resource, an atomic ends the retrieval, and a locale (Section 5.4) preserves language tags
@@ -589,7 +589,9 @@ Clients control the shape and scope of what they read back through a JSON retrie
 retrieve, how deeply to expand linked resources, and, for collections, how to filter, sort, paginate, and aggregate.
 
 Client-driven retrieval is fully optional. Servers MUST provide defaults, typically derived from the expected types
-(Section 3.1), preserving standard REST/JSON behaviour while enabling advanced capabilities when needed.
+(Section 3.1), preserving standard REST/JSON behaviour while enabling advanced capabilities when needed. An empty
+retrieval model (`{}`) requests nothing beyond them: servers MUST serve it as they serve a request carrying no query
+component.
 
 The query component of the GET request URL carries either a retrieval template (Section 5.1) or bare criteria
 (Section 5.7). A template MUST use a URL-safe JSON encoding, either URL-encoded or base64url-encoded [RFC4648] JSON; the
@@ -630,10 +632,10 @@ The query string's formal syntax is defined in ABNF [RFC5234]:
 
 query           = template / criteria  ; the decoder auto-detects the variant
 
-; template variant: a `template` (CDDL below) serialised as JSON [RFC8259],
+; template variant: a `retrieval` (CDDL below) serialised as JSON [RFC8259],
 ; then made URL-safe by percent- or base64url-encoding
 
-template        = <URL-safe JSON encoding of template, Section 5>
+template        = <URL-safe JSON encoding of retrieval, Section 5>
 
 ; criteria variant: form-urlencoded [WHATWG.URL] constraints
 
@@ -675,16 +677,16 @@ The **retrieval model** both variants decode into is defined in CDDL [RFC8610], 
 it (reusing `literal`, `reference`, `text`, and `identifier` from the data model, Section 4):
 
 ```cddl
-retrieval   = { template }                          ; the request target (Section 5)
+retrieval   = { template // atomic }                ; the request target (Section 5): atomic selects the default
 
-template    = * identifier => query                 ; Section 5.1
-projection  = * binding => { placeholder // union } ; Section 5.2
+template    = + identifier => query                 ; Section 5.1
+projection  = + binding => { placeholder // union } ; Section 5.2
 
 placeholder = template // atomic // locale          ; Section 5.3
 atomic      = ()                                    ; Section 5.3: no keys
-locale      = * tag-range => { atomic }             ; Section 5.4
+locale      = + tag-range => { atomic }             ; Section 5.4
 
-union       = * branch => { placeholder }           ; Section 5.5
+union       = + branch => { placeholder }           ; Section 5.5
 
 ; a query splices a collection's constraints into the node retrieving it (Section 5.6)
 
@@ -801,7 +803,7 @@ category=electronics
 
 ## 5.1. Template
 
-A **template** is a JSON object specifying which properties to retrieve from a resource and how deeply to expand linked
+A **template** is a non-empty JSON object specifying which properties to retrieve from a resource and how deeply to expand linked
 resources.
 
 Template properties map to **placeholders** (Section 5.3), each stating how far to retrieve the property rather than

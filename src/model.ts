@@ -112,7 +112,8 @@
  *
  * Every request is an object and every leaf is `{}`, the {@link Atomic} standing for the value as it comes: a
  * literal, the reference of a linked resource left unexpanded, or the coalesced label of a localised property. A
- * template carries no data of its own, so what a client writes is a pure statement of what it wants back.
+ * template carries no data of its own, so what a client writes is a pure statement of what it wants back. The empty
+ * request `{}` states nothing and brings back the server defaults.
  *
  * ## Collection Retrieval
  *
@@ -446,7 +447,7 @@ import { TagRange } from "@metreeca/core/language";
 import { app, getNamespaceIRI, internalize, isIRI, resolve } from "@metreeca/core/resource";
 import { immutable } from "@metreeca/core/values";
 import { type DecoderOpts, type EncoderOpts } from "./index.js";
-import { isCriteria, isProbe, isTemplate } from "./model.core.js";
+import { isAtomic, isCriteria, isProbe, isTemplate } from "./model.core.js";
 import * as CriteriaParser from "./model.pegjs.js";
 import { Dictionary, type Literal, type Reference, Resource } from "./state.js";
 
@@ -480,6 +481,10 @@ export * from "./model.core.js";
  * ```
  *
  * > [!IMPORTANT]
+ * > A template MUST include at least one field: the empty object `{}` is an {@link Atomic}. The type admits it only
+ * > because TypeScript cannot express a non-empty index signature; {@link isTemplate} rejects it at runtime.
+ *
+ * > [!IMPORTANT]
  * > Entries MUST agree with the type declared for their key by the target model; processors reject a template whose
  * > entries do not, with an error. The `Template` type states the notation rather than policing it: the key spaces
  * > overlap by design and the forms are told apart by the model, so structural integrity is a runtime concern.
@@ -510,6 +515,10 @@ export type Template = {
  * Each binding yields one {@link Cell} per row, holding a single value, so a binding never nests a `Projection`. A
  * projection stands as the entry of the {@link Template} field naming the collection, carrying that collection's
  * {@link Criteria} alongside its bindings.
+ *
+ * > [!IMPORTANT]
+ * > A projection MUST include at least one binding: the empty object `{}` is an {@link Atomic}. The type admits it only
+ * > because TypeScript cannot express a non-empty index signature; {@link isProjection} rejects it at runtime.
  *
  * > [!IMPORTANT]
  * > Result names (the {@link Identifier} portion before `=`) MUST be unique within a projection: duplicates collide
@@ -586,6 +595,10 @@ export type Placeholder =
  * linked resource left unexpanded, or the coalesced label of a localised property under the request's negotiated
  * language priority. Written `{}`, it is the one leaf of the notation, so a request bottoms out the same way
  * whatever it targets and no part of a template carries a value of its own.
+ *
+ * Standing as a whole retrieval model rather than as a leaf, `{}` requests nothing beyond the server defaults, as if
+ * the request carried no query component. It is never a {@link Template}, {@link Projection}, {@link Locale} or
+ * {@link Union}, each of which requires at least one entry.
  */
 export type Atomic = {
 
@@ -612,6 +625,10 @@ export type Atomic = {
  * follows the property rather than the template. Tag ranges select retrieved content only, so a locale map takes no
  * {@link Criteria}: matching resources by localised text is stated at the enclosing collection instead, through the
  * `?` and `!` operators.
+ *
+ * > [!IMPORTANT]
+ * > A locale map MUST include at least one tag range: the empty object `{}` is an {@link Atomic}. The type admits it
+ * > only because TypeScript cannot express a non-empty index signature; {@link isLocale} rejects it at runtime.
  *
  * > [!NOTE]
  * > The `@none` key for non-localised values is not supported; use the `und` tag for language-neutral values.
@@ -647,6 +664,10 @@ export type Locale = {
  * A branch holds one value, never a collection: cardinality belongs to the property as a whole, and the
  * {@link Criteria} constraining it ride on the entry hosting the union. A branch never holds another union directly,
  * though a branch {@link Template} may carry unions of its own.
+ *
+ * > [!IMPORTANT]
+ * > A union MUST include at least one branch: the empty object `{}` is an {@link Atomic}. The type admits it only
+ * > because TypeScript cannot express a non-empty index signature; {@link isUnion} rejects it at runtime.
  *
  * See [Union](./index.md#55-union) for the design rationale.
  *
@@ -1340,12 +1361,16 @@ export function encodeTemplate(template: Template, {
  * the provided `base`. The input encoding is auto-detected, accepting any of the output formats produced by
  * {@link encodeTemplate}. The decoded template is validated and deeply frozen unless `lenient` is `true`.
  *
- * @param encoded The encoded {@link Template}, in any of the formats produced by {@link encodeTemplate}
+ * The empty retrieval model `{}` is accepted alongside proper templates: it is an {@link Atomic} requesting nothing
+ * beyond the server defaults, and callers are expected to serve it as a request carrying no query component.
+ *
+ * @param encoded The encoded {@link Template} or empty retrieval model, in any of the formats produced by
+ *     {@link encodeTemplate}
  * @param options Decoding options
  * @param options.base Base IRI for resolving internal IRIs
  * @param options.lenient Disables structural validation when `true`
  *
- * @returns The decoded deeply {@link immutable} template with resolved IRIs
+ * @returns The decoded deeply {@link immutable} template with resolved IRIs, or the empty retrieval model
  *
  * @throws {@link !TypeError TypeError} If `base` is not a hierarchical IRI
  * @throws {@link !TypeError TypeError} If the decoded value fails structural validation (unless `lenient` is `true`)
@@ -1380,7 +1405,7 @@ export function decodeTemplate(encoded: string, {
 
 	return immutable(
 		JSON.parse(json, resolver),
-		lenient ? (_v): _v is Template => true : isTemplate,
+		lenient ? (_v): _v is Template => true : (v): v is Template => isAtomic(v) || isTemplate(v),
 		"malformed template"
 	);
 

@@ -34,7 +34,8 @@ import {
 	isObject,
 	isOptional,
 	isString,
-	isUnion as isVariants, type Optional
+	isUnion as isVariants,
+	type Optional
 } from "@metreeca/core";
 import { isTagRange } from "@metreeca/core/language";
 import { immutable } from "@metreeca/core/values";
@@ -155,13 +156,13 @@ export const Transforms: Record<Transform, TransformSignature> = immutable({
  *
  * @param value The value to check
  *
- * @returns True if `value` is a plain object whose keys are all {@link Identifier | identifiers} and whose entries
- * are all valid {@link Slot | slots}, {@link Criteria} constraints included, or the absent marker `undefined`; false
- * otherwise
+ * @returns True if `value` is a non-empty plain object whose keys are all {@link Identifier | identifiers} and whose
+ *     entries are all valid {@link Slot | slots}, {@link Criteria} constraints included, or the absent marker
+ *     `undefined`; false otherwise
  */
 export function isTemplate(value: unknown): value is Template {
 
-	return isObject(value, (entry, field) =>
+	return !isAtomic(value) && isObject(value, (entry, field) =>
 		isIdentifier(field) && isOptional(entry, node => isQuery(node, isSlot))
 	);
 
@@ -176,12 +177,13 @@ export function isTemplate(value: unknown): value is Template {
  *
  * @param value The value to check
  *
- * @returns True if `value` is a plain object whose keys are all {@link Binding | bindings} with unique result names
- * and whose entries are all valid {@link Cell | cells} or the absent marker `undefined`; false otherwise
+ * @returns True if `value` is a non-empty plain object whose keys are all {@link Binding | bindings} with unique
+ *     result names and whose entries are all valid {@link Cell | cells} or the absent marker `undefined`; false
+ *     otherwise
  */
 export function isProjection(value: unknown): value is Projection {
 
-	return isObject(value, (cell, field) =>
+	return !isAtomic(value) && isObject(value, (cell, field) =>
 		isBinding(field) && isOptional(cell, isCell)
 	) && unique(Object.keys(value).flatMap(field => binding(field)?.name ?? []));
 
@@ -260,11 +262,13 @@ export function isAtomic(value: unknown): value is Atomic {
  *
  * @param value The value to check
  *
- * @returns True if `value` is a plain object whose keys are all RFC 4647 basic language ranges and whose entries are
- * all {@link Atomic} value templates or the absent marker `undefined`; false otherwise
+ * @returns True if `value` is a non-empty plain object whose keys are all RFC 4647 basic language ranges and whose
+ *     entries are all {@link Atomic} value templates or the absent marker `undefined`; false otherwise
  */
 export function isLocale(value: unknown): value is Locale {
-	return isObject(value, (leaf, range) => isTagRange(range) && isOptional(leaf, isAtomic));
+	return !isAtomic(value) && isObject(value, (leaf, range) =>
+		isTagRange(range) && isOptional(leaf, isAtomic)
+	);
 }
 
 
@@ -273,11 +277,12 @@ export function isLocale(value: unknown): value is Locale {
  *
  * @param value The value to check
  *
- * @returns True if `value` is a plain object whose keys are all canonical non-negative integer strings and whose
- * branches are all valid {@link Placeholder | placeholders} or the absent marker `undefined`; false otherwise
+ * @returns True if `value` is a non-empty plain object whose keys are all canonical non-negative integer strings and
+ *     whose branches are all valid {@link Placeholder | placeholders} or the absent marker `undefined`; false
+ *     otherwise
  */
 export function isUnion(value: unknown): value is Union<Placeholder> {
-	return isObject(value, (placeholder, branch) =>
+	return !isAtomic(value) && isObject(value, (placeholder, branch) =>
 		BranchPattern.test(branch) && isOptional(placeholder, isPlaceholder)
 	);
 }
@@ -527,7 +532,6 @@ export function getOrderDirection(order: Order): number {
 }
 
 
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
@@ -549,9 +553,9 @@ function isIndex(value: unknown): value is number {
  *
  * @returns The operator `key` applies, or `undefined` unless `key` is a well-formed constraint key
  */
-function operator(key: string):  Optional<Operator> {
+function operator(key: string): Optional<Operator> {
 
-	const [ , symbol = "", expression = "" ] = SelectorPattern.exec(key) ?? [];
+	const [, symbol = "", expression = ""] = SelectorPattern.exec(key) ?? [];
 
 	return key === "@" || key === "#" ? key
 		: isOperator(symbol) && isExpression(expression) ? symbol

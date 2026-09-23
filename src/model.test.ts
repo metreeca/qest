@@ -60,8 +60,8 @@ describe("guards", () => {
 			expect(isTemplate({ vendor: { id: {} } })).toBe(true);
 		});
 
-		it("should accept empty entry maps", () => {
-			expect(isTemplate({})).toBe(true);
+		it("should reject empty entry maps", () => {
+			expect(isTemplate({})).toBe(false);
 		});
 
 		it("should accept undefined entry values", () => {
@@ -132,8 +132,8 @@ describe("guards", () => {
 
 	describe("isProjection", () => {
 
-		it("should accept empty object", () => {
-			expect(isProjection({})).toBe(true);
+		it("should reject empty object", () => {
+			expect(isProjection({})).toBe(false);
 		});
 
 		it("should accept binding keys", () => {
@@ -359,8 +359,8 @@ describe("guards", () => {
 			expect(isLocale({ "en-US": {} })).toBe(true);
 		});
 
-		it("should accept the empty map", () => {
-			expect(isLocale({})).toBe(true);
+		it("should reject the empty map", () => {
+			expect(isLocale({})).toBe(false);
 		});
 
 		it("should accept undefined entries", () => {
@@ -420,8 +420,8 @@ describe("guards", () => {
 			expect(isUnion({ "0": { "*": {} }, "1": {} })).toBe(true);
 		});
 
-		it("should accept the empty map", () => {
-			expect(isUnion({})).toBe(true);
+		it("should reject the empty map", () => {
+			expect(isUnion({})).toBe(false);
 		});
 
 		it("should accept undefined branches", () => {
@@ -472,9 +472,15 @@ describe("guards", () => {
 			expect(isQuery({ "total=count:": {}, "#": 10 }, isProjection)).toBe(true);
 		});
 
-		it("should accept a node carrying constraint keys alone", () => {
-			expect(isQuery({ "#": 10 }, isTemplate)).toBe(true);
-			expect(isQuery({}, isTemplate)).toBe(true);
+		it("should accept a node carrying constraint keys alone as an atomic", () => {
+			expect(isQuery({ "#": 10 }, isAtomic)).toBe(true);
+			expect(isQuery({}, isAtomic)).toBe(true);
+		});
+
+		it("should reject a node carrying constraint keys alone under a keyed form", () => {
+			expect(isQuery({ "#": 10 }, isTemplate)).toBe(false);
+			expect(isQuery({ "#": 10 }, isProjection)).toBe(false);
+			expect(isQuery({}, isTemplate)).toBe(false);
 		});
 
 		it("should reject a node whose constraints are malformed", () => {
@@ -1611,13 +1617,13 @@ describe("guards", () => {
 
 		describe("form overlap", () => {
 
-			it("should accept the atomic under every form", () => {
-				// `{}` is simultaneously a Atomic, an empty Template, an empty Locale and an
-				// empty Union: the forms are told apart by the model, not by the notation
+			it("should accept the empty object as an atomic alone", () => {
+				// keyed forms carry at least one entry, so `{}` has the single atomic reading
 				expect(isAtomic({})).toBe(true);
-				expect(isTemplate({})).toBe(true);
-				expect(isLocale({})).toBe(true);
-				expect(isUnion({})).toBe(true);
+				expect(isTemplate({})).toBe(false);
+				expect(isProjection({})).toBe(false);
+				expect(isLocale({})).toBe(false);
+				expect(isUnion({})).toBe(false);
 			});
 
 			it("should accept an identifier-keyed map as both template and locale", () => {
@@ -2002,6 +2008,10 @@ describe("codecs", () => {
 
 			it("should decode unpadded base64url input", () => {
 				expect(decodeTemplate("e30")).toEqual({});
+			});
+
+			it("should accept the empty root template selecting the server default", () => {
+				expect(decodeTemplate("{}")).toEqual({});
 			});
 
 			it("should roundtrip a template through each transport format", () => {
