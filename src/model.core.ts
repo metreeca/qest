@@ -42,7 +42,7 @@ import { immutable } from "@metreeca/core/values";
 import type {
 	Aggregate,
 	Atomic,
-	Binding,
+	Binding, Branch,
 	Cell,
 	Criteria,
 	Expression,
@@ -277,14 +277,24 @@ export function isLocale(value: unknown): value is Locale {
  *
  * @param value The value to check
  *
- * @returns True if `value` is a non-empty plain object whose keys are all canonical non-negative integer strings and
- *     whose branches are all valid {@link Placeholder | placeholders} or the absent marker `undefined`; false
- *     otherwise
+ * @returns True if `value` is a non-empty plain object whose keys are all valid {@link Branch} keys and whose
+ *     branches are all valid {@link Placeholder | placeholders} or the absent marker `undefined`; false otherwise
  */
 export function isUnion(value: unknown): value is Union<Placeholder> {
 	return !isAtomic(value) && isObject(value, (placeholder, branch) =>
-		BranchPattern.test(branch) && isOptional(placeholder, isPlaceholder)
+		isBranch(branch) && isOptional(placeholder, isPlaceholder)
 	);
+}
+
+/**
+ * Checks if a value is a {@link Branch} key.
+ *
+ * @param value The value to check
+ *
+ * @returns True if `value` is a canonical non-negative integer string with no leading zeros; false otherwise
+ */
+export function isBranch(value: unknown) : value is Branch {
+	return isString(value) && BranchPattern.test(value);
 }
 
 

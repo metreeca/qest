@@ -36,6 +36,7 @@
  * - {@link Atomic} — Atomic value template
  * - {@link Locale} — Localised text map template (structured language-tagged value)
  * - {@link Union} — Union-typed property template
+ * - {@link Branch} — Union branch key
  * - {@link Query} — Constrained retrieval node
  * - {@link Criteria} — Collection retrieval constraints
  * - {@link Binding} — Named computed expression
@@ -62,6 +63,7 @@
  * - {@link isAtomic} — checks if a value is an {@link Atomic}
  * - {@link isLocale} — checks if a value is a {@link Locale}
  * - {@link isUnion} — checks if a value is a {@link Union}
+ * - {@link isBranch} — checks if a value is a {@link Branch} key
  * - {@link isQuery} — checks if a value is a {@link Query} over a given retrieval form
  * - {@link isCriteria} — checks if a value is a {@link Criteria}
  * - {@link isCriterion} — checks if an entry is a valid {@link Criteria} entry
@@ -646,8 +648,8 @@ export type Locale = {
  * Union-typed property template.
  *
  * Requests a union-typed property one branch at a time, so alternatives that need different shapes can each state
- * their own. Keys are opaque non-negative integer strings labelling the alternatives; which variants
- * a branch retrieves is fixed by matching its shape against the property's declared variants, never by its key, so
+ * their own. Keys are opaque {@link Branch} labels telling the alternatives apart; which variants a branch retrieves
+ * is fixed by matching its shape against the property's declared variants, never by its key, so
  * reordering or renaming variants at the source leaves an existing template valid. A variant left unmatched by every
  * branch contributes no values, and a branch matching no variant is unsatisfiable and is rejected. A branch may be
  * set to `undefined`, the absent marker for one elided at construction time.
@@ -676,9 +678,25 @@ export type Locale = {
  */
 export type Union<T> = {
 
-	readonly [branch: `${number}`]: Optional<T>
+	readonly [branch: Branch]: Optional<T>
 
 }
+
+/**
+ * {@link Union} branch key.
+ *
+ * Labels one alternative of a union so its branches can be told apart. The label carries no meaning of its own: the
+ * variants a branch retrieves are fixed by its shape, never by its label, so any set of distinct labels serves equally
+ * well.
+ *
+ * > [!IMPORTANT]
+ * > A branch key MUST be a canonical non-negative integer string with no leading zeros, such as `"0"` or `"42"`. The
+ * > type also admits forms such as `"01"`, `"-1"` or `"1.5"` only because TypeScript cannot narrow a template literal
+ * > to canonical integers; {@link isBranch} rejects them at runtime.
+ */
+export type Branch =
+	`${number}`;
+
 
 
 /**
@@ -913,7 +931,7 @@ export type Criteria = {
  * ```
  */
 export type Binding =
-	| `${Identifier}=${Expression}`;
+	`${Identifier}=${Expression}`;
 
 /**
  * Computed expression.
@@ -945,7 +963,7 @@ export type Binding =
  * ```
  */
 export type Expression =
-	| `${Pipe}${Path}`;
+	`${Pipe}${Path}`;
 
 /**
  * Transform pipe.
@@ -961,7 +979,7 @@ export type Expression =
  * > This is a type alias for documentation purposes only; pipe syntax is validated at runtime by query processors.
  */
 export type Pipe =
-	| string;
+	string;
 
 /**
  * Property path.
@@ -981,7 +999,7 @@ export type Pipe =
  * > value yields `undefined`.
  */
 export type Path =
-	| string;
+	string;
 
 
 /**

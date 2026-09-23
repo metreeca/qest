@@ -31,7 +31,6 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Rename `Locales` to `Locale` and `isLocales` to `isLocale`
 - Rename `isSelection` to `isCriteria` and `encodeSelection`/`decodeSelection` to `encodeCriteria`/`decodeCriteria`,
   matching the specification, which names a collection's constraints its criteria
-- Inline the `Branch` union-key type and the `isBranch` guard into `Union` and `isUnion`, dropping both
 - Parameterise `Union` by the form admitted per branch and admit `Locale` branches uniformly
 - Withdraw the elision rule: `{}` is an `Atomic` rather than an omission, and every writable document denotes a
   request

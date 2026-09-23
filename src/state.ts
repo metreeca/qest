@@ -388,7 +388,7 @@ export type Literal =
  * @see {@link https://www.w3.org/TR/json-ld11/#node-identifiers JSON-LD 1.1 - Node Identifiers}
  */
 export type Reference =
-	| IRI
+	|IRI
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

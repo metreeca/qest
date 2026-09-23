@@ -18,6 +18,7 @@ import { describe, expect, it } from "vitest";
 import {
 	isAggregate,
 	isBinding,
+	isBranch,
 	isCell,
 	isCriteria,
 	isCriterion,
@@ -456,6 +457,37 @@ describe("guards", () => {
 			expect(isUnion(undefined)).toBe(false);
 			expect(isUnion([])).toBe(false);
 			expect(isUnion([{}])).toBe(false);
+		});
+
+	});
+
+	describe("isBranch", () => {
+
+		it("should accept canonical non-negative integer strings", async () => {
+			expect(isBranch("0")).toBe(true);
+			expect(isBranch("1")).toBe(true);
+			expect(isBranch("42")).toBe(true);
+		});
+
+		it("should reject non-canonical integer strings", async () => {
+			expect(isBranch("01")).toBe(false);
+			expect(isBranch("-5")).toBe(false);
+			expect(isBranch("+1")).toBe(false);
+			expect(isBranch("1e10")).toBe(false);
+			expect(isBranch("3.14")).toBe(false);
+			expect(isBranch(" 1")).toBe(false);
+		});
+
+		it("should reject empty and non-numeric strings", async () => {
+			expect(isBranch("")).toBe(false);
+			expect(isBranch("foo")).toBe(false);
+		});
+
+		it("should reject non-string values", async () => {
+			expect(isBranch(0)).toBe(false);
+			expect(isBranch(null)).toBe(false);
+			expect(isBranch(undefined)).toBe(false);
+			expect(isBranch({})).toBe(false);
 		});
 
 	});
