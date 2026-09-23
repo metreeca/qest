@@ -42,7 +42,8 @@ import { immutable } from "@metreeca/core/values";
 import type {
 	Aggregate,
 	Atomic,
-	Binding, Branch,
+	Binding,
+	Branch,
 	Cell,
 	Criteria,
 	Expression,
@@ -185,10 +186,12 @@ export function isProjection(value: unknown): value is Projection {
 
 	return !isAtomic(value) && isObject(value, (cell, field) =>
 		isBinding(field) && isOptional(cell, isCell)
-	) && unique(Object.keys(value).flatMap(field => binding(field)?.name ?? []));
+	) && unique(Object.keys(value).map(field =>
+		binding(field)?.name
+	));
 
 
-	function unique(names: readonly string[]): boolean {
+	function unique(names: readonly unknown[]): boolean {
 		return new Set(names).size === names.length;
 	}
 
