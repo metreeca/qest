@@ -37,6 +37,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Require at least one entry in a `Template`, `Projection`, `Locale`, or `Union`: `isTemplate`, `isProjection`,
   `isLocale`, and `isUnion` reject `{}`, which is always an `Atomic`, while `decodeTemplate` accepts it as the empty
   retrieval model requesting the server defaults
+- Reject `undefined` entries in a `Template`, `Projection`, `Locale`, or `Union`: the absent marker is admitted by
+  `Resource` state only, and model entries left out are omitted from the map
 - Realign to the renamed `@metreeca/core` values module, raising the minimum supported version: `immutable` is imported
   from `@metreeca/core/values` in place of `@metreeca/core/structures`
 

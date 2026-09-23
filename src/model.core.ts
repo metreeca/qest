@@ -32,7 +32,6 @@ import {
 	isNull,
 	isNumber,
 	isObject,
-	isOptional,
 	isString,
 	isUnion as isVariants,
 	type Optional
@@ -158,13 +157,12 @@ export const Transforms: Record<Transform, TransformSignature> = immutable({
  * @param value The value to check
  *
  * @returns True if `value` is a non-empty plain object whose keys are all {@link Identifier | identifiers} and whose
- *     entries are all valid {@link Slot | slots}, {@link Criteria} constraints included, or the absent marker
- *     `undefined`; false otherwise
+ *     entries are all valid {@link Slot | slots}, {@link Criteria} constraints included; false otherwise
  */
 export function isTemplate(value: unknown): value is Template {
 
 	return !isAtomic(value) && isObject(value, (entry, field) =>
-		isIdentifier(field) && isOptional(entry, node => isQuery(node, isSlot))
+		isIdentifier(field) && isQuery(entry, isSlot)
 	);
 
 
@@ -179,13 +177,12 @@ export function isTemplate(value: unknown): value is Template {
  * @param value The value to check
  *
  * @returns True if `value` is a non-empty plain object whose keys are all {@link Binding | bindings} with unique
- *     result names and whose entries are all valid {@link Cell | cells} or the absent marker `undefined`; false
- *     otherwise
+ *     result names and whose entries are all valid {@link Cell | cells}; false otherwise
  */
 export function isProjection(value: unknown): value is Projection {
 
 	return !isAtomic(value) && isObject(value, (cell, field) =>
-		isBinding(field) && isOptional(cell, isCell)
+		isBinding(field) && isCell(cell)
 	) && unique(Object.keys(value).map(field =>
 		binding(field)?.name
 	));
@@ -266,11 +263,11 @@ export function isAtomic(value: unknown): value is Atomic {
  * @param value The value to check
  *
  * @returns True if `value` is a non-empty plain object whose keys are all RFC 4647 basic language ranges and whose
- *     entries are all {@link Atomic} value templates or the absent marker `undefined`; false otherwise
+ *     entries are all {@link Atomic} value templates; false otherwise
  */
 export function isLocale(value: unknown): value is Locale {
 	return !isAtomic(value) && isObject(value, (leaf, range) =>
-		isTagRange(range) && isOptional(leaf, isAtomic)
+		isTagRange(range) && isAtomic(leaf)
 	);
 }
 
@@ -281,11 +278,11 @@ export function isLocale(value: unknown): value is Locale {
  * @param value The value to check
  *
  * @returns True if `value` is a non-empty plain object whose keys are all valid {@link Branch} keys and whose
- *     branches are all valid {@link Placeholder | placeholders} or the absent marker `undefined`; false otherwise
+ *     branches are all valid {@link Placeholder | placeholders}; false otherwise
  */
 export function isUnion(value: unknown): value is Union<Placeholder> {
 	return !isAtomic(value) && isObject(value, (placeholder, branch) =>
-		isBranch(branch) && isOptional(placeholder, isPlaceholder)
+		isBranch(branch) && isPlaceholder(placeholder)
 	);
 }
 

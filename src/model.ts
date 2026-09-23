@@ -443,7 +443,7 @@
  * @module
  */
 
-import { error, Identifier, isArray, isIdentifier, isObject, isString, key, type Optional } from "@metreeca/core";
+import { error, Identifier, isArray, isIdentifier, isObject, isString, key } from "@metreeca/core";
 import { decodeBase64, encodeBase64 } from "@metreeca/core/base64";
 import { TagRange } from "@metreeca/core/language";
 import { app, getNamespaceIRI, internalize, isIRI, resolve } from "@metreeca/core/resource";
@@ -465,8 +465,7 @@ export * from "./model.core.js";
  * Requests a shaped view of a {@link Resource}: each {@link Identifier} key names a property to retrieve, and its
  * {@link Slot} value says how far to go, from the property's own value to an arbitrarily deep expansion of the
  * resources it links to. A property left out of the map is left out of the response, so a client pays for exactly what
- * it asks for. A field may also be set to `undefined`, the absent marker for an entry elided at construction time,
- * keeping a conditionally assembled template assignable to `Template`.
+ * it asks for.
  *
  * Where the named property is multi-valued, the same entry doubles as the collection request: it carries the
  * {@link Criteria} keys that filter, sort, and paginate that collection alongside the per-item keys, so one entry
@@ -493,7 +492,7 @@ export * from "./model.core.js";
  */
 export type Template = {
 
-	readonly [field: Identifier]: Optional<Query<Slot>>
+	readonly [field: Identifier]: Query<Slot>
 
 }
 
@@ -503,8 +502,7 @@ export type Template = {
  * Requests a collection as rows of computed values rather than as items: each {@link Binding} key names a result and
  * the {@link Expression} that computes it, from a property path optionally piped through {@link Transform | transforms}
  * and aggregates. Reach for it to compute totals, ranges, and category counts server-side, in the same call that
- * retrieves the data, rather than fetching items and reducing them client-side. A binding may be set to `undefined`,
- * the absent marker for one elided at construction time.
+ * retrieves the data, rather than fetching items and reducing them client-side.
  *
  * ```typescript
  * const projection: Projection = {
@@ -537,7 +535,7 @@ export type Template = {
  */
 export type Projection = {
 
-	readonly [field: Binding]: Optional<Cell>
+	readonly [field: Binding]: Cell
 
 }
 
@@ -639,7 +637,7 @@ export type Atomic = {
  */
 export type Locale = {
 
-	readonly [range: TagRange]: Optional<Atomic>
+	readonly [range: TagRange]: Atomic
 
 }
 
@@ -651,8 +649,7 @@ export type Locale = {
  * their own. Keys are opaque {@link Branch} labels telling the alternatives apart; which variants a branch retrieves
  * is fixed by matching its shape against the property's declared variants, never by its key, so
  * reordering or renaming variants at the source leaves an existing template valid. A variant left unmatched by every
- * branch contributes no values, and a branch matching no variant is unsatisfiable and is rejected. A branch may be
- * set to `undefined`, the absent marker for one elided at construction time.
+ * branch contributes no values, and a branch matching no variant is unsatisfiable and is rejected.
  *
  * ```typescript
  * const template: Template = {
@@ -678,7 +675,7 @@ export type Locale = {
  */
 export type Union<T> = {
 
-	readonly [branch: Branch]: Optional<T>
+	readonly [branch: Branch]: T
 
 }
 

@@ -65,9 +65,9 @@ describe("guards", () => {
 			expect(isTemplate({})).toBe(false);
 		});
 
-		it("should accept undefined entry values", () => {
-			expect(isTemplate({ name: undefined })).toBe(true);
-			expect(isTemplate({ id: {}, child: undefined })).toBe(true);
+		it("should reject undefined entry values", () => {
+			expect(isTemplate({ name: undefined })).toBe(false);
+			expect(isTemplate({ id: {}, child: undefined })).toBe(false);
 		});
 
 		it("should accept entries carrying collection constraints", () => {
@@ -163,9 +163,9 @@ describe("guards", () => {
 			expect(isProjection({ "label=title": { "en-US": {} } })).toBe(true);
 		});
 
-		it("should accept undefined cells", () => {
-			expect(isProjection({ "name=name": undefined })).toBe(true);
-			expect(isProjection({ "id=id": {}, "total=count:": undefined })).toBe(true);
+		it("should reject undefined cells", () => {
+			expect(isProjection({ "name=name": undefined })).toBe(false);
+			expect(isProjection({ "id=id": {}, "total=count:": undefined })).toBe(false);
 		});
 
 		it("should reject constraint keys", () => {
@@ -214,9 +214,9 @@ describe("guards", () => {
 			expect(isSlot({ "vendor=vendor": { name: {} } })).toBe(true);
 		});
 
-		it("should accept undefined branches and cells", async () => {
-			expect(isSlot({ "0": { name: {} }, "1": undefined })).toBe(true);
-			expect(isSlot({ "total=count:": undefined })).toBe(true);
+		it("should reject undefined branches and cells", async () => {
+			expect(isSlot({ "0": { name: {} }, "1": undefined })).toBe(false);
+			expect(isSlot({ "total=count:": undefined })).toBe(false);
 		});
 
 		it("should reject constraint keys", async () => {
@@ -257,7 +257,10 @@ describe("guards", () => {
 
 		it("should accept unions of placeholders", async () => {
 			expect(isCell({ "0": { name: {} }, "1": { id: {} } })).toBe(true);
-			expect(isCell({ "0": { name: {} }, "1": undefined })).toBe(true);
+		});
+
+		it("should reject undefined branches", async () => {
+			expect(isCell({ "0": { name: {} }, "1": undefined })).toBe(false);
 		});
 
 		it("should reject projections", async () => {
@@ -364,8 +367,8 @@ describe("guards", () => {
 			expect(isLocale({})).toBe(false);
 		});
 
-		it("should accept undefined entries", () => {
-			expect(isLocale({ en: undefined })).toBe(true);
+		it("should reject undefined entries", () => {
+			expect(isLocale({ en: undefined })).toBe(false);
 		});
 
 		it("should reject extended language ranges", () => {
@@ -425,8 +428,8 @@ describe("guards", () => {
 			expect(isUnion({})).toBe(false);
 		});
 
-		it("should accept undefined branches", () => {
-			expect(isUnion({ "0": undefined })).toBe(true);
+		it("should reject undefined branches", () => {
+			expect(isUnion({ "0": undefined })).toBe(false);
 		});
 
 		it("should reject non-canonical branch keys", () => {
@@ -1975,16 +1978,6 @@ describe("codecs", () => {
 			};
 
 			expect(encodeTemplate(template)).toBe(JSON.stringify(template));
-		});
-
-		it("should omit undefined-valued properties", () => {
-			const template: Template = {
-				id: {},
-				name: undefined,
-				price: {}
-			};
-
-			expect(encodeTemplate(template)).toBe(JSON.stringify({ id: {}, price: {} }));
 		});
 
 		it("should indent output when indent is true", () => {

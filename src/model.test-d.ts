@@ -99,12 +99,12 @@ describe("Template", () => {
 		expectTypeOf<Catalog>().toExtend<Template>();
 	});
 
-	test("an entry elided at construction time is a Template", () => {
+	test("an undefined entry is not a Template", () => {
 		type Product = {
 			readonly name: Atomic | undefined;
 		};
 
-		expectTypeOf<Product>().toExtend<Template>();
+		expectTypeOf<Product>().not.toExtend<Template>();
 	});
 
 	test("a literal entry is not a Template", () => {
@@ -135,15 +135,15 @@ describe("Projection", () => {
 	});
 
 	test("a cell holds a placeholder or a union of placeholders", () => {
-		expectTypeOf<Projection["count=count:"]>().toExtend<Placeholder | Union<Placeholder> | undefined>();
+		expectTypeOf<Projection["count=count:"]>().toExtend<Placeholder | Union<Placeholder>>();
 	});
 
-	test("a cell elided at construction time is admitted", () => {
+	test("an undefined cell is not admitted", () => {
 		type Facets = {
 			readonly "count=count:": Atomic | undefined;
 		};
 
-		expectTypeOf<Facets>().toExtend<Projection>();
+		expectTypeOf<Facets>().not.toExtend<Projection>();
 	});
 
 });
@@ -175,7 +175,7 @@ describe("Locale", () => {
 	});
 
 	test("the value slot carries no request of its own", () => {
-		expectTypeOf<Locale[Identifier]>().toEqualTypeOf<Atomic | undefined>();
+		expectTypeOf<Locale[Identifier]>().toEqualTypeOf<Atomic>();
 	});
 
 });
@@ -196,8 +196,8 @@ describe("Union", () => {
 		expectTypeOf<{ readonly "10": Atomic }>().toExtend<Union<Placeholder>>();
 	});
 
-	test("a branch may be elided at construction time", () => {
-		expectTypeOf<Union<Placeholder>["0"]>().toExtend<Placeholder | undefined>();
+	test("a branch holds a placeholder", () => {
+		expectTypeOf<Union<Placeholder>["0"]>().toExtend<Placeholder>();
 	});
 
 });
