@@ -29,10 +29,11 @@ powerful model-driven stack for rapid development of linked data applications:
 
 | Package                     | Description                                                    |
 |-----------------------------|----------------------------------------------------------------|
-| **@metreeca/qest**          | Data types for client-driven, queryable REST/JSON APIs         |
+| **@metreeca/qest**          | Foundations for client-driven, queryable REST/JSON APIs        |
 | [**@metreeca/blue**][]      | Declarative blueprints for model-driven linked data processing |
-| @metreeca/keep _(upcoming)_ | Shape-driven storage framework with pluggable adapters         |
-| @metreeca/gate _(upcoming)_ | Shape-driven REST/JSON API publishing                          |
+| @metreeca/keep _(upcoming)_ | Turnkey model-driven storage for linked data resources         |
+| @metreeca/gate _(upcoming)_ | Zero-code model-driven endpoints for linked data resources     |
+| @metreeca/tile _(upcoming)_ | Minimalist model-driven UI toolkit for linked data resources   |
 
 [**@metreeca/blue**]: https://github.com/metreeca/blue
 
