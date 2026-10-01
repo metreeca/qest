@@ -323,7 +323,7 @@ Two regimes resolve a value against the variants, according to whether it carrie
   **unsatisfiable**, one matching several is **ambiguous**, and processors MUST reject either wherever this
   specification calls for such a match (Sections 3.3 and 5.7);
 - a **placeholder** (Sections 5.3 and 5.5) carries no content and states only how far to retrieve. It matches a variant
-  by form: an atomic matches every variant, a template the nested-resource variants its properties are valid on
+  by form: an atomic matches every variant, a template the nested-resource variants declaring any of its properties
   (Section 5.5), and a locale the text variant; any value-domain narrowing on the variant (Section 3.1) is ignored. It
   matches every compatible variant and MAY match more than one, retrieving each. Like a data value, it MUST match at
   least one variant: one matching none is **unsatisfiable** and MUST be rejected, and a union placeholder (Section 5.5)
@@ -965,10 +965,10 @@ return nothing and is unsatisfiable, and MUST be rejected, as a data value is (S
 
 The forms match by shape. An atomic matches every variant, whatever a property holds: a literal comes back as a
 literal, a linked resource as its reference (Section 4.2), and localised text as its coalesced label (Section 6.2). A
-template matches the nested-resource variants its properties are valid on, and a locale matches the text variant. A
-template over a property declaring no nested-resource variant, or a locale over one declaring no text variant, is
-therefore unsatisfiable. Reference values proper, the options and operands of criteria (Section 5.7), are resolved on
-decoding (Section 5) and are absolute thereafter.
+template matches the nested-resource variants declaring any of its properties (Section 5.5), and a locale matches the
+text variant. A template over a property declaring no nested-resource variant, or a locale over one declaring no text
+variant, is therefore unsatisfiable. Reference values proper, the options and operands of criteria (Section 5.7), are
+resolved on decoding (Section 5) and are absolute thereafter.
 
 Cardinality is not stated by a placeholder: single- and multi-valued properties take the same forms, and which one a key
 names is fixed by its expected type (Section 3.1). A multi-valued property is constrained by merging criteria into
@@ -1008,8 +1008,8 @@ is stated at the enclosing collection instead, through `?` and `!` (Section 5.7.
 A locale is not syntactically disjoint from a nested template, since a tag-range such as `en` is also a valid property
 identifier; processors classify the object by the targeted property's expected type (Section 3.1): a locale over a
 property declaring a text variant (Section 4.3) and a template (Section 5.1) otherwise. A property declaring both a text
-variant and a nested-resource variant leaves the object form genuinely ambiguous and MUST be addressed through the keyed
-union form (Section 5.5), which tells the alternatives apart by key.
+variant and a nested-resource variant leaves the object form ambiguous and MUST be addressed through the keyed union
+form (Section 5.5), which settles the reading of each object alternative against the property's variants.
 
 ```json
 {
@@ -1054,11 +1054,22 @@ The keys are opaque: they label the alternatives but carry no positional or nomi
 integer strings (no decimals, negatives, or exponential forms), a namespace disjoint from property identifiers, and a
 processor MUST NOT read positional meaning into them. Each value is an alternative placeholder, and the branches it
 retrieves are fixed by matching the placeholder against the property's variants (Section 5.3), not by the key. Matching
-is by form: an atomic alternative matches every variant, a template alternative every nested-resource variant whose
-type its properties are valid on, and a locale alternative the text variant (Section 5.3). An alternative MAY match more
-than one variant, retrieving each, but like any placeholder MUST match at least one: one matching no variant can return
-nothing and is unsatisfiable, and MUST be rejected (Sections 3.1 and 5.3). Variants left unmatched are skipped at
-retrieval, contributing no values.
+is by form: an atomic alternative matches every variant, a template alternative every nested-resource variant declaring
+any of its properties, and a locale alternative the text variant (Section 5.3).
+
+A template MAY span several nested-resource variants, as names shared across variants already do (Section 3.2). Each
+matched variant retrieves the properties of the template that its type declares, and ignores the others. Every property
+of the template MUST be declared by at least one nested-resource variant; a template naming a property that no variant
+declares is malformed and MUST be rejected.
+
+An object alternative is read against the property's shape. Where every key of the alternative is a property declared
+by at least one nested-resource variant, processors MUST read the alternative as a template, matching those variants
+and never the text variant. Otherwise processors MUST read it as a locale, matching the text variant. A locale whose
+ranges are all property identifiers of nested-resource variants therefore cannot be requested on that property.
+
+An alternative MAY match more than one variant, retrieving each, but like any placeholder MUST match at least one: one
+matching no variant can return nothing and is unsatisfiable, and MUST be rejected (Sections 3.1 and 5.3). Variants left
+unmatched are skipped at retrieval, contributing no values.
 
 ```json
 {

@@ -7,6 +7,16 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased](https://github.com/metreeca/qest/compare/v0.11.0...HEAD)
 
+### Changed
+
+- Let a union template span several nested-resource variants: it matches every variant declaring any of its
+  properties, each retrieving the properties it declares, and is rejected only where a property is declared by none
+
+### Fixed
+
+- Specify how an object alternative of a keyed union reads when the property declares both a text and a nested-resource
+  variant: a template where every key is a property declared by a nested-resource variant, a locale otherwise
+
 ## [0.11.0](https://github.com/metreeca/qest/compare/v0.10.0...v0.11.0) - 2026-10-01
 
 ### Added
