@@ -7,6 +7,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.12.0](https://github.com/metreeca/qest/compare/v0.11.0...HEAD)
 
+### Added
+
+- Add the `isVacuous` guard, detecting values that carry no content at any nesting depth, such as `{}`, `[]`,
+  `{ address: {} }` or `[{}]`, and treat fields holding them as omitted, deleted on state replacement
+
 ### Changed
 
 - Let a union template span several nested-resource variants: it matches every variant declaring any of its

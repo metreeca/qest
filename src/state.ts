@@ -39,6 +39,7 @@
  * - {@link isDictionary} — checks if a value is a {@link Dictionary}
  * - {@link isLiteral} — checks if a value is a {@link Literal}
  * - {@link isReference} — checks if a value is a {@link Reference}
+ * - {@link isVacuous} — checks if a value is vacuous, carrying no content
  *
  * **Codecs**
  *
@@ -183,8 +184,9 @@
  * ```
  *
  * > [!IMPORTANT]
- * > State replacement is total: properties not included in the state are removed from the resource; empty arrays
- * > are treated as property deletions, following set semantics where an empty set is equivalent to absence.
+ * > State replacement is total: properties not included in the state are removed from the resource. Properties holding
+ * > {@link isVacuous | vacuous} values, such as `[]` or `{}`, are treated as property deletions, following set
+ * > semantics where an empty set is equivalent to absence.
  *
  * ## Deleting
  *
@@ -213,6 +215,10 @@
  * > [!IMPORTANT]
  * > Arrays follow set semantics: duplicates are ignored, ordering is immaterial, and empty arrays are treated
  * > as absent values, aligning with JSON-LD's multi-valued property model.
+ *
+ * The same holds for any {@link isVacuous | vacuous} value carrying no content: `{}`, `[]`, an empty dictionary, or a
+ * structure holding only vacuous values, such as `{ "address": {} }` or `[{}]`. A field holding a vacuous value is
+ * treated as omitted.
  *
  * ## IRIs
  *
@@ -288,8 +294,8 @@ export * from "./state.core.js";
  * field elided at construction time (for example, a conditionally included property) and is equivalent to omission.
  *
  * > [!NOTE]
- * > An empty nested `Resource` (`{}`) carries no state and MUST be ignored by processors:
- * > dropped when it appears as an element of a {@link Values} array, or treated as if the
+ * > A {@link isVacuous | vacuous} nested `Resource`, such as `{}` or `{ "address": {} }`, carries no state and MUST
+ * > be ignored by processors: dropped when it appears as an element of a {@link Values} array, or treated as if the
  * > owning field were omitted from the enclosing resource otherwise.
  *
  * @see {@link https://datatracker.ietf.org/doc/html/rfc9110#section-9.3.1 RFC 9110 - HTTP GET Method}
@@ -306,8 +312,8 @@ export type Resource = {
  * Linked data value set.
  *
  * A single {@link Value} scalar, a {@link Dictionary}, or an array of {@link Value} elements.
- * Arrays follow set semantics: duplicate values are ignored, ordering is immaterial, and empty arrays are
- * treated as absent values. Element types may be mixed.
+ * Arrays follow set semantics: duplicate values are ignored, ordering is immaterial, and
+ * {@link isVacuous | vacuous} arrays, such as `[]` or `[{}]`, are treated as absent values. Element types may be mixed.
  */
 export type Values =
 	| Value
@@ -348,9 +354,10 @@ export type Value =
  * > - The `@none` key for non-localised values is not supported; use the `und` tag for language-neutral values
  *
  * > [!NOTE]
- * > An empty dictionary (`{}`) carries no localised values and MUST be ignored by processors as if the
- * > owning field were omitted from the enclosing resource. An empty array standing as a tag's value carries no
- * > values either and is ignored in the same way, admissible only where the property takes the array form.
+ * > A {@link isVacuous | vacuous} dictionary, such as `{}` or `{ "en": [] }`, carries no localised values and MUST
+ * > be ignored by processors as if the owning field were omitted from the enclosing resource. An empty array
+ * > standing as a tag's value carries no values either and is ignored in the same way, admissible only where the
+ * > property takes the array form.
  *
  * @see {@link https://www.rfc-editor.org/rfc/rfc5646.html RFC 5646 - Tags for Identifying Languages}
  * @see {@link https://iso639-3.sil.org/code/und ISO 639 und - Undetermined Language}
@@ -399,11 +406,11 @@ export type Reference =
  * Serialises a {@link Resource} into a JSON string, recursively {@link internalize | internalising} absolute IRIs
  * against the provided `base`.
  *
- * Values carrying no content are never surfaced: an empty array, nested {@link Resource}, or {@link Dictionary},
- * at any nesting depth, causes the owning field to be omitted, while an empty object appearing as an array element,
- * or an empty array standing as a tag's value in a {@link Dictionary}, is dropped from its container. Omission
- * cascades, so a field left empty once its own contents are omitted is omitted in turn, and a resource left with no
- * content at all encodes as an empty document.
+ * {@link isVacuous | Vacuous} values are never surfaced: an empty array, nested {@link Resource}, or
+ * {@link Dictionary}, at any nesting depth, causes the owning field to be omitted, while an empty object appearing as
+ * an array element, or an empty array standing as a tag's value in a {@link Dictionary}, is dropped from its
+ * container. Omission cascades, so a field left empty once its own contents are omitted is omitted in turn, and a
+ * resource left with no content at all encodes as an empty document.
  *
  * @param resource The resource state to encode
  * @param options Encoding options

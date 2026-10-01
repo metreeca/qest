@@ -16,7 +16,7 @@
 
 import { app, getNamespaceIRI } from "@metreeca/core/resource";
 import { describe, expect, it } from "vitest";
-import { isDictionary, isResource, isValue, isValues } from "./state.core.js";
+import { isDictionary, isResource, isVacuous, isValue, isValues } from "./state.core.js";
 import { decodeResource, encodeResource, type Resource } from "./state.js";
 
 
@@ -387,6 +387,53 @@ describe("guards", () => {
 
 		it("should reject language maps with non-finite number values", () => {
 			expect(isDictionary({ en: Number.NaN })).toBe(false);
+		});
+
+	});
+
+	describe("isVacuous", () => {
+
+		it("should accept undefined", () => {
+			expect(isVacuous(undefined)).toBe(true);
+		});
+
+		it("should accept empty structures", () => {
+			expect(isVacuous({})).toBe(true);
+			expect(isVacuous([])).toBe(true);
+		});
+
+		it("should accept structures holding only vacuous members", () => {
+			expect(isVacuous({ address: undefined })).toBe(true);
+			expect(isVacuous([undefined])).toBe(true);
+			expect(isVacuous({ address: {} })).toBe(true);
+			expect(isVacuous([{}])).toBe(true);
+			expect(isVacuous({ label: { en: [] } })).toBe(true);
+			expect(isVacuous({ items: [{ address: {} }, []] })).toBe(true);
+		});
+
+		it("should reject scalars", () => {
+			expect(isVacuous("")).toBe(false);
+			expect(isVacuous(0)).toBe(false);
+			expect(isVacuous(false)).toBe(false);
+			expect(isVacuous("/products/42")).toBe(false);
+		});
+
+		it("should reject null", () => {
+			expect(isVacuous(null)).toBe(false);
+		});
+
+		it("should reject structures holding any non-vacuous member", () => {
+			expect(isVacuous({ name: "Acme" })).toBe(false);
+			expect(isVacuous([0])).toBe(false);
+			expect(isVacuous({ address: {}, name: "Acme" })).toBe(false);
+			expect(isVacuous([{}, { name: "Acme" }])).toBe(false);
+			expect(isVacuous({ label: { en: ["Acme"] } })).toBe(false);
+			expect(isVacuous({ items: [{ address: { city: "Rome" } }] })).toBe(false);
+		});
+
+		it("should reject structures holding null", () => {
+			expect(isVacuous({ address: null })).toBe(false);
+			expect(isVacuous([null])).toBe(false);
 		});
 
 	});

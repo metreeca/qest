@@ -17,7 +17,8 @@
 /**
  * Type guards for resource state types.
  *
- * Runtime validators for the state types declared in the `state` module, re-exported through it.
+ * Runtime validators for the state types declared in the `state` module, plus a check for values carrying no content.
+ * All are re-exported through the `state` module.
  *
  * @module
  */
@@ -116,4 +117,22 @@ export function isLiteral(value: unknown): value is Literal {
  */
 export function isReference(value: unknown): value is Reference {
 	return isIRI(value, "absolute");
+}
+
+
+/**
+ * Checks if a value is vacuous.
+ *
+ * A vacuous value carries no content, whatever its nesting: `{}`, `[]`, `{ address: {} }` and `[{}]` all qualify. A
+ * field holding a vacuous value is equivalent to an omitted field.
+ *
+ * @param value The value to check
+ *
+ * @returns True if `value` is `undefined`, or an array or plain object whose elements or entries are all vacuous; false
+ * otherwise
+ */
+export function isVacuous(value: unknown): boolean {
+	return value === undefined
+		|| isArray(value, isVacuous)
+		|| isObject(value, entry => isVacuous(entry));
 }
