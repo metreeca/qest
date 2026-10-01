@@ -39,8 +39,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   retrieval model requesting the server defaults
 - Reject `undefined` entries in a `Template`, `Projection`, `Locale`, or `Union`: the absent marker is admitted by
   `Resource` state only, and model entries left out are omitted from the map
-- Realign to the renamed `@metreeca/core` values module, raising the minimum supported version: `immutable` is imported
-  from `@metreeca/core/values` in place of `@metreeca/core/structures`
+- Realign to the renamed `@metreeca/core` values module, raising the minimum supported version to `^0.12.0`:
+  `immutable` is imported from `@metreeca/core/values` in place of `@metreeca/core/structures`
 
 ### Removed
 
