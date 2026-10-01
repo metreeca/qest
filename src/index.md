@@ -2061,9 +2061,10 @@ admits the EXISTS predicate, whereas the simple case (`CASE expr WHEN operand`) 
 searched form. An engine that omits EXISTS from its documented searched `CASE` is an engine-coverage gap, not a grammar
 gap.
 
-In SPARQL, the gather accesses the tag as `if(lang(?x) = "", "und", lang(?x))`, folding the language-neutral encodings
-so that a value stored as `"name"@und` and a plain literal both match the `und` branch; the `de`/`fr` probes use exact
-`lang(?x) = "…"`. SQL and GQL store the literal tag `und` in a column or property and need no folding.
+The `und` tag is an ordinary tag in every backend, probed and gathered by exact equality like any other. SPARQL stores
+an `und` value as a language-tagged literal such as `"name"@und` and matches it with `lang(?x) = "und"`; SQL and GQL
+store the literal tag `und` in a column or property. A plain SPARQL literal carries no tag and is never localised text:
+it is a string value, the one a string variant sharing the property holds (Section 3.1).
 
 Storage imposes no further gate: because language tags are not constrained in advance (Section 4.3), a conformant store
 cannot encode them as per-tag columns or fixed properties and MUST hold the tag as queryable data, so the tag the
