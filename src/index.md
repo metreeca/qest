@@ -323,7 +323,7 @@ Two regimes resolve a value against the variants, according to whether it carrie
   **unsatisfiable**, one matching several is **ambiguous**, and processors MUST reject either wherever this
   specification calls for such a match (Sections 3.3 and 5.7);
 - a **placeholder** (Sections 5.3 and 5.5) carries no content and states only how far to retrieve. It matches a variant
-  by form: an atomic matches every variant, a template the nested-resource variants declaring any of its properties
+  by form: an atomic matches every variant, a template the nested-resource variants admitting any of its properties
   (Section 5.5), and a locale the text variant; any value-domain narrowing on the variant (Section 3.1) is ignored. It
   matches every compatible variant and MAY match more than one, retrieving each. Like a data value, it MUST match at
   least one variant: one matching none is **unsatisfiable** and MUST be rejected, and a union placeholder (Section 5.5)
@@ -965,7 +965,7 @@ return nothing and is unsatisfiable, and MUST be rejected, as a data value is (S
 
 The forms match by shape. An atomic matches every variant, whatever a property holds: a literal comes back as a
 literal, a linked resource as its reference (Section 4.2), and localised text as its coalesced label (Section 6.2). A
-template matches the nested-resource variants declaring any of its properties (Section 5.5), and a locale matches the
+template matches the nested-resource variants admitting any of its properties (Section 5.5), and a locale matches the
 text variant. A template over a property declaring no nested-resource variant, or a locale over one declaring no text
 variant, is therefore unsatisfiable. Reference values proper, the options and operands of criteria (Section 5.7), are
 resolved on decoding (Section 5) and are absolute thereafter.
@@ -1054,13 +1054,19 @@ The keys are opaque: they label the alternatives but carry no positional or nomi
 integer strings (no decimals, negatives, or exponential forms), a namespace disjoint from property identifiers, and a
 processor MUST NOT read positional meaning into them. Each value is an alternative placeholder, and the branches it
 retrieves are fixed by matching the placeholder against the property's variants (Section 5.3), not by the key. Matching
-is by form: an atomic alternative matches every variant, a template alternative every nested-resource variant declaring
+is by form: an atomic alternative matches every variant, a template alternative every nested-resource variant admitting
 any of its properties, and a locale alternative the text variant (Section 5.3).
 
-A template MAY span several nested-resource variants, as names shared across variants already do (Section 3.2). Each
-matched variant retrieves the properties of the template that its type declares, and ignores the others. Every property
-of the template MUST be declared by at least one nested-resource variant; a template naming a property that no variant
-declares is malformed and MUST be rejected.
+A template MAY span several nested-resource variants, as names shared across variants already do (Section 3.2). A
+variant **admits** a property of the template where its type declares that property and the property's placeholder fits
+the declaration whole. Each matched variant retrieves the properties it admits and ignores the others. Every property of
+the template MUST be admitted by at least one nested-resource variant; a template asking for a property that no variant
+admits is malformed and MUST be rejected.
+
+Spanning applies to the template's own properties only: a nested placeholder never spans the declarations of different
+variants. Where variants declare a shared property with different types, a nested template asking for properties of
+several of those types fits no single declaration, so no variant admits the shared property and the template MUST be
+rejected. Such properties are requested through separate alternatives instead, one per type.
 
 An object alternative is read against the property's shape. Where every key of the alternative is a property declared
 by at least one nested-resource variant, processors MUST read the alternative as a template, matching those variants

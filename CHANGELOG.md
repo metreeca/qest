@@ -14,8 +14,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
-- Let a union template span several nested-resource variants: it matches every variant declaring any of its
-  properties, each retrieving the properties it declares, and is rejected only where a property is declared by none
+- Let a union template span several nested-resource variants: it matches every variant admitting any of its
+  properties, each retrieving the properties it admits, and is rejected only where a property is admitted by none.
+  Spanning stops at the template's own properties: a nested template must fit a single variant's declaration whole
 
 ### Fixed
 
