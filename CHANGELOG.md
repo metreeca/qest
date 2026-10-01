@@ -17,6 +17,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Let a union template span several nested-resource variants: it matches every variant admitting any of its
   properties, each retrieving the properties it admits, and is rejected only where a property is admitted by none.
   Spanning stops at the template's own properties: a nested template must fit a single variant's declaration whole
+- Preserve projection rows whose bindings all resolve to no value: such a row is surfaced as the empty object `{}`,
+  exempt from the dropping of empty values
 
 ### Fixed
 

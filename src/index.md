@@ -455,7 +455,8 @@ An empty object (`{}`) carries no content, whether an empty nested resource or a
 array. Processors MUST ignore such a value: drop it where it appears as an array element or as a tag's value in a
 `text` map, and otherwise treat the owning field as omitted (set semantics). Encoders MUST NOT emit one: a value set
 resolving to no content, whatever its form, is never surfaced as an empty array, `text` map, or object; the owning field
-is omitted from the document instead.
+is omitted from the document instead. Projection rows (Section 5.2) are exempt: an empty object standing as a row of a
+projection result is a row whose bindings all resolve to no value, and processors and encoders MUST preserve it.
 
 Dropping an empty array standing as a tag's value in a state is subject to the expected type (Section 3.1): the form is
 admitted only where the per-tag cardinality is an array per tag, and is malformed on a property fixing a single string
@@ -886,7 +887,8 @@ A projection emits one row per combination of its bindings' resolved values: a m
 per value, the result being the cross-product across bindings (a structural locale binding excepted, counting as a
 single value; a coalesced multi-valued binding fans out per value, like any multi-valued placeholder). A binding that
 resolves to no value preserves the row rather than collapsing the cross-product to zero; its label MUST be omitted from
-that row.
+that row. Where every binding resolves to no value, the row MUST be surfaced as the empty object `{}`, which is exempt
+from the dropping of empty objects in array elements (Section 4).
 
 The rows of a projection are **distinct**: rows sharing the same combination of cell values MUST collapse into one, so a
 projection yields the set of distinct binding tuples, not a multiset. Two cells are equal when they hold equal literals,
