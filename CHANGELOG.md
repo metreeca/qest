@@ -7,6 +7,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased](https://github.com/metreeca/qest/compare/v0.12.0...HEAD)
 
+### Changed
+
+- Published exports declare the `@metreeca/source` condition, resolving each entry point to its TypeScript source in
+  checkouts linked for local development, while registry consumers keep resolving to the compiled `dist` modules
+
 ## [0.12.0](https://github.com/metreeca/qest/compare/v0.11.0...v0.12.0) - 2026-10-01
 
 ### Added

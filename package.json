@@ -28,9 +28,18 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": "./dist/index.js",
-    "./state": "./dist/state.js",
-    "./model": "./dist/model.js"
+    ".": {
+      "@metreeca/source": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./state": {
+      "@metreeca/source": "./src/state.ts",
+      "default": "./dist/state.js"
+    },
+    "./model": {
+      "@metreeca/source": "./src/model.ts",
+      "default": "./dist/model.js"
+    }
   },
   "files": [
     "README.md",
