@@ -41,11 +41,11 @@
     "node": ">=22.22.0"
   },
   "scripts": {
-    "clean": "rm -rf dist docs node_modules src/*.pegjs.*",
+    "clean": "rm dist docs node_modules 'src/*.pegjs.*'",
     "prime": "npm ci",
-    "setup": "npm ci && sh package.sh",
+    "setup": "npm ci && ln",
     "peggy": "npx peggy --dts --format es --allowed-start-rules '*' --output src/model.pegjs.js src/model.pegjs",
-    "build": "rm -rf dist docs && npm run peggy && tsc -p tsconfig.build.json && cp src/*.pegjs.* dist && npx typedoc",
+    "build": "rm dist docs && npm run peggy && tsc -p tsconfig.build.json && cp dist 'src/*.pegjs.*' && npx typedoc",
     "check": "npx vitest --typecheck run",
     "proof": "npx typedoc && (npx typedoc --watch & npx wds --root-dir docs --watch --open)"
   },
@@ -53,6 +53,7 @@
     "@metreeca/core": "^0.12.0"
   },
   "devDependencies": {
+    "@metreeca/rack": "^0.4.0",
     "@web/dev-server": "^1.0.0",
     "peggy": "^4.1.3",
     "typedoc": "^0.28.14",
