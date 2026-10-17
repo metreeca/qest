@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { app, getNamespaceIRI } from "@metreeca/core/resource";
+import { base, getNamespaceIRI } from "@metreeca/core/resource";
 import { describe, expect, it } from "vitest";
 import { isDictionary, isResource, isVacuous, isValue, isValues } from "./state.core.js";
 import { decodeResource, encodeResource, type Resource } from "./state.js";
@@ -453,9 +453,9 @@ describe("codecs", () => {
 			});
 
 			it("should accept path-absolute IRI base", () => {
-				const resource: Resource = { id: "app:/products/42" };
+				const resource: Resource = { id: "base:/products/42" };
 
-				expect(encodeResource(resource, { base: getNamespaceIRI(app) }))
+				expect(encodeResource(resource, { base: getNamespaceIRI(base) }))
 					.toBe(JSON.stringify({ id: "/products/42" }));
 			});
 
@@ -529,8 +529,8 @@ describe("codecs", () => {
 
 		});
 
-		it("should use app base when base option is omitted", () => {
-			const resource: Resource = { id: "app:/products/42" };
+		it("should use base namespace when base option is omitted", () => {
+			const resource: Resource = { id: "base:/products/42" };
 
 			expect(encodeResource(resource))
 				.toBe(JSON.stringify({ id: "/products/42" }));
@@ -544,7 +544,7 @@ describe("codecs", () => {
 
 		it("should encode resource with primitive properties", () => {
 			const resource: Resource = {
-				id: "app:/products/42",
+				id: "base:/products/42",
 				name: "Widget",
 				price: 29.99,
 				available: true
@@ -676,8 +676,8 @@ describe("codecs", () => {
 			it("should accept path-absolute IRI base", () => {
 				const json = JSON.stringify({ id: "/products/42" });
 
-				expect(decodeResource(json, { base: getNamespaceIRI(app) }))
-					.toEqual({ id: "app:/products/42" });
+				expect(decodeResource(json, { base: getNamespaceIRI(base) }))
+					.toEqual({ id: "base:/products/42" });
 			});
 
 			it("should resolve root-relative IRI to absolute", () => {
@@ -725,11 +725,11 @@ describe("codecs", () => {
 
 		});
 
-		it("should use app base when base option is omitted", () => {
+		it("should use base namespace when base option is omitted", () => {
 			const json = JSON.stringify({ id: "/products/42" });
 
 			expect(decodeResource(json))
-				.toEqual({ id: "app:/products/42" });
+				.toEqual({ id: "base:/products/42" });
 		});
 
 		it("should decode empty resource", () => {
@@ -747,7 +747,7 @@ describe("codecs", () => {
 			});
 
 			expect(decodeResource(json)).toEqual({
-				id: "app:/products/42",
+				id: "base:/products/42",
 				name: "Widget",
 				price: 29.99,
 				available: true
@@ -764,9 +764,9 @@ describe("codecs", () => {
 			});
 
 			expect(decodeResource(json)).toEqual({
-				id: "app:/products/42",
+				id: "base:/products/42",
 				vendor: {
-					id: "app:/vendors/acme",
+					id: "base:/vendors/acme",
 					name: "Acme Corp"
 				}
 			});
@@ -784,7 +784,7 @@ describe("codecs", () => {
 
 		it("should roundtrip with encodeResource", () => {
 			const resource: Resource = {
-				id: "app:/products/42",
+				id: "base:/products/42",
 				name: "Widget",
 				price: 29.99
 			};

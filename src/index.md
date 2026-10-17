@@ -517,7 +517,7 @@ A **value** is one of:
 
 A **reference** carries only the linked resource's IRI; a nested **resource** carries its state inline. The two are
 interchangeable ways to link. Resource identifiers and cross-resource links are absolute IRIs [RFC3987]; they MAY be
-transmitted in relative form, and decoders MUST resolve them against a base IRI that defaults to `app:/`, so a decoded
+transmitted in relative form, and decoders MUST resolve them against a base IRI that defaults to `base:/`, so a decoded
 reference is always absolute. Encoders MAY in turn relativise the IRIs of a response payload against the same base; in
 that case they SHOULD prefer the root-relative form.
 

@@ -446,7 +446,7 @@
 import { error, Identifier, isArray, isIdentifier, isObject, isString, key } from "@metreeca/core";
 import { decodeBase64, encodeBase64 } from "@metreeca/core/base64";
 import { TagRange } from "@metreeca/core/language";
-import { app, getNamespaceIRI, internalize, isIRI, resolve } from "@metreeca/core/resource";
+import { base as baseNamespace, getNamespaceIRI, internalize, isIRI, resolve } from "@metreeca/core/resource";
 import { immutable } from "@metreeca/core/values";
 import { type DecoderOpts, type EncoderOpts } from "./index.js";
 import { isAtomic, isCriteria, isProbe, isTemplate } from "./model.core.js";
@@ -1340,7 +1340,7 @@ export type TransformSignature = {
  */
 export function encodeTemplate(template: Template, {
 
-	base = getNamespaceIRI(app),
+	base = getNamespaceIRI(baseNamespace),
 	indent,
 	format = "json"
 
@@ -1350,7 +1350,7 @@ export function encodeTemplate(template: Template, {
 
 } = {}): string {
 
-	if ( base !== getNamespaceIRI(app) && !isIRI(base, "hierarchical") ) {
+	if ( base !== getNamespaceIRI(baseNamespace) && !isIRI(base, "hierarchical") ) {
 		throw new TypeError(`expected hierarchical base IRI <${base}>`);
 	}
 
@@ -1404,12 +1404,12 @@ export function encodeTemplate(template: Template, {
  */
 export function decodeTemplate(encoded: string, {
 
-	base = getNamespaceIRI(app),
+	base = getNamespaceIRI(baseNamespace),
 	lenient
 
 }: DecoderOpts = {}): Template {
 
-	if ( base !== getNamespaceIRI(app) && !isIRI(base, "hierarchical") ) {
+	if ( base !== getNamespaceIRI(baseNamespace) && !isIRI(base, "hierarchical") ) {
 		throw new TypeError(`expected hierarchical base IRI <${base}>`);
 	}
 
@@ -1475,11 +1475,11 @@ export function decodeTemplate(encoded: string, {
  */
 export function encodeCriteria(criteria: Criteria, {
 
-	base = getNamespaceIRI(app)
+	base = getNamespaceIRI(baseNamespace)
 
 }: EncoderOpts = {}): string {
 
-	if ( base !== getNamespaceIRI(app) && !isIRI(base, "hierarchical") ) {
+	if ( base !== getNamespaceIRI(baseNamespace) && !isIRI(base, "hierarchical") ) {
 		throw new TypeError(`expected hierarchical base IRI <${base}>`);
 	}
 
@@ -1581,12 +1581,12 @@ export function encodeCriteria(criteria: Criteria, {
  */
 export function decodeCriteria(encoded: string, {
 
-	base = getNamespaceIRI(app),
+	base = getNamespaceIRI(baseNamespace),
 	lenient
 
 }: DecoderOpts = {}): Criteria {
 
-	if ( base !== getNamespaceIRI(app) && !isIRI(base, "hierarchical") ) {
+	if ( base !== getNamespaceIRI(baseNamespace) && !isIRI(base, "hierarchical") ) {
 		throw new TypeError(`expected hierarchical base IRI <${base}>`);
 	}
 

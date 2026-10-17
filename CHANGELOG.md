@@ -7,6 +7,12 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased](https://github.com/metreeca/qest/compare/v0.12.1...HEAD)
 
+### Changed
+
+- Default the codec base IRI to the `base` namespace of `@metreeca/core` (`base:/#`), superseding the `app` namespace:
+  relative references now decode to `base:/` IRIs, and `base:/` IRIs encode to root-relative references
+- Upgrade `@metreeca/core` to `^0.13.0`
+
 ## [0.12.1](https://github.com/metreeca/qest/compare/v0.12.0...v0.12.1) - 2026-10-14
 
 ### Changed

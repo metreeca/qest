@@ -1931,8 +1931,8 @@ describe("codecs", () => {
 
 		});
 
-		it("should use app base when base option is omitted", () => {
-			const template: Template = { items: { "?vendor": "app:/vendors/acme" } };
+		it("should use base namespace when base option is omitted", () => {
+			const template: Template = { items: { "?vendor": "base:/vendors/acme" } };
 
 			expect(encodeTemplate(template))
 				.toBe(JSON.stringify({ items: { "?vendor": "/vendors/acme" } }));
@@ -2049,11 +2049,11 @@ describe("codecs", () => {
 
 		});
 
-		it("should use app base when base option is omitted", () => {
+		it("should use base namespace when base option is omitted", () => {
 			const json = JSON.stringify({ items: { "?vendor": "/vendors/acme" } });
 
 			expect(decodeTemplate(json))
-				.toEqual({ items: { "?vendor": "app:/vendors/acme" } });
+				.toEqual({ items: { "?vendor": "base:/vendors/acme" } });
 		});
 
 		it("should decode empty template", () => {
@@ -2098,7 +2098,7 @@ describe("codecs", () => {
 			const template: Template = {
 				id: {},
 				name: {},
-				items: { name: {}, "?vendor": "app:/vendors/acme", "#": 10 }
+				items: { name: {}, "?vendor": "base:/vendors/acme", "#": 10 }
 			};
 
 			expect(decodeTemplate(encodeTemplate(template))).toEqual(template);
@@ -2157,8 +2157,8 @@ describe("codecs", () => {
 
 		});
 
-		it("should use app base when base option is omitted", () => {
-			const criteria = { "?vendor": "app:/vendors/acme" } as Criteria;
+		it("should use base namespace when base option is omitted", () => {
+			const criteria = { "?vendor": "base:/vendors/acme" } as Criteria;
 			const encoded = encodeCriteria(criteria);
 
 			expect(encoded).toBe("%3Fvendor=%22%2Fvendors%2Facme%22");
@@ -2566,11 +2566,11 @@ describe("codecs", () => {
 
 		});
 
-		it("should use app base when base option is omitted", () => {
+		it("should use base namespace when base option is omitted", () => {
 			const encoded = "%3Fvendor=%22%2Fvendors%2Facme%22";
 
 			expect(decodeCriteria(encoded))
-				.toEqual({ "?vendor": "app:/vendors/acme" } as Criteria);
+				.toEqual({ "?vendor": "base:/vendors/acme" } as Criteria);
 		});
 
 		describe("form format decoding", () => {

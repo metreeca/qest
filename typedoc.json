@@ -15,7 +15,7 @@
       "Guard": "https://metreeca.github.io/core/types/index.Guard.html",
       "key": "https://metreeca.github.io/core/variables/index.key.html",
       "IRI": "https://metreeca.github.io/core/types/resource.IRI.html",
-      "app": "https://metreeca.github.io/core/variables/resource.app.html",
+      "base": "https://metreeca.github.io/core/variables/resource.base.html",
       "internalize": "https://metreeca.github.io/core/functions/resource.internalize.html",
       "resolve": "https://metreeca.github.io/core/functions/resource.resolve.html",
       "Tag": "https://metreeca.github.io/core/types/language.Tag.html",
