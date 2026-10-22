@@ -4,9 +4,8 @@
   "description": "Foundations for client-driven, queryable REST/JSON APIs.",
   "keywords": [
     "typescript",
-    "rest",
-    "json",
     "json-ld",
+    "rest-json",
     "query",
     "api"
   ],
