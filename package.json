@@ -49,11 +49,11 @@
     "node": ">=22.22.0"
   },
   "scripts": {
-    "clean": "rm dist docs node_modules 'src/*.pegjs.*'",
+    "clean": "ush rm dist docs node_modules 'src/*.pegjs.*'",
     "prime": "npm ci",
     "setup": "npm ci && ln",
     "peggy": "npx peggy --dts --format es --allowed-start-rules '*' --output src/model.pegjs.js src/model.pegjs",
-    "build": "rm dist docs && npm run peggy && tsc -p tsconfig.build.json && cp dist 'src/*.pegjs.*' && npx typedoc",
+    "build": "ush rm dist docs && npm run peggy && tsc -p tsconfig.build.json && ush cp dist 'src/*.pegjs.*' && npx typedoc",
     "check": "npx vitest --typecheck run",
     "proof": "npx typedoc && (npx typedoc --watch & npx wds --root-dir docs --watch --open)"
   },
