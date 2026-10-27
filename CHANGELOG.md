@@ -7,6 +7,13 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased](https://github.com/metreeca/qest/compare/v0.13.0...HEAD)
 
+### Changed
+
+- Admit locale alternatives in keyed unions outside projections, so a property mixing plain strings and localised text
+  retrieves the plain strings as they stand and the localised text tag by tag; folding now applies to atomics alone
+- Merge union alternatives matching the same variant into one request, retrieved to the depth of the most demanding
+  alternative: a template or locale alternative prevails over an atomic one on the variant they share
+
 ## [0.13.0](https://github.com/metreeca/qest/compare/v0.12.1...v0.13.0) - 2026-10-19
 
 ### Changed

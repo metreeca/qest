@@ -664,6 +664,11 @@ export type Locale = {
  * {@link Criteria} constraining it ride on the entry hosting the union. A branch never holds another union directly,
  * though a branch {@link Template} may carry unions of its own.
  *
+ * Branches matching the same variant are merged, so each variant is retrieved once, to the depth the most demanding
+ * branch asks for: a {@link Template} or {@link Locale} branch prevails over an {@link Atomic} one. A property mixing
+ * plain strings and localised text can thus pair an `Atomic` branch with a `Locale` one, retrieving the plain strings
+ * as they stand and the localised text tag by tag, as a {@link Dictionary} restricted to the selected locales.
+ *
  * > [!IMPORTANT]
  * > A union MUST include at least one branch: the empty object `{}` is an {@link Atomic}. The type admits it only
  * > because TypeScript cannot express a non-empty index signature; {@link isUnion} rejects it at runtime.

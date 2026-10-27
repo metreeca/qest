@@ -384,8 +384,8 @@ reads the folded set.
 
 Folding keeps the text variant out of the union a processor compiles against, so localised content that is never
 addressed structurally adds neither a branch to a union nor a mixed type to a value set: a property declaring a text
-variant and a string variant folds to a uniform `xsd:string` set, its two variants indistinguishable to any construct
-reading it. Appendix A.5 shows the coalescing compiling to a single expression on each target backend.
+variant and a string variant folds to a uniform `xsd:string` set, and only a locale alternative (Section 5.5) tells its
+two variants apart. Appendix A.5 shows the coalescing compiling to a single expression on each target backend.
 
 ## 3.3. Ingress Mapping
 
@@ -559,8 +559,8 @@ entries are localised on the interface and one of which happens to have no deter
 under `und`: the property remains localised text throughout, and structural access still yields a dictionary. A resource
 whose name is a proper name in its own right, carrying no translations to sit among, is better served by a text variant
 alongside a string variant (Section 3.1): the property is then two-natured, each resource carries whichever arm suits
-it, and the two fold into one `xsd:string` set on retrieval. The two compose, a text arm still admitting `und` entries
-of its own.
+it. An atomic folds the two arms into one `xsd:string` set on retrieval, while a locale alternative keeps the tags of
+the text arm (Section 5.5). The two models compose, a text arm still admitting `und` entries of its own.
 
 A localised property can be addressed in two ways: **structurally**, preserving its language tags, or **coalesced** to a
 plain string, or array of plain strings of corresponding cardinality, under language negotiation (Section 6).
@@ -1029,28 +1029,25 @@ form (Section 5.5), which settles the reading of each object alternative against
 ## 5.5. Union
 
 For union-typed properties (Section 3.1), per-branch retrieval is expressed through a keyed object form whose values are
-the per-branch placeholders, each a plain placeholder or, only within a projection binding (Section 5.2), a locale
-placeholder (Section 5.4). The keyed form is what lets variants be retrieved to different depths; a property whose
-variants are all served by one placeholder is addressed directly, without branching, an atomic (Section 5.3)
-retrieving whichever variant a resource carries.
+the per-branch placeholders (Section 5.3), a locale placeholder (Section 5.4) among them. The keyed form is what lets
+variants be retrieved to different depths; a property whose variants are all served by one placeholder is addressed
+directly, without branching, an atomic (Section 5.3) retrieving whichever variant a resource carries.
 
-Folding (Section 3.2) recasts a text variant before retrieval reaches it: its coalesced value (Section 6.2) stands in as
-an ordinary `xsd:string` branch. A text variant paired with a string variant folds into that one branch, so the property
-is not union-typed for retrieval and is addressed by an atomic like any string-valued property, yielding the
-coalesced label (Section 5.4) for the values the text variant carries. Where folding leaves two or more branches, a text
-variant paired with a reference or a nested resource among them, the keyed form applies as usual and an atomic
-alternative addresses the folded branch.
+A text variant reached by an atomic is folded (Section 3.2): its coalesced value (Section 6.2) stands in as an ordinary
+`xsd:string`, so an atomic addressing a text and string pair directly reads like any string-valued property: it yields
+the coalesced label (Section 5.4) for the values the text variant carries, and the plain string for those the string
+variant carries. A text variant reached by a locale alternative is addressed structurally and exempt from folding, so
+the keyed form applies to every union declaring a text variant, whatever variants it is paired with.
 
 A variant carries a single value, never a collection: cardinality is defined for the property as a whole and applies to
 the union as a whole, not independently per branch.
 
-A variant MAY be a locale placeholder (Section 5.4) only within a projection binding (Section 5.2), addressing a branch
-that resolves to a localised property (Section 4.3), as a path through a union-typed step can (Section 5.8.1); the
-branch then occupies its own cell (Section 5.2) as a dictionary. A dictionary is not a value and cannot be combined into
-a value set (Section 4.2) alongside the literals, references, and resources of sibling branches, so a union retrieving a
-resource property directly admits no locale variant; only the per-cell decomposition of a projection
-(Section 5.2) accommodates one. A locale variant carries its own per-tag cardinality (Section 5.4) and is therefore
-never wrapped in a collection.
+A variant MAY be a locale placeholder (Section 5.4), addressing the text variant or, within a projection binding
+(Section 5.2), a branch that resolves to a localised property (Section 4.3), as a path through a union-typed step can
+(Section 5.8.1). Exclusivity (Section 3.2) keeps localised text and values of other variants apart on any one resource,
+so the property returns either a dictionary or a value set of the other variants (Section 4.2), never both; within a
+projection, the localised branch occupies its own cell (Section 5.2) as a dictionary. A locale variant carries its own
+per-tag cardinality (Section 5.4) and is therefore never wrapped in a collection.
 
 The keys are opaque: they label the alternatives but carry no positional or nominal meaning. Keys MUST be non-negative
 integer strings (no decimals, negatives, or exponential forms), a namespace disjoint from property identifiers, and a
@@ -1079,6 +1076,10 @@ An alternative MAY match more than one variant, retrieving each, but like any pl
 matching no variant can return nothing and is unsatisfiable, and MUST be rejected (Sections 3.1 and 5.3). Variants left
 unmatched are skipped at retrieval, contributing no values.
 
+Alternatives matching the same variant MUST be merged into one request for it, so that each variant is retrieved once,
+to the depth the most demanding alternative asks for. A structured alternative, a template or a locale, prevails over
+an atomic one, and structured alternatives merge their keys, recursively where several ask for the same property.
+
 ```json
 {
   "id": {},
@@ -1104,6 +1105,22 @@ belongs to:
 {
   "id": {},
   "region": {}
+}
+```
+
+A two-natured property is where a locale alternative earns its place. A `label` declaring a string variant for proper
+names and a text variant for translatable names returns the plain string on resources holding one, and only the `pt`
+entries on resources holding localised text, the locale prevailing over the atomic on the text variant:
+
+```json
+{
+  "id": {},
+  "label": {
+    "0": {},
+    "1": {
+      "pt": {}
+    }
+  }
 }
 ```
 
