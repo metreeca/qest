@@ -347,9 +347,10 @@
  *
  * Comparison (`<`, `>`, `<=`, `>=`) and sort (`^`) operators rely on a total ordering over values defined by the
  * {@link https://www.w3.org/TR/xpath-functions-20/#comparison-operators XPath 2.0 comparison operators}, which are in
- * turn based on {@link https://www.w3.org/TR/xmlschema11-2/#rf-order XSD ordered value spaces}. These operators, along
- * with sort focus (`+`), target {@link Literal} values only; {@link Reference} values, nested {@link Template}
- * resources, and {@link Dictionary} values are neither comparable nor sortable:
+ * turn based on {@link https://www.w3.org/TR/xmlschema11-2/#rf-order XSD ordered value spaces}. These operators
+ * target {@link Literal} values only: {@link Reference} values, nested {@link Template} resources, and
+ * {@link Dictionary} values are neither comparable nor sortable. Matching (`?`, `!`) and sort focus (`+`) test
+ * membership by equality alone, so they also admit references and localised values. Values are ordered as follows:
  *
  * - `null` — undefined values sort before all defined values
  * - `boolean` — `false` < `true`
@@ -867,13 +868,14 @@ export type Criteria = {
 	 * rank before the rest, with the regular `^` sort applied within each group; focus takes precedence over `^`.
 	 *
 	 * Membership is tested by equality, so an option MUST match the target value's type; a type-inconsistent option
-	 * is unpredictable and a processor MUST reject it. A `null` option prioritises resources whose value is
-	 * absent; an empty {@link Options} set imposes no focus.
+	 * is unpredictable and a processor MUST reject it. Localised properties are focused through the
+	 * {@link Dictionary} option form. A `null` option prioritises resources whose value is absent; an empty
+	 * {@link Options} set imposes no focus and leaves the regular `^` order in force.
 	 *
 	 * > [!WARNING]
-	 * > Like `^`, focus requires a single-valued {@link Literal} target (`boolean`, `number`, `string`): a
-	 * > {@link Reference} or nested resource is not orderable, and a multi-valued target supplies no single ordering
-	 * > key.
+	 * > Focus requires a single-valued target, since ranking needs one value per resource. The target may be a
+	 * > {@link Literal}, a {@link Reference} or a localised value; nested resources are not admitted. Under grouping,
+	 * > a focus expression ranks groups and must match a grouping-key binding, which is single-valued per row.
 	 */
 	readonly [focus: `+${Expression}`]: Options
 
