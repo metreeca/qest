@@ -13,6 +13,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   retrieves the plain strings as they stand and the localised text tag by tag; folding now applies to atomics alone
 - Merge union alternatives matching the same variant into one request, retrieved to the depth of the most demanding
   alternative: a template or locale alternative prevails over an atomic one on the variant they share
+- Admit sort and focus expressions matching a grouping key over a multi-valued property, so grouped facet listings
+  keep selected values on top; within focused and unfocused tiers, results follow the regular sort keys
 
 ## [0.13.0](https://github.com/metreeca/qest/compare/v0.12.1...v0.13.0) - 2026-10-19
 

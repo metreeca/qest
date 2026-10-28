@@ -1202,7 +1202,8 @@ corresponding cardinality, a multi-valued one admitted existentially:
   space; a literal target is matched in its processing type, as for the ordered operators.
 
 Cardinality (single- or multi-valued) constrains the **target property**, not its type, and each table states it
-separately.
+separately. Under grouped semantics, a sort or focus expression matching a grouping key is single-valued per group,
+whatever the cardinality of the property it reads, as each group holds one value per key (Section 5.8.2.1).
 
 ### 5.7.1. Comparison
 
@@ -1283,10 +1284,12 @@ defeat numeric indexes, contrary to the native-alignment principle (Appendix A.1
 | reference   | single-valued | reference equality    |
 | text        | single-valued | tagged-value equality |
 
-- Focus ranking needs one value per resource, hence the single-valued target.
+- Focus ranking needs one value per resource, hence the single-valued target; under grouped semantics, a grouping-key
+  expression over a multi-valued property qualifies, since it ranks groups holding one key value each (Section 5.8.2.1).
 - A `null` option ranks resources whose value is absent first, mirroring the absent-value match of set matching
   (Section 5.7.3).
-- Focus overrides the regular sort order (Section 5.7.5).
+- Focus overrides the regular sort order (Section 5.7.5) only by ranking focused results first: within each of the two
+  tiers, results MUST be ordered by the regular sort keys, then by the pagination tiebreaker (Section 5.7.6).
 
 A common use of sort focus is to prioritise a user's selections within a discrete facet: the chosen option values rank
 first while the rest of the listing keeps its order, keeping selected items visible without filtering the others out.
@@ -1312,6 +1315,8 @@ first while the rest of the listing keeps its order, keeping selected items visi
   places `undefined` last. Ranking by processing type keeps `temporal` a tier distinct from `xsd:string`, ordering
   comparable temporal values ahead of plain strings, though egress surfaces both as JSON strings (Section 3), so a
   union-typed key sorts deterministically across mixed-type values.
+- Under grouped semantics, a sort key matching a grouping key is admitted over a multi-valued property, since it sorts
+  groups holding one key value each, as for sort focus (Sections 5.7.4 and 5.8.2.1).
 - Appendix A.2.3 maps total ordering onto the target backends.
 
 ### 5.7.6. Pagination
@@ -1493,6 +1498,22 @@ and hence one group, per value. Rows sharing the same grouping-key values collap
 grouping-key value (an absent or unresolved binding) groups with itself: all rows missing that key form one group, whose
 output row omits the key, extending the no-value rule of the ungrouped case (Section 5.2). Every target backend realises
 this natively through `GROUP BY` null-grouping (Appendix A.4.6).
+
+Each group holds one value per grouping key, whatever the cardinality of the property the key reads. A sort or focus
+expression matching a grouping key is therefore single-valued (Sections 5.7.4 and 5.7.5), and processors MUST NOT
+reject it on the ground that the property is multi-valued. A facet over a multi-valued link thus keeps the values a
+reader has selected at the top of its grouped listing, whatever page or sort order is requested:
+
+```json
+{
+  "products": {
+    "category=categories": {},
+    "count=count:": {},
+    "^count:": -2,
+    "+categories": ["https://example.com/categories/1"]
+  }
+}
+```
 
 Aggregate filter and ordering constraints are independent of any projected bindings: an aggregate MAY appear in a
 constraint without being projected, and a projected aggregate MAY appear without being constrained. Appendix A.4.6

@@ -215,15 +215,17 @@
  *   verbatim in the output row; aggregate bindings compute per-group summaries
  * - **Filter constraints** — non-aggregate filters restrict the input set before grouping; aggregate
  *   filters select groups after aggregation
- * - **Ordering expressions** — a non-aggregate ordering expression sorts the groups by one of the
- *   grouping keys; an aggregate ordering expression sorts them by its post-aggregation value
+ * - **Ordering expressions** — a non-aggregate sort (`^`) or focus (`+`) expression sorts or ranks the
+ *   groups by one of the grouping keys; an aggregate one sorts or ranks them by its post-aggregation value
  *
- * Grouping is fixed by the projection alone and is never inferred from a sort key: a non-aggregate
- * ordering expression MUST reference an existing grouping key, and processors MUST reject one that
- * matches none.
+ * Grouping is fixed by the projection alone and is never inferred from a sort key: a non-aggregate sort or focus
+ * expression MUST reference an existing grouping key, and processors MUST reject one that matches none.
  *
- * Rows sharing the same grouping-key values collapse into a single group. Aggregate filter and
- * ordering constraints are independent of any projected bindings: an aggregate may appear in a
+ * Rows sharing the same grouping-key values collapse into a single group. Each group holds one value per
+ * grouping key, even where the key reads a multi-valued property, so a sort or focus expression matching that key
+ * is single-valued: processors MUST NOT reject it on the ground of the property's cardinality.
+ *
+ * Aggregate filter and ordering constraints are independent of any projected bindings: an aggregate may appear in a
  * constraint without being projected, and a projected aggregate may appear without being constrained.
  *
  * Aggregate expressions use bag semantics over their inputs: `count:` (empty path) returns the
@@ -865,7 +867,7 @@ export type Criteria = {
 	 * Sort focus.
 	 *
 	 * Companion to sort order (`^`): resources whose expression value is one of the values in the {@link Options} set
-	 * rank before the rest, with the regular `^` sort applied within each group; focus takes precedence over `^`.
+	 * rank before the rest; focus takes precedence over `^`, which still orders results within each of the two tiers.
 	 *
 	 * Membership is tested by equality, so an option MUST match the target value's type; a type-inconsistent option
 	 * is unpredictable and a processor MUST reject it. Localised properties are focused through the
@@ -875,7 +877,8 @@ export type Criteria = {
 	 * > [!WARNING]
 	 * > Focus requires a single-valued target, since ranking needs one value per resource. The target may be a
 	 * > {@link Literal}, a {@link Reference} or a localised value; nested resources are not admitted. Under grouping,
-	 * > a focus expression ranks groups and must match a grouping-key binding, which is single-valued per row.
+	 * > a focus expression ranks groups and must match a grouping-key binding, which holds one value per group: a
+	 * > multi-valued property is then admitted, keeping a reader's selections on top of a grouped facet listing.
 	 */
 	readonly [focus: `+${Expression}`]: Options
 
@@ -888,7 +891,8 @@ export type Criteria = {
 	 * > [!WARNING]
 	 * > `^` requires a single-valued {@link Literal} sort key (`boolean`, `number`, `string`). A {@link Reference} or
 	 * > nested-resource target is not sortable. A multi-valued literal property is likewise invalid directly: reduce
-	 * > it explicitly with a `min`/`max` aggregate, which supplies the single ordering key the operator needs.
+	 * > it explicitly with a `min`/`max` aggregate, which supplies the single ordering key the operator needs, or
+	 * > group by it, since a sort key matching a grouping-key binding holds one value per group.
 	 */
 	readonly [order: `^${Expression}`]: Order
 
