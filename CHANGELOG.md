@@ -16,6 +16,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Admit sort and focus expressions matching a grouping key over a multi-valued property, so grouped facet listings
   keep selected values on top; within focused and unfocused tiers, results follow the regular sort keys
 
+### Fixed
+
+- Correct the SPARQL realisation of aggregates in the backend appendix: missing and incompatible values are filtered out
+  in a per-group subselect before aggregating, since SPARQL keeps them as errors that void `SUM`, `AVG`, `MIN` and `MAX`
+
 ## [0.13.0](https://github.com/metreeca/qest/compare/v0.12.1...v0.13.0) - 2026-10-19
 
 ### Changed

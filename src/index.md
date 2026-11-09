@@ -1732,12 +1732,12 @@ The **target backends** are the query engines against which conforming processor
 A **query builder** is the component of a processor (Section 2) that translates a validated retrieval request into
 queries for the target backends, as specified in Section 5; the subsections below are written from its perspective.
 
-This appendix maps each protocol feature to its realisation across the target backends, documenting how each natively
-handles the cases covered by the adopted semantics (Section 5.8.2) and where query-level normalisation is required to
-reconcile their differences.
+This appendix maps each protocol feature to its realisation across the target backends: how each backend natively
+handles the adopted semantics (Section 5.8.2), and where query-level normalisation reconciles their differences.
 
-Property paths, transform pipes, type promotion, invalid value handling, and substring search align natively across all
-target backends without normalisation; the remaining cases are detailed in the subsections below.
+Property paths, transform pipes, type promotion, and substring search align natively across all target backends without
+normalisation. The remaining cases, including the exclusion of invalid values from transforms and aggregates, need
+query-level normalisation on at least one backend and are detailed in the subsections below.
 
 ## A.1. Value Types
 
@@ -1973,8 +1973,9 @@ The query builder admits only compatible values to the transform, by one of two 
 
 GQL scalar functions **throw** on a mismatch, so the guard is mandatory there to obtain `undefined` rather than a query
 error; SPARQL 1.1, by contrast, resolves a scalar mismatch to unbound natively, so a guard is needed there only for
-aggregates. The same per-value guards realise constraint matching over union-typed targets (Section 5.7), admitting the
-values of the single branch the bound or option is mapped to and excluding the rest.
+aggregates, where it filters rows rather than resolving values (Appendix A.4.2). The same per-value guards realise
+constraint matching over union-typed targets (Section 5.7): they admit the values of the single branch the bound or
+option is mapped to, and exclude the values of every other branch from the match.
 
 The `year` from time and `hours` from date rows above are a finer, subtype-level case: the value is temporal and so
 compatible with the transform's domain, but lacks the component extracted (Section 5.8.2.4). The query builder
@@ -1983,14 +1984,25 @@ coerce instead of erroring (for example, SQL `EXTRACT(HOUR FROM <date>)` returni
 
 ### A.4.2. Aggregate Transforms
 
-Before computing, the query builder restricts each aggregate's input to its compatible values: `undefined` and nulls
-drop natively, while incompatible-branch entries (Section 5.8.2) are removed by the same branch guard as for scalar
-transforms (Appendix A.4.1), since `SUM` over a typed column (SQL:2011) and SPARQL `SUM` would otherwise raise a type
-error rather than skip. Aggregation uses bag semantics (Section 5.8.2.1): no aggregate applies a `DISTINCT` quantifier
-to its own input implicitly (`COUNT(DISTINCT)` and `SUM(DISTINCT)` are never emitted), unlike the row-level
-`SELECT DISTINCT` that realises the distinct-row rule for ungrouped projections (Appendix A.4.6). The target backends
-match the protocol's bag semantics natively through `COUNT` / `SUM` without `DISTINCT`; clients needing distinct-value
-aggregates obtain them through grouping (Section 5.8.2.1).
+Before computing, the query builder restricts each aggregate's input to its compatible values, excluding `undefined`
+values and incompatible-branch entries (Section 5.8.2). SQL:2011 and GQL:2024 skip nulls natively. Incompatible-branch
+entries are removed by the same branch guard as for scalar transforms (Appendix A.4.1), since `SUM` over a typed column
+(SQL:2011) would otherwise fail the whole query with a type error rather than skip the incompatible entries.
+
+SPARQL 1.1 excludes neither natively. Section 18.5.1 of [W3C.REC-sparql11-query] evaluates an unbound or incompatible
+input to an error and keeps the error in the aggregate's input. Only `COUNT` removes such errors. `SUM` adds over them
+and `AVG` divides that sum, so a single error voids the result, and strict engines return `MIN` and `MAX` unbound too.
+An `IF` guard that resolves an incompatible value to an error voids the aggregate in the same way. The query builder
+therefore removes these rows before aggregating, computing each SPARQL aggregate in a subselect that:
+
+- restates the member pattern of the enclosing query;
+- keeps only compatible rows, through a `FILTER` on `BOUND(?v)` and on the branch guard of Appendix A.4.1;
+- groups by the grouping keys of the enclosing query; the enclosing query joins it through an `OPTIONAL` on those keys.
+
+Aggregation uses bag semantics (Section 5.8.2.1): no aggregate applies a `DISTINCT` quantifier to its own input
+implicitly (`COUNT(DISTINCT)` and `SUM(DISTINCT)` are never emitted), unlike the row-level `SELECT DISTINCT` that
+realises the distinct-row rule for ungrouped projections (Appendix A.4.6). All target backends match these semantics
+natively; clients needing distinct-value aggregates obtain them through grouping (Section 5.8.2.1).
 
 After invalid values are excluded (Section 5.8.2), aggregates over an empty input set produce:
 
@@ -2002,20 +2014,24 @@ After invalid values are excluded (Section 5.8.2), aggregates over an empty inpu
 | `min` / `max` | `undefined` | `NULL`               | `null`   | error             |
 
 `count` / `sum` → `0` and `avg` / `min` / `max` → `undefined` match the target backends natively, except SQL `SUM` and
-SPARQL `AVG`; see Empty-Set Aggregates (Appendix A.4.3) for the patches.
+SPARQL `AVG`. The SPARQL exclusion subselect adds a further case: it yields no row for a group without compatible
+values, so the `OPTIONAL` join leaves `COUNT` and `SUM` unbound rather than `0`. Empty-Set Aggregates (Appendix A.4.3)
+lists the query-level patches that restore the protocol's results in each of these three cases.
 
 ### A.4.3. Empty-Set Aggregates
 
-Two backends deviate from the protocol's empty-set semantics (Appendix A.4.2) and require client-side normalisation: SQL
-`SUM` returns `NULL` instead of `0`, and SPARQL `AVG` returns `0` instead of an unbound binding.
+Three cases deviate from the protocol's empty-set semantics (Appendix A.4.2) and require client-side normalisation: SQL
+`SUM` returns `NULL` instead of `0`, and SPARQL `AVG` returns `0` instead of an unbound binding. SPARQL `COUNT` and
+`SUM` also come back unbound for a group without compatible values, since the exclusion subselect (Appendix A.4.2)
+yields no row for that group and the `OPTIONAL` join leaves its bindings unbound.
 
-For SQL `sum`:
+For `count` and `sum`:
 
-| Backend    | Normalisation                                   |
-|------------|-------------------------------------------------|
-| SQL        | `COALESCE(SUM(col), 0)`: standard SQL construct |
-| GQL:2024   | none: `sum()` returns `0` natively              |
-| SPARQL 1.1 | none: `SUM` returns `0` natively                |
+| Backend    | Normalisation                                                                 |
+|------------|-------------------------------------------------------------------------------|
+| SQL        | `COALESCE(SUM(col), 0)`: standard SQL construct; `COUNT` returns `0` natively |
+| GQL:2024   | none: `count()` and `sum()` return `0` natively                               |
+| SPARQL 1.1 | `COALESCE(?count, 0)` and `COALESCE(?sum, 0)` in the enclosing projection     |
 
 For SPARQL `avg`, Section 18.5.1.4 of [W3C.REC-sparql11-query] defines `Avg` piecewise with
 `Avg(M) = "0"^^xsd:integer when Count(M) = 0`, a literal `0` rather than a derivation from `Sum/Count`. The protocol
@@ -2031,38 +2047,41 @@ The cast of a non-numeric string to `xsd:integer` fails, raising an error that p
 more obvious `1/0` divisor is brittle: some engines (for example, RDF4J) eagerly evaluate both `IF` branches and surface
 the `BigInteger divide by zero` exception as an HTTP 500 rather than as an unbound projection.
 
+The wrap belongs inside the exclusion subselect (Appendix A.4.2), where `AVG` reads the filtered rows. Ungrouped queries
+still need it there: without grouping keys, the subselect yields one row even over an empty input, and `AVG` returns the
+literal `0` of Section 18.5.1.4 on that row rather than leaving the binding unbound, as the protocol requires.
+
 ### A.4.4. Transform Pipes
 
-Structural composition is resolved entirely at query-building time. The query builder validates the structural rules (
-scalar after scalar, aggregate after scalar, scalar after aggregate) and rejects structurally invalid pipes (aggregate
-after aggregate) outright, before emitting any backend-specific code. No backend-level normalisation is required for
-structural composition.
+Structural composition is resolved entirely at query-building time. The query builder validates the structural rules
+(scalar after scalar, aggregate after scalar, scalar after aggregate) and rejects structurally invalid pipes (aggregate
+after aggregate) before emitting any backend-specific code. Structural composition therefore needs no backend-level
+normalisation, since the target backends never receive a structurally invalid pipe.
 
 Type compatibility is a separate well-typedness rule (Section 5.8.2), checked in the same query-building pass. The query
-builder walks the pipe from its innermost transform outward, and for each transform intersects its declared domain with
-the effective type of its input step (the path's type for the innermost transform, the preceding transform's range
-otherwise). It rejects the pipe when an intersection is empty, reporting the incompatibility before emitting any
-backend-specific code. A non-empty intersection admits the transform: covering the whole input type needs no guard,
-while covering only some branches of a union-typed input (Section 5.5) admits the transform on those branches and marks
-the rest for guarding.
+builder walks the pipe from its innermost transform outward. For each transform, it intersects the declared domain with
+the effective type of the input step: the path's type for the innermost transform, and the preceding transform's range
+otherwise. An empty intersection rejects the pipe before any backend-specific code is emitted. A non-empty intersection
+admits the transform. When it covers the whole input type, no guard is needed; when it covers only some branches of a
+union-typed input (Section 5.5), the builder admits the transform on those branches and marks the rest for guarding.
 
-The builder then uses that shape information to place the branch guards (scalar, Appendix A.4.1; aggregate, Appendix
-A.4.2) that filter the incompatible-branch values to `undefined` or exclude them from the reduction. No backend-level
-normalisation is required for type compatibility itself: the rejection is emitted by the builder, and the guards are the
-only backend-specific code the check produces.
+The builder then places branch guards from that shape information. Scalar guards resolve incompatible-branch values to
+`undefined` (Appendix A.4.1), and aggregate guards exclude them from the reduction (Appendix A.4.2). Type compatibility
+itself needs no backend-level normalisation: the builder emits the rejection, and the guards are the only
+backend-specific code the check produces, each written with the native type tests of its backend.
 
 ### A.4.5. Branch Guards
 
 A wholly incompatible transform is reported and rejected before query building (Appendix A.4.4). A transform compatible
-on at least one branch of a union-typed input is admitted, and the query builder secures the incompatible branches from
-its shape information, never emitting a call a backend would reject: a scalar yields `undefined` for their values and an
-aggregate drops them (Section 5.8.2).
+on at least one branch of a union-typed input is admitted, and the query builder secures its incompatible branches from
+the shape information. It never emits a call a backend would reject: a scalar yields `undefined` for the values of those
+branches, and an aggregate drops them from its input before computing (Section 5.8.2).
 
-| Backend    | Handling                                                    |
-|------------|-------------------------------------------------------------|
-| SQL:2011   | static short-circuit to `NULL`, or typed-column selection   |
-| GQL:2024   | `IS TYPED` guard (functions throw otherwise)                |
-| SPARQL 1.1 | mismatch resolves to unbound natively; guard for aggregates |
+| Backend    | Handling                                                         |
+|------------|------------------------------------------------------------------|
+| SQL:2011   | static short-circuit to `NULL`, or typed-column selection        |
+| GQL:2024   | `IS TYPED` guard (functions throw otherwise)                     |
+| SPARQL 1.1 | mismatch resolves to unbound natively; row filter for aggregates |
 
 See Appendix A.4.1 (scalar) and A.4.2 (aggregate) for the filtering mechanism.
 
@@ -2075,8 +2094,12 @@ post-grouping (aggregate) filters, and, in ungrouped queries, per-item reduction
 |-------------------------------------------------|---------------------|--------------------|-------------------|
 | Non-aggregate filter (pre-grouping)             | `WHERE`             | `FILTER`           | `FILTER`          |
 | Non-aggregate projection binding (grouping key) | `GROUP BY`          | `GROUP BY`         | `GROUP BY`        |
-| Aggregate filter / ordering (post-grouping)     | `HAVING`            | `FILTER`           | `HAVING`          |
+| Aggregate filter / ordering (post-grouping)     | `HAVING`            | `FILTER`           | joined `FILTER`   |
 | Aggregate filter / ordering (ungrouped)         | correlated subquery | subquery aggregate | grouped subselect |
+
+SPARQL 1.1 computes each aggregate in the exclusion subselect of Appendix A.4.2, not in the enclosing `GROUP BY`, so
+`HAVING` cannot reach it. A post-grouping filter or ordering instead applies `FILTER` or `ORDER BY` to the binding the
+`OPTIONAL` join brings in, wrapped in the `COALESCE` that restores empty-set results (Appendix A.4.3).
 
 When the projection includes an aggregate binding, the non-aggregate bindings alone define the grouping key
 (Section 5.8.2.1); ordering operators may only sort by an existing grouping key and never extend it. Each backend
